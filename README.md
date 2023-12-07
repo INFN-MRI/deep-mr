@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/_static/deepmr_logo_dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./docs/_static/deepmr_logo.png">
-    <img alt="DeepMR logo" src="./docs/_static/deepmr_logo.png" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/figures/deepmr_logo_dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./docs/figures/deepmr_logo.png">
+    <img alt="DeepMR logo" src="./docs/figures/deepmr_logo.png" width="300">
   </picture>
 </p>
 
