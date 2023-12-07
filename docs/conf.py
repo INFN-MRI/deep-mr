@@ -44,7 +44,7 @@ html_theme_options = {
     "logo": {
         "image_light": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo.png?raw=true",
         "image_dark": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo_dark.png?raw=true",
-        "scale": "30%",
+        "scale": "10%",
     },
 
 }
