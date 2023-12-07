@@ -13,10 +13,10 @@ jobs:
       - uses: actions/setup-python@v3
       - name: Install dependencies
         run: |
-          pip install sphinx sphibx-autoapi sphinx-book-theme myst-nb myst-parser
+          pip install sphinx sphinx-autoapi sphinx-book-theme myst-nb myst-parser
       - name: Sphinx build
         run: |
-          sphinx-build doc _build
+          sphinx-build docs _build
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
