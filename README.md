@@ -1,7 +1,7 @@
-<picture align="center">
+<p align="center">
   <source media="(prefers-color-scheme: light)" srcset="./docs/_static/deepmr_logo_dark.png">
   <img src="./docs/_static/deepmr_logo.png" width="300">
-</picture>
+</p>
 
 A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI.
 
