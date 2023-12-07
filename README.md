@@ -1,9 +1,8 @@
 <p align="center">
   <picture>
-    blob:https://github.com/5783a929-7f46-43cb-91f5-3fb7e7459e6d
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo_dark.png?raw=true">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo.png?raw=true">
-    <img alt="DeepMR logo" src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo.png?raw=true" width="300">
+    <source media="(prefers-color-scheme: light)" srcset="blob:https://github.com/5783a929-7f46-43cb-91f5-3fb7e7459e6d">
+    <img alt="DeepMR logo" src="blob:https://github.com/5783a929-7f46-43cb-91f5-3fb7e7459e6d" width="300">
   </picture>
 </p>
 
