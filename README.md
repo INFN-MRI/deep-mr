@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./docs/_static/deepmr_logo_dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./docs/_static/deepmr_logo.png">
-    <img alt="DeepMR logo" src="https://user-images.githubusercontent.com/71297412/178180441-59f1644e-2ab6-4bf0-866f-2c77b2a63433.png" width="300">
+    <img alt="DeepMR logo" src="./docs/_static/deepmr_logo.png" width="300">
   </picture>
 </p>
 
