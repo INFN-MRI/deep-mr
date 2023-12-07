@@ -1,4 +1,6 @@
-# deepmr
+<p align="center">
+<img src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/_static/deepmr_logo.png" width="300">
+</p>
 
 A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI.
 
