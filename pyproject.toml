@@ -8,6 +8,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+phantominator = "^0.7.0"
+mri-nufft = "^0.3.0"
+ismrmrd = "^1.14.0"
+pyvoxel = "^0.0.2"
 
 [tool.poetry.dev-dependencies]
 
