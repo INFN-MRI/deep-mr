@@ -5,7 +5,7 @@
     <img alt="DeepMR logo" src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo.png?raw=true" width="300">
   </picture>
 </p>
-<p align="center">
+<p align="left">
 <a href="https://www.codefactor.io/repository/github/infn-predator/deep-mr"><img src="https://www.codefactor.io/repository/github/infn-predator/deep-mr/badge" alt="CodeFactor" /></a>
 </p>
 A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI.
