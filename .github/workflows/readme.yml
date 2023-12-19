@@ -1,0 +1,32 @@
+name: Modular README.md
+
+on:
+  push:
+    branches: 
+      - main
+    pull_request:
+      types:  [open, synchronize]
+
+
+jobs:
+  build:
+    name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - run: sed -i '/<!-- _README:START -->/,/<!-- _README:END -->/d' README.md
+      - run: echo '/<!-- _README:START -->' >> README.md
+      - run: cat _README.md >> READMR.md
+      - run: echo '/<!-- _README:END -->' >> README.md
+
+      - name: push
+        uses: actions-x/commit@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: GitHub Actions Autocommiter
+          files: ./README.md
+          message: '[GITOPS] updated README with _README content' 
+
