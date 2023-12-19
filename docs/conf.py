@@ -42,8 +42,8 @@ html_theme_options = {
     "use_download_button": True,
     "home_page_in_toc": True,
     "logo": {
-        "image_light": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo.png?raw=true",
-        "image_dark": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/figures/deepmr_logo_dark.png?raw=true",
+        "image_light": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo.png?raw=true",
+        "image_dark": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo_dark.png?raw=true",
         "scale": "10%",
     },
 
