@@ -21,6 +21,7 @@ jobs:
       - run: cat _README.md >> README.md
       - run: echo '<!-- _README:END -->' >> README.md
       - run: cat README.md
+      - run: git --version
 
       - name: push
         uses: actions-x/commit@v2
