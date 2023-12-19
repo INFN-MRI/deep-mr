@@ -1,15 +1,15 @@
-```{include} ../README.md
+```{include} ../../_README.md
 ```
 
 ```{toctree}
 :hidden:
-:caption: User Guides
+:caption: User Guide
 ```
 
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: Explanations
+:caption: Tutorials
 ```
 
 ```{toctree}
@@ -19,6 +19,6 @@
 
 ```{toctree}
 :hidden:
-:caption: Miscellanneous
+:caption: Miscellaneous
 ```
 
