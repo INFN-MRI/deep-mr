@@ -18,7 +18,7 @@ jobs:
 
       - run: sed -i '/<!-- _README:START -->/,/<!-- _README:END -->/d' README.md
       - run: echo '/<!-- _README:START -->' >> README.md
-      - run: cat _README.md >> READMR.md
+      - run: cat _README.md >> README.md
       - run: echo '/<!-- _README:END -->' >> README.md
 
       - name: push
