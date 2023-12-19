@@ -1,5 +1,5 @@
 # DeepMR
-```{include} ../../_README.md
+```{include} ../_README.md
 ```
 
 ```{toctree}
