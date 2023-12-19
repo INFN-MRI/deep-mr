@@ -6,5 +6,4 @@
   </picture>
 </p>
 
-```{include} _README.md
-```
+@@include[_README.md](./_README.md)
