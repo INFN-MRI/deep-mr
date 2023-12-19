@@ -6,5 +6,5 @@
   </picture>
 </p>
 
-/<!-- _README:START -->
-/<!-- _README:END -->
+<!-- _README:START -->
+<!-- _README:END -->
