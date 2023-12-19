@@ -10,7 +10,6 @@ on:
 
 jobs:
   build:
-    name:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -27,6 +26,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          fetch-depth: 1
           name: GitHub Actions Autocommiter
           files: ./README.md
           message: '[GITOPS] updated README with _README content' 
