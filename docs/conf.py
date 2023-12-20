@@ -17,11 +17,11 @@ author = u"Matteo Cencini"
 # ones.
 extensions = [
     "myst_nb",
-    "autoapi.extension",
+#    "autoapi.extension",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
-autoapi_dirs = ["../src"]
+# autoapi_dirs = ["../src"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

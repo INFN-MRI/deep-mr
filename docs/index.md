@@ -25,6 +25,9 @@ source/tutorials/02-dl-mri-recon.ipynb
 ```{toctree}
 :hidden:
 :caption: API References
+
+source/api/api.md
+
 ```
 
 ```{toctree}
