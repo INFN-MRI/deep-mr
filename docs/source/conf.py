@@ -23,7 +23,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
-# autoapi_dirs = ["../src"]
+autodoc_mock_imports = ['torch', 'dacite', 'numpy, scipy', 'matplotlib', 'h5py']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -50,3 +50,7 @@ html_theme_options = {
     },
 
 }
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
