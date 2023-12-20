@@ -14,6 +14,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install sphinx sphinx-autoapi sphinx-book-theme myst-nb myst-parser
+          pip install --no-dependencies .
       - name: Sphinx build
         run: |
           sphinx-build docs/source _build
