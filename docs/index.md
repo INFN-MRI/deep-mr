@@ -26,7 +26,7 @@ source/tutorials/02-dl-mri-recon.ipynb
 :hidden:
 :caption: API References
 
-source/api/api.md
+source/api/io.md
 
 ```
 
