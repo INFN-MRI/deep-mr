@@ -1,25 +1,9 @@
-[tool.poetry]
-name = "deepmr"
-version = "0.1.0"
-description = "A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI."
-authors = ["Matteo Cencini"]
-license = "MIT"
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.9"
-phantominator = "^0.7.0"
-mri-nufft = "^0.3.0"
-ismrmrd = "^1.14.0"
-pyvoxel = "^0.0.2"
-
-[tool.poetry.dev-dependencies]
-
-[tool.poetry.group.dev.dependencies]
-myst-nb = {version = "^1.0.0", python = "^3.9"}
-sphinx-autoapi = "^3.0.0"
-sphinx-book-theme = "^1.0.1"
-
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+# AVOID CHANGING REQUIRES: IT WILL BE UPDATED BY PYSCAFFOLD!
+requires = ["setuptools>=46.1.0", "setuptools_scm[toml]>=5"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# For smarter version schemes and other configuration options,
+# check out https://github.com/pypa/setuptools_scm
+version_scheme = "no-guess-dev"

@@ -1,3 +1,5 @@
-myst-nb
-sphinx-autoapi
-sphinx-rtd-theme
+myst-nb 
+myst-parser
+sphinx==6.2.1 
+sphinx-autoapi 
+sphinx-book-theme 
