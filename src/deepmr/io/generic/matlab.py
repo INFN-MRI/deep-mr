@@ -50,6 +50,8 @@ def read_matfile(filename: str) -> dict:
     In addition, '__global__', '__header__' and '__version__' fields are automatically
     discarded.
     
+    References
+    ----------
     [1]: https://github.com/skjerns/mat7.3/tree/master
 
     """

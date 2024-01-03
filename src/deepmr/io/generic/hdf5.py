@@ -86,7 +86,7 @@ def write_hdf5(input: dict, filename: str):
     >>> import numpy as np
     >>> pydict = {'headerstr': 'someinfo', 'testdouble': np.ones(3, dtype=np.float32)}
 
-    Save to an hdf5 file the dictionary.
+    Save the dictionary to disk:
 
     >>> import os
     >>> import deepmr.io
