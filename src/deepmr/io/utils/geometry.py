@@ -11,7 +11,6 @@ import numpy as np
 
 from nibabel.orientations import axcodes2ornt, ornt_transform
 
-
 @dataclass
 class Geometry:
     """
@@ -86,13 +85,20 @@ class Geometry:
     
     @classmethod
     def from_philips(cls):
-        pass
+        print("Not Implemented")
     
     @classmethod
     def from_dicom(cls, dsets):
+
+        # calculate parameters
         resolution = _get_resolution(dsets)
         position = _get_position(dsets)
-        orientation = _get_image_orientation(dsets)
+        origin = tuple(position.mean(axis=-1))
+        orientation = tuple(_get_image_orientation(dsets).ravel())
+        shape = _get_shape(dsets, position)
+        spacing = _get_spacing(dsets)
+        
+        return cls(shape, resolution, spacing, orientation, origin)
     
     @classmethod
     def from_nifti(cls, nii):
@@ -105,7 +111,7 @@ class Geometry:
         pass
     
 
-# %%
+# %% mrd utils
 def _find_in_user_params(userField, *keys):
     
     # find names
@@ -120,7 +126,8 @@ def _find_in_user_params(userField, *keys):
     else:
         return None # One or more keys not found
     
-# %% 
+    
+# %% nifti utils
 class Affine:
     """
     Return affine transform between voxel coordinates and mm coordinates.
@@ -155,67 +162,6 @@ class Affine:
         resolution = _get_resolution(dsets)
 
         return _make_nifti_affine(shape, position, orientation, resolution)
-
-    @staticmethod
-    def from_mrd(mrdhead, acq):
-        """
-        Return affine transform between voxel coordinates and mm coordinates.
-        """
-        # get relevant fields from mrdheader
-        geom = mrdhead.encoding[0].encodedSpace
-        user = mrdhead.userParameters
-        
-        # get acquisition header for first frame
-        acqhead = acq[0].getHead()
-
-        # get number of slices, resolution and spacing
-        shape = geom.matrixSize
-        nz, ny, nx = shape.z, shape.y, shape.x
-
-        # calculate slice spacing
-        if "SliceThickness" in user and "SpacingBetweenSlices" in user:
-            dz = user["SpacingBetweenSlices"]
-            spacing = user["SpacingBetweenSlices"]
-        else:  # attempt to estimate
-            warnings.warn(
-                "Slice thickness and spacing info not found; assuming contiguous"
-                " slices!",
-                UserWarning,
-            )
-            rz = geom["fieldOfView_mm"][0]
-            dz = rz / nz
-            spacing = dz
-            
-        spacing = round(float(spacing), 2)
-
-        # calculate resolution
-        ry, rx = geom.fieldOfView_mm.y, geom.fieldOfView_mm.x 
-        dy, dx = ry / ny, rx / nx
-        resolution = [dz, dy, dx]
-        
-        # direction cosines & position parameters
-        dircosX = np.asarray(acqhead.read_dir) / dx
-        dircosY = np.asarray(acqhead.phase_dir) / dy
-        orientation = [
-            dircosX[0],
-            dircosX[1],
-            dircosX[2],
-            dircosY[0],
-            dircosY[1],
-            dircosY[2],
-        ]
-        orientation = np.asarray(orientation)
-
-        # calculate position
-        n = np.arange(nz)
-        zero = 0 * n
-        one = zero + 1
-        arr = np.stack((zero, zero, n, one), axis=0)
-        position = A @ arr
-        position = position[:3, :]
-        
-        return _make_nifti_affine(shape, position, orientation, resolution)
-        
 
     @staticmethod
     def to_dicom(affine, head):
@@ -258,54 +204,27 @@ class Affine:
         resolution = [dz, dy, dx]
 
         return _make_geometry_tags(affine, shape, resolution, spacing)
-
-
-def _make_geometry_tags(affine, shape, resolution, spacing):
+    
+    
+def _reorient(shape, affine, orientation):
     """
-    Creates DICOM geometry tags from nifti affine.
-
-    Args:
-        ds: Existing Pydicom DataSet object
-        nii: nifti containing affine
-        sliceNumber: slice number (counting from 1)
-
-    Ref: https://gist.github.com/tomaroberts/8deebaa0ae204d7ae32fecd1e6efdb51
+    Reorient input image to desired orientation.
     """
-    # reorient affine
-    A = _reorient(shape, affine, "LPS")
+    # get input orientation
+    orig_ornt = nib.io_orientation(affine)
 
-    # sign of affine matrix
-    A[:2, :] *= -1
+    # get target orientation
+    targ_ornt = axcodes2ornt(orientation)
 
-    # data parameters & pixel dimensions
-    nz, ny, nx = shape
-    dz, dy, dx = resolution
+    # estimate transform
+    transform = ornt_transform(orig_ornt, targ_ornt)
 
-    # direction cosines & position parameters
-    dircosX = A[:3, 0] / dx
-    dircosY = A[:3, 1] / dy
-    orientation = [
-        dircosX[0],
-        dircosX[1],
-        dircosX[2],
-        dircosY[0],
-        dircosY[1],
-        dircosY[2],
-    ]
-    orientation = np.asarray(orientation)
+    # reorient
+    tmp = np.ones(shape[-3:], dtype=np.float32)
+    tmp = nib.Nifti1Image(tmp, affine)
+    tmp = tmp.as_reoriented(transform)
 
-    # calculate position
-    n = np.arange(nz)
-    zero = 0 * n
-    one = zero + 1
-    arr = np.stack((zero, zero, n, one), axis=0)
-    position = A @ arr
-    position = position[:3, :]
-
-    # calculate slice location
-    slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
-
-    return spacing, orientation, position.transpose(), slice_loc.round(4)
+    return tmp.affine
 
 
 def _make_nifti_affine(shape, position, orientation, resolution):
@@ -372,6 +291,55 @@ def _make_nifti_affine(shape, position, orientation, resolution):
     return A
 
 
+# %% dicom utils
+def _make_geometry_tags(affine, shape, resolution, spacing):
+    """
+    Creates DICOM geometry tags from nifti affine.
+
+    Args:
+        ds: Existing Pydicom DataSet object
+        nii: nifti containing affine
+        sliceNumber: slice number (counting from 1)
+
+    Ref: https://gist.github.com/tomaroberts/8deebaa0ae204d7ae32fecd1e6efdb51
+    """
+    # reorient affine
+    A = _reorient(shape, affine, "LPS")
+
+    # sign of affine matrix
+    A[:2, :] *= -1
+
+    # data parameters & pixel dimensions
+    nz, ny, nx = shape
+    dz, dy, dx = resolution
+
+    # direction cosines & position parameters
+    dircosX = A[:3, 0] / dx
+    dircosY = A[:3, 1] / dy
+    orientation = [
+        dircosX[0],
+        dircosX[1],
+        dircosX[2],
+        dircosY[0],
+        dircosY[1],
+        dircosY[2],
+    ]
+    orientation = np.asarray(orientation)
+
+    # calculate position
+    n = np.arange(nz)
+    zero = 0 * n
+    one = zero + 1
+    arr = np.stack((zero, zero, n, one), axis=0)
+    position = A @ arr
+    position = position[:3, :]
+
+    # calculate slice location
+    slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
+
+    return spacing, orientation, position.transpose(), slice_loc.round(4)
+
+
 def _get_slice_locations(dsets):
     """
     Return array of unique slice locations and slice location index for each dataset in dsets.
@@ -393,29 +361,6 @@ def _get_slice_locations(dsets):
     return uSliceLocs, firstSliceIdx, sliceIdx
 
 
-# %% nifti utils
-def _reorient(shape, affine, orientation):
-    """
-    Reorient input image to desired orientation.
-    """
-    # get input orientation
-    orig_ornt = nib.io_orientation(affine)
-
-    # get target orientation
-    targ_ornt = axcodes2ornt(orientation)
-
-    # estimate transform
-    transform = ornt_transform(orig_ornt, targ_ornt)
-
-    # reorient
-    tmp = np.ones(shape[-3:], dtype=np.float32)
-    tmp = nib.Nifti1Image(tmp, affine)
-    tmp = tmp.as_reoriented(transform)
-
-    return tmp.affine
-
-
-# %% dicom utils
 def _get_relative_slice_position(orientation, position):
     """
     Return array of slice coordinates along the normal to imaging plane.
@@ -453,10 +398,19 @@ def _get_resolution(dsets):
     """
     Return image resolution.
     """
-    return np.asarray(
-        [dsets[0].SliceThickness, dsets[0].PixelSpacing[0], dsets[0].PixelSpacing[1]]
-    )
+    return (float(dsets[0].SliceThickness), float(dsets[0].PixelSpacing[0]), float(dsets[0].PixelSpacing[1]))
 
-# %% mrd utils
-def _calculate_position():
-    pass
+
+def _get_shape(dsets, position):
+    """
+    Return image shape.
+    """
+    nz = np.unique(position, axis=-1).shape[-1]
+    return (nz, dsets[0].Columns, dsets[0].Rows)
+
+
+def _get_spacing(dsets):
+    """
+    Return image shape.
+    """
+    return float(dsets[0].SpacingBetweenSlices)

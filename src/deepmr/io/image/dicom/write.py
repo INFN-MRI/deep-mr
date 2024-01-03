@@ -4,18 +4,17 @@ __all__ = ["write"]
 import copy
 import multiprocessing
 import os
+
 from multiprocessing.dummy import Pool as ThreadPool
-from typing import Dict
 
 import numpy as np
 import pydicom
 
-from deepmr.io.dicom import _subroutines
-
+from . import _subroutines
 
 def write(
     image: np.ndarray,
-    info: Dict,
+    info: dict,
     series_description: str,
     outpath: str = "./output",
     series_number_scale=1000,

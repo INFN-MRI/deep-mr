@@ -8,10 +8,9 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pydicom
 
-from deepmr.io.mrd import header
-from deepmr.io.mrd.constants import *
-from deepmr.io.utils.geometry import *
-
+# from deepmr.io.mrd import header
+# from deepmr.io.mrd.constants import *
+# from ...utils.geometry import _get_slice_locations
 
 def _read_dcm(dicomdir):
     """
@@ -290,6 +289,56 @@ def _cast_to_complex_siemens(dsets_in):
 
     return img, dsets_out
 
+# %% geometry
+def _get_slice_locations(dsets):
+    """
+    Return array of unique slice locations and slice location index for each dataset in dsets.
+    """
+    # get unique slice locations
+    sliceLocs = _get_relative_slice_position(dsets).round(decimals=4)
+    uSliceLocs, firstSliceIdx = np.unique(sliceLocs, return_index=True)
+    
+    # get indexes
+    sliceIdx = np.zeros(sliceLocs.shape, dtype=int)
+    
+    for n in range(len(uSliceLocs)):
+        sliceIdx[sliceLocs == uSliceLocs[n]] = n
+        
+    return uSliceLocs, firstSliceIdx, sliceIdx
+
+
+def _get_image_orientation(dsets):
+    """
+    Return image orientation matrix.
+    """
+    F = np.array(dsets[0].ImageOrientationPatient).reshape(2, 3)
+    
+    return F
+
+
+def _get_plane_normal(dsets):
+    """
+    Return array of normal to imaging plane, as the cross product
+    between x and y plane versors.
+    """
+    x, y = _get_image_orientation(dsets)
+    return np.cross(x, y)
+
+
+def _get_position(dsets):
+    """
+    Return matrix of image position of size (3, nslices).
+    """
+    return np.stack([dset.ImagePositionPatient for dset in dsets], axis=1)
+    
+
+def _get_relative_slice_position(dsets):
+    """
+    Return array of slice coordinates along the normal to imaging plane.
+    """
+    z = _get_plane_normal(dsets)
+    position =  _get_position(dsets)
+    return z @ position
 
 # %% sequence parameters
 def _get_flip_angles(dsets):
@@ -526,227 +575,227 @@ def _get_unique_contrasts(constrasts):
 #     return dset
 
 
-def _dcm2mrd(data, dcminfo):
-    """Create MRD header from a DICOM file"""
-    # reshape
-    data = data.reshape(-1, *data.shape[-3:])
+# def _dcm2mrd(data, dcminfo):
+#     """Create MRD header from a DICOM file"""
+#     # reshape
+#     data = data.reshape(-1, *data.shape[-3:])
 
-    if len(data.shape) != 4:
-        data = data[None, ...]
+#     if len(data.shape) != 4:
+#         data = data[None, ...]
 
-    # get info from image
-    shape = data.shape
+#     # get info from image
+#     shape = data.shape
 
-    # initialize header
-    mrdHead = header.MRDHeader(version=1)
+#     # initialize header
+#     mrdHead = header.MRDHeader(version=1)
 
-    # get first dset in info
-    dset = dcminfo[0]
+#     # get first dset in info
+#     dset = dcminfo[0]
 
-    # fill subject information
-    mrdHead.subjectInformation = header.SubjectInformation()
-    mrdHead.subjectInformation.patientName = dset.PatientName
-    mrdHead.subjectInformation.patientWeight_kg = dset.PatientWeight
-    try:
-        mrdHead.subjectInformation.patientHeight_m = dset.PatientHeight
-    except:
-        pass
-    mrdHead.subjectInformation.patientID = dset.PatientID
-    mrdHead.subjectInformation.patientBirthdate = dset.PatientBirthDate
-    mrdHead.subjectInformation.patientGender = dset.PatientSex
+#     # fill subject information
+#     mrdHead.subjectInformation = header.SubjectInformation()
+#     mrdHead.subjectInformation.patientName = dset.PatientName
+#     mrdHead.subjectInformation.patientWeight_kg = dset.PatientWeight
+#     try:
+#         mrdHead.subjectInformation.patientHeight_m = dset.PatientHeight
+#     except:
+#         pass
+#     mrdHead.subjectInformation.patientID = dset.PatientID
+#     mrdHead.subjectInformation.patientBirthdate = dset.PatientBirthDate
+#     mrdHead.subjectInformation.patientGender = dset.PatientSex
 
-    # fill study information
-    mrdHead.studyInformation = header.StudyInformation()
-    mrdHead.studyInformation.studyDate = dset.StudyDate
-    mrdHead.studyInformation.studyTime = dset.StudyTime
-    mrdHead.studyInformation.studyID = dset.StudyID
-    mrdHead.studyInformation.accessionNumber = dset.AccessionNumber
-    mrdHead.studyInformation.referringPhysicianName = dset.ReferringPhysicianName
-    # mrdHead.studyInformation.studyDescription =
-    mrdHead.studyInformation.studyInstanceUID = dset.StudyInstanceUID
-    mrdHead.studyInformation.bodyPartExamined = dset.BodyPartExamined
+#     # fill study information
+#     mrdHead.studyInformation = header.StudyInformation()
+#     mrdHead.studyInformation.studyDate = dset.StudyDate
+#     mrdHead.studyInformation.studyTime = dset.StudyTime
+#     mrdHead.studyInformation.studyID = dset.StudyID
+#     mrdHead.studyInformation.accessionNumber = dset.AccessionNumber
+#     mrdHead.studyInformation.referringPhysicianName = dset.ReferringPhysicianName
+#     # mrdHead.studyInformation.studyDescription =
+#     mrdHead.studyInformation.studyInstanceUID = dset.StudyInstanceUID
+#     mrdHead.studyInformation.bodyPartExamined = dset.BodyPartExamined
 
-    # fill measurement information
-    mrdHead.measurementInformation = header.MeasurementInformation()
-    mrdHead.measurementInformation.measurementID = dset.SeriesInstanceUID
-    mrdHead.measurementInformation.seriesDate = dset.SeriesDate
-    mrdHead.measurementInformation.seriesTime = dset.SeriesTime
-    mrdHead.measurementInformation.patientPosition = dset.PatientPosition
-    mrdHead.measurementInformation.relativeTablePosition = header.ThreeDimensionalFloat(
-        0, 0, float(dset[0x0019, 0x107F].value)
-    )
-    mrdHead.measurementInformation.initialSeriesNumber = 1
-    mrdHead.measurementInformation.protocolName = dset.ProtocolName
-    mrdHead.measurementInformation.seriesDescription = dset.SeriesDescription
-    # mrdHead.measurementInformation.measurementDependency =
-    mrdHead.measurementInformation.seriesInstanceUIDRoot = dset.SeriesInstanceUID
-    mrdHead.measurementInformation.frameOfReferenceUID = dset.FrameOfReferenceUID
+#     # fill measurement information
+#     mrdHead.measurementInformation = header.MeasurementInformation()
+#     mrdHead.measurementInformation.measurementID = dset.SeriesInstanceUID
+#     mrdHead.measurementInformation.seriesDate = dset.SeriesDate
+#     mrdHead.measurementInformation.seriesTime = dset.SeriesTime
+#     mrdHead.measurementInformation.patientPosition = dset.PatientPosition
+#     mrdHead.measurementInformation.relativeTablePosition = header.ThreeDimensionalFloat(
+#         0, 0, float(dset[0x0019, 0x107F].value)
+#     )
+#     mrdHead.measurementInformation.initialSeriesNumber = 1
+#     mrdHead.measurementInformation.protocolName = dset.ProtocolName
+#     mrdHead.measurementInformation.seriesDescription = dset.SeriesDescription
+#     # mrdHead.measurementInformation.measurementDependency =
+#     mrdHead.measurementInformation.seriesInstanceUIDRoot = dset.SeriesInstanceUID
+#     mrdHead.measurementInformation.frameOfReferenceUID = dset.FrameOfReferenceUID
 
-    mrdHead.measurementInformation.referencedImageSequence = []
-    for ref in dset.ReferencedImageSequence:
-        mrdHead.measurementInformation.referencedImageSequence.append(
-            ref[0x008, 0x1155].value
-        )
+#     mrdHead.measurementInformation.referencedImageSequence = []
+#     for ref in dset.ReferencedImageSequence:
+#         mrdHead.measurementInformation.referencedImageSequence.append(
+#             ref[0x008, 0x1155].value
+#         )
 
-    # fill acquisition system information
-    mrdHead.acquisitionSystemInformation = header.AcquisitionSystemInformation()
-    mrdHead.acquisitionSystemInformation.systemVendor = dset.Manufacturer
-    mrdHead.acquisitionSystemInformation.systemModel = dset.ManufacturerModelName
-    mrdHead.acquisitionSystemInformation.systemFieldStrength_T = float(
-        dset.MagneticFieldStrength
-    )
-    # mrdHead.acquisitionSystemInformation.relativeReceiverNoiseBandwidth =
-    # mrdHead.acquisitionSystemInformation.receiverChannels =
-    # mrdHead.acquisitionSystemInformation.coilLabel =
-    mrdHead.acquisitionSystemInformation.institutionName = dset.InstitutionName
-    try:
-        mrdHead.acquisitionSystemInformation.stationName = dset.StationName
-    except:
-        pass
-    # mrdHead.acquisitionSystemInformation.deviceID =
-    mrdHead.acquisitionSystemInformation.deviceSerialNumber = dset.DeviceSerialNumber
+#     # fill acquisition system information
+#     mrdHead.acquisitionSystemInformation = header.AcquisitionSystemInformation()
+#     mrdHead.acquisitionSystemInformation.systemVendor = dset.Manufacturer
+#     mrdHead.acquisitionSystemInformation.systemModel = dset.ManufacturerModelName
+#     mrdHead.acquisitionSystemInformation.systemFieldStrength_T = float(
+#         dset.MagneticFieldStrength
+#     )
+#     # mrdHead.acquisitionSystemInformation.relativeReceiverNoiseBandwidth =
+#     # mrdHead.acquisitionSystemInformation.receiverChannels =
+#     # mrdHead.acquisitionSystemInformation.coilLabel =
+#     mrdHead.acquisitionSystemInformation.institutionName = dset.InstitutionName
+#     try:
+#         mrdHead.acquisitionSystemInformation.stationName = dset.StationName
+#     except:
+#         pass
+#     # mrdHead.acquisitionSystemInformation.deviceID =
+#     mrdHead.acquisitionSystemInformation.deviceSerialNumber = dset.DeviceSerialNumber
 
-    # fill experimental condiction
-    mrdHead.experimentalConditions = header.ExperimentalConditions()
-    mrdHead.experimentalConditions.H1resonanceFrequency_Hz = int(
-        dset.MagneticFieldStrength * 4258e4
-    )
+#     # fill experimental condiction
+#     mrdHead.experimentalConditions = header.ExperimentalConditions()
+#     mrdHead.experimentalConditions.H1resonanceFrequency_Hz = int(
+#         dset.MagneticFieldStrength * 4258e4
+#     )
 
-    # fill encoding
-    enc = header.Encoding()
+#     # fill encoding
+#     enc = header.Encoding()
 
-    # encoding and reconstruction space
-    encSpace = header.EncodingSpace()
+#     # encoding and reconstruction space
+#     encSpace = header.EncodingSpace()
 
-    # matrix
-    nslices = dset[0x0021, 0x104F].value
-    encSpace.matrixSize = header.MatrixSize()
-    encSpace.matrixSize.x = dset.Columns
-    encSpace.matrixSize.y = dset.Rows
-    encSpace.matrixSize.z = nslices
+#     # matrix
+#     nslices = dset[0x0021, 0x104F].value
+#     encSpace.matrixSize = header.MatrixSize()
+#     encSpace.matrixSize.x = dset.Columns
+#     encSpace.matrixSize.y = dset.Rows
+#     encSpace.matrixSize.z = nslices
 
-    # FOV
-    encSpace.fieldOfView_mm = header.FieldOfView_mm()
-    if dset.SOPClassUID.name == "Enhanced MR Image Storage":
-        encSpace.fieldOfView_mm.x = (
-            dset.PerFrameFunctionalGroupsSequence[0]
-            .PixelMeasuresSequence[0]
-            .PixelSpacing[0]
-            * dset.Rows
-        )
-        encSpace.fieldOfView_mm.y = (
-            dset.PerFrameFunctionalGroupsSequence[0]
-            .PixelMeasuresSequence[0]
-            .PixelSpacing[1]
-            * dset.Columns
-        )
-        encSpace.fieldOfView_mm.z = (nslices - 1) * float(
-            dset.PerFrameFunctionalGroupsSequence[0]
-            .PixelMeasuresSequence[0]
-            .SpacingBetweenSlices
-        ) + float(
-            dset.PerFrameFunctionalGroupsSequence[0]
-            .PixelMeasuresSequence[0]
-            .SliceThickness
-        )
-        encSpace.fieldOfView_mm.z = round(encSpace.fieldOfView_mm.z, 2)
-    else:
-        encSpace.fieldOfView_mm.x = dset.PixelSpacing[0] * dset.Rows
-        encSpace.fieldOfView_mm.y = dset.PixelSpacing[1] * dset.Columns
-        encSpace.fieldOfView_mm.z = (nslices - 1) * float(
-            dset.SpacingBetweenSlices
-        ) + float(dset.SliceThickness)
-        encSpace.fieldOfView_mm.z = round(encSpace.fieldOfView_mm.z, 2)
-    enc.encodedSpace = encSpace
-    enc.reconSpace = encSpace
+#     # FOV
+#     encSpace.fieldOfView_mm = header.FieldOfView_mm()
+#     if dset.SOPClassUID.name == "Enhanced MR Image Storage":
+#         encSpace.fieldOfView_mm.x = (
+#             dset.PerFrameFunctionalGroupsSequence[0]
+#             .PixelMeasuresSequence[0]
+#             .PixelSpacing[0]
+#             * dset.Rows
+#         )
+#         encSpace.fieldOfView_mm.y = (
+#             dset.PerFrameFunctionalGroupsSequence[0]
+#             .PixelMeasuresSequence[0]
+#             .PixelSpacing[1]
+#             * dset.Columns
+#         )
+#         encSpace.fieldOfView_mm.z = (nslices - 1) * float(
+#             dset.PerFrameFunctionalGroupsSequence[0]
+#             .PixelMeasuresSequence[0]
+#             .SpacingBetweenSlices
+#         ) + float(
+#             dset.PerFrameFunctionalGroupsSequence[0]
+#             .PixelMeasuresSequence[0]
+#             .SliceThickness
+#         )
+#         encSpace.fieldOfView_mm.z = round(encSpace.fieldOfView_mm.z, 2)
+#     else:
+#         encSpace.fieldOfView_mm.x = dset.PixelSpacing[0] * dset.Rows
+#         encSpace.fieldOfView_mm.y = dset.PixelSpacing[1] * dset.Columns
+#         encSpace.fieldOfView_mm.z = (nslices - 1) * float(
+#             dset.SpacingBetweenSlices
+#         ) + float(dset.SliceThickness)
+#         encSpace.fieldOfView_mm.z = round(encSpace.fieldOfView_mm.z, 2)
+#     enc.encodedSpace = encSpace
+#     enc.reconSpace = encSpace
 
-    # encoding limits
-    enc.encodingLimits = header.EncodingLimits()
-    enc.encodingLimits.kspace_encoding_step_1.maximum = shape[-1]
-    enc.encodingLimits.kspace_encoding_step_1.center = shape[-1] // 2
-    enc.encodingLimits.kspace_encoding_step_2.maximum = shape[-2]
-    enc.encodingLimits.kspace_encoding_step_2.center = shape[-2] // 2
-    enc.encodingLimits.slice.maximum = shape[-3]
-    enc.encodingLimits.slice.center = shape[-3] // 2
+#     # encoding limits
+#     enc.encodingLimits = header.EncodingLimits()
+#     enc.encodingLimits.kspace_encoding_step_1.maximum = shape[-1]
+#     enc.encodingLimits.kspace_encoding_step_1.center = shape[-1] // 2
+#     enc.encodingLimits.kspace_encoding_step_2.maximum = shape[-2]
+#     enc.encodingLimits.kspace_encoding_step_2.center = shape[-2] // 2
+#     enc.encodingLimits.slice.maximum = shape[-3]
+#     enc.encodingLimits.slice.center = shape[-3] // 2
 
-    if shape[0] != 1:
-        nvolumes = np.prod(shape[:-3])
-        enc.encodingLimits.contrast.maximum = nvolumes
-        enc.encodingLimits.contrast.center = nvolumes // 2
+#     if shape[0] != 1:
+#         nvolumes = np.prod(shape[:-3])
+#         enc.encodingLimits.contrast.maximum = nvolumes
+#         enc.encodingLimits.contrast.center = nvolumes // 2
 
-    # trajectory
-    enc.trajectory = header.Trajectory("cartesian")
+#     # trajectory
+#     enc.trajectory = header.Trajectory("cartesian")
 
-    # parallel imaging
-    enc.parallelImaging = header.ParallelImaging()
-    enc.parallelImaging.accelerationFactor = header.AccelerationFactor()
-    if dset.SOPClassUID.name == "Enhanced MR Image Storage":
-        enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = (
-            dset.SharedFunctionalGroupsSequence[0]
-            .MRModifierSequence[0]
-            .ParallelReductionFactorInPlane
-        )
-        enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = (
-            dset.SharedFunctionalGroupsSequence[0]
-            .MRModifierSequence[0]
-            .ParallelReductionFactorOutOfPlane
-        )
-    else:
-        enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = (
-            1 / dset[0x0043, 0x1083].value[0]
-        )
-        enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = (
-            1 / dset[0x0043, 0x1083].value[1]
-        )
+#     # parallel imaging
+#     enc.parallelImaging = header.ParallelImaging()
+#     enc.parallelImaging.accelerationFactor = header.AccelerationFactor()
+#     if dset.SOPClassUID.name == "Enhanced MR Image Storage":
+#         enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = (
+#             dset.SharedFunctionalGroupsSequence[0]
+#             .MRModifierSequence[0]
+#             .ParallelReductionFactorInPlane
+#         )
+#         enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = (
+#             dset.SharedFunctionalGroupsSequence[0]
+#             .MRModifierSequence[0]
+#             .ParallelReductionFactorOutOfPlane
+#         )
+#     else:
+#         enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = (
+#             1 / dset[0x0043, 0x1083].value[0]
+#         )
+#         enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = (
+#             1 / dset[0x0043, 0x1083].value[1]
+#         )
 
-    # append encoding
-    mrdHead.encoding = [enc]
+#     # append encoding
+#     mrdHead.encoding = [enc]
 
-    # sequence parameters
-    mrdHead.sequenceParameters = header.SequenceParameters()
+#     # sequence parameters
+#     mrdHead.sequenceParameters = header.SequenceParameters()
 
-    # user parameters
-    mrdHead.userParameters = header.UserParameters()
-    mrdHead.userParameters.userParameterDouble = []
+#     # user parameters
+#     mrdHead.userParameters = header.UserParameters()
+#     mrdHead.userParameters.userParameterDouble = []
 
-    # keep slice thickness
-    tmpUserDouble = header.UserParameterDouble()
-    tmpUserDouble.name = "SliceThickness"
-    tmpUserDouble.value = float(dset.SliceThickness)
-    mrdHead.userParameters.userParameterDouble.append(tmpUserDouble)
-    tmpUserDouble = header.UserParameterDouble()
-    tmpUserDouble.name = "SpacingBetweenSlices"
-    tmpUserDouble.value = float(dset.SpacingBetweenSlices)
-    mrdHead.userParameters.userParameterDouble.append(tmpUserDouble)
+#     # keep slice thickness
+#     tmpUserDouble = header.UserParameterDouble()
+#     tmpUserDouble.name = "SliceThickness"
+#     tmpUserDouble.value = float(dset.SliceThickness)
+#     mrdHead.userParameters.userParameterDouble.append(tmpUserDouble)
+#     tmpUserDouble = header.UserParameterDouble()
+#     tmpUserDouble.name = "SpacingBetweenSlices"
+#     tmpUserDouble.value = float(dset.SpacingBetweenSlices)
+#     mrdHead.userParameters.userParameterDouble.append(tmpUserDouble)
 
-    # calculate affine
-    affine = Affine.from_dicom(dcminfo, shape[-3:])
+#     # calculate affine
+#     affine = Affine.from_dicom(dcminfo, shape[-3:])
 
-    # image header
-    # templateHead = image.ImageHeader(data_type=data.dtype)
-    # templateHead.image_type = dtype
-    # templateHead.field_of_view = (encSpace.fieldOfView_mm.x, encSpace.fieldOfView_mm.y, encSpace.fieldOfView_mm.z)
-    # templateHead.position = tuple(np.stack(dset.ImagePositionPatient))
-    # templateHead.read_dir = tuple(np.stack(dset.ImageOrientationPatient[0:3]))
-    # templateHead.phase_dir = tuple(np.stack(dset.ImageOrientationPatient[3:7]))
-    # templateHead.slice_dir = tuple(np.cross(np.stack(dset.ImageOrientationPatient[0:3]), np.stack(dset.ImageOrientationPatient[3:7])))
-    # templateHead.patient_table_position = (0.0, 0.0, mrdHead.measurementInformation.relativeTablePosition.z)
-    # templateHead.image_series_index = int(dset.SeriesNumber)
-    # templateHead.acquisition_time_stamp = dset.AcquisitionTime
+#     # image header
+#     # templateHead = image.ImageHeader(data_type=data.dtype)
+#     # templateHead.image_type = dtype
+#     # templateHead.field_of_view = (encSpace.fieldOfView_mm.x, encSpace.fieldOfView_mm.y, encSpace.fieldOfView_mm.z)
+#     # templateHead.position = tuple(np.stack(dset.ImagePositionPatient))
+#     # templateHead.read_dir = tuple(np.stack(dset.ImageOrientationPatient[0:3]))
+#     # templateHead.phase_dir = tuple(np.stack(dset.ImageOrientationPatient[3:7]))
+#     # templateHead.slice_dir = tuple(np.cross(np.stack(dset.ImageOrientationPatient[0:3]), np.stack(dset.ImageOrientationPatient[3:7])))
+#     # templateHead.patient_table_position = (0.0, 0.0, mrdHead.measurementInformation.relativeTablePosition.z)
+#     # templateHead.image_series_index = int(dset.SeriesNumber)
+#     # templateHead.acquisition_time_stamp = dset.AcquisitionTime
 
-    # # update contrast and slice
-    # imgHead = []
-    # count = 1
-    # for m in range(shape[0]):
-    #     for n in range(shape[1]):
-    #         tmpHead = copy.deepcopy(templateHead)
-    #         tmpHead.image_index = count
-    #         tmpHead.slice = n
-    #         tmpHead.contrast = m
-    #         imgHead.append(tmpHead)
-    #         count += 1
+#     # # update contrast and slice
+#     # imgHead = []
+#     # count = 1
+#     # for m in range(shape[0]):
+#     #     for n in range(shape[1]):
+#     #         tmpHead = copy.deepcopy(templateHead)
+#     #         tmpHead.image_index = count
+#     #         tmpHead.slice = n
+#     #         tmpHead.contrast = m
+#     #         imgHead.append(tmpHead)
+#     #         count += 1
 
-    return {"head": mrdHead, "affine": affine}
+#     return {"head": mrdHead, "affine": affine}
 
 
 def _get_dicom_info(dsets, index):
