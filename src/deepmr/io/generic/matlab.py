@@ -1,5 +1,5 @@
-"""I/O Routines for MATLAB files.
-"""
+"""I/O Routines for MATLAB files."""
+
 __all__ = ["read_matfile"]
 
 import scipy.io
@@ -7,21 +7,21 @@ import mat73
 
 from ..utils.pathlib import get_filepath
 
-def read_matfile(filepath: str) -> dict:
+def read_matfile(filename: str) -> dict:
     """
-    Read data from matfile.
+    Read matfile as a Python dictionary.
 
     Automatically handle legacy and HDF5 (i.e., -v7.3) formats.    
 
     Parameters
     ----------
-    matfilepath : str
+    filename : str
         Path of the file on disk.
 
     Returns
     -------
     dict
-        Dictionary containing matfile content.
+        Deserialized matfile.
         
     Example
     -------
@@ -53,14 +53,14 @@ def read_matfile(filepath: str) -> dict:
     [1]: https://github.com/skjerns/mat7.3/tree/master
 
     """
-    filepath = get_filepath(filepath, True, "mat")    
+    filename = get_filepath(filename, True, "mat")    
     try:
-        matfile = scipy.io.loadmat(filepath)
+        matfile = scipy.io.loadmat(filename)
         matfile.pop("__globals__", None)
         matfile.pop("__header__", None)
         matfile.pop("__version__", None)
     except:
-        matfile = mat73.loadmat(filepath)
+        matfile = mat73.loadmat(filename)
         
     return matfile
 

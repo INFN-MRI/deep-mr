@@ -1,5 +1,4 @@
-"""I/O Routines for HDF5 files.
-"""
+"""I/O Routines for HDF5 files."""
 
 __all__ = ["read_hdf5", "write_hdf5"]
 
@@ -32,12 +31,12 @@ def read_hdf5(filename: str) -> dict:
     Parameters
     ----------
     filename : str
-        path to file on disk.
+        Path to file on disk.
 
     Returns
     -------
     dict
-        deserialized HDF5 file.
+        Deserialized HDF5 file.
         
     Example
     -------
@@ -73,14 +72,12 @@ def write_hdf5(input: dict, filename: str):
     """
     Write a given dictionary to HDF5 file.
 
-
     Parameters
     ----------
     input : dict
-        Dictionary containing all groupnames as keys and
-        datasets as values.
+        Input dictionary.
     filename : str
-        path of HDF5 file.
+        Path to file on disk.
         
     Example
     -------
