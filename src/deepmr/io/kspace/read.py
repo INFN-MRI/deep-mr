@@ -3,7 +3,7 @@
 __all__ = ["read_rawdata"]
 
 import torch
-from ..utils.mrd.read import read as read_mrd
+from .mrd import read_mrd
 
 try:
     import gehc
