@@ -21,6 +21,7 @@
 	:nosignatures:
 	
 	deepmr.io.read_dicom
+	deepmr.io.read_nifti
 ```
 
 ## K-Space I/O routines
