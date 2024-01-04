@@ -10,6 +10,8 @@ import os
 import numpy as np
 import nibabel as nib
 
+from ..utils.geometry import Geometry
+
 def read_nifti(filepath: str | list | tuple) -> (np.ndarray, dict):
     """
     Read multi-contrast images for parameter mapping.
@@ -50,8 +52,11 @@ def _read_nifti(file_path):
 
     # load nifti
     img, head, affine = _nifti_read(nifti_path)
+    
+    # build header
+    header = Geometry.from_nifti(img, head, affine, json_list)
 
-    return img, {"head": head, "affine": affine, "json": json_list}
+    return img, header, {"head": head, "affine": affine, "json": json_list}
 
 
 def _nifti_read(file_path):

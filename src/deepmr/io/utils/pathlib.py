@@ -59,5 +59,9 @@ def get_filepath(filename: str = None, pick_largest: bool = False, *extensions: 
         filename.sort()
     else:
         filename = os.path.normpath(os.path.abspath(filename))
+    
+    # fix length-1 lists
+    if isinstance(filename, list) and len(filename) == 1:
+        filename = filename[0]
 
     return filename

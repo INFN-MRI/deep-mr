@@ -1,8 +1,8 @@
 """KSpace IO routines."""
 
-from . import read as _read
+from . import mrd as _mrd
 
-from .read import *  # noqa
+from .mrd import *  # noqa
 
 __all__ = []
-__all__.extend(_read.__all__)
+__all__.extend(_mrd.__all__)

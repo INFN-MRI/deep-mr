@@ -11,6 +11,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pydicom
 
+from ..utils.geometry import Geometry
 
 def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
     """
@@ -63,8 +64,11 @@ def _read_dcm(dicomdir):
 
     # cast image to complex
     img, dsets = _cast_to_complex(dsets)
+    
+    # build header
+    header = Geometry.from_dicom(dsets)
 
-    return img, dsets
+    return img, header, dsets
 
 
 def _dcmread(dcm_path):
