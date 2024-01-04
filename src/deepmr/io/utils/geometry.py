@@ -81,8 +81,8 @@ class Geometry:
     
     @classmethod
     def from_siemens(cls):
-        pass
-    
+        print("Not Implemented")
+
     @classmethod
     def from_philips(cls):
         print("Not Implemented")
