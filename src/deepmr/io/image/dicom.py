@@ -1,6 +1,6 @@
 """DICOM reading routines."""
 
-__all__ = ["read_dcm"]
+__all__ = ["read_dicom"]
 
 # import copy
 import glob
@@ -12,7 +12,7 @@ import numpy as np
 import pydicom
 
 
-def read_dcm(filepath: str | list | tuple) -> (np.ndarray, dict):
+def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
     """
     Read multi-contrast images for parameter mapping.
 
