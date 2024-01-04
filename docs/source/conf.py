@@ -23,7 +23,16 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
-autodoc_mock_imports = ['torch', 'dacite', 'numpy', 'scipy', 'matplotlib', 'h5py', 'nibabel', 'pydicom', 'mat73']
+autodoc_mock_imports = ['torch', 
+                        'dacite', 
+                        'numpy', 
+                        'scipy', 
+                        'matplotlib', 
+                        'h5py', 
+                        'nibabel', 
+                        'pydicom', 
+                        'mat73',
+                        'ismrmrd']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

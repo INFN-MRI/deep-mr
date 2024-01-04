@@ -14,6 +14,15 @@
 	deepmr.io.write_hdf5
 ```
 
+## Image I/O routines
+```{eval-rst}
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.io.read_dicom
+```
+
 ## K-Space I/O routines
 ```{eval-rst}
 .. autosummary::
