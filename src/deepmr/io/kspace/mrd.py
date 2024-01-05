@@ -28,8 +28,8 @@ def read_mrd(filename: str) -> (dict, np.ndarray):
     dset.close()
     
     # build header
-    header = Header.from_mrd(mrdhead, acq) 
-        
+    header = Header.from_mrd(mrdhead, acq)
+    
     return acq, header, mrdhead
         
     
