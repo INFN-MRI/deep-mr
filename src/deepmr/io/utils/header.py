@@ -1,21 +1,19 @@
-"""Utilities for image orientation calculation."""
+"""Data header structure."""
 
-__all__ = ["Geometry"]
+__all__ = ["Header"]
 
 from dataclasses import dataclass
 
 import warnings
 
-import nibabel as nib
 import numpy as np
-
-from nibabel.orientations import axcodes2ornt, ornt_transform
+import pydicom
 
 from . import dicom
 from . import nifti
 
 @dataclass
-class Geometry:
+class Header:
     """
     """
     # geometry
@@ -33,6 +31,8 @@ class Geometry:
     FA: np.ndarray = None
     
     # meta
+    ref_dicom: pydicom.Dataset = None
+    
     
     @classmethod
     def from_mrd(cls, header, acquisitions):
@@ -105,13 +105,13 @@ class Geometry:
         # first, get position
         position = dicom._get_position(dsets)
 
-        # calculate parameters
+        # calculate geometry parameters
         resolution = dicom._get_resolution(dsets)
         origin = dicom._get_origin(position)
         orientation = dicom._get_image_orientation(dsets, True)
         shape = dicom._get_shape(dsets, position)
         spacing = dicom._get_spacing(dsets)
-        
+                            
         return cls(shape, resolution, spacing, orientation, origin)
     
     @classmethod
@@ -123,9 +123,10 @@ class Geometry:
                         
         # calculate parameters
         shape = nifti._get_shape(img)
-        resolution = nifti._get_resolution()
-        spacing = nifti._get_spacing()        
+        resolution = nifti._get_resolution(header, json)
+        spacing = nifti._get_spacing(header)        
         origin = nifti._get_origin(shape, A)
+        orientation = nifti._get_image_orientation(resolution, A)
             
         return cls(shape, resolution, spacing, orientation, origin)
             
@@ -150,8 +151,3 @@ def _find_in_user_params(userField, *keys):
         return dict(zip(keys, values))
     else:
         return None # One or more keys not found
-
-
-
-
-

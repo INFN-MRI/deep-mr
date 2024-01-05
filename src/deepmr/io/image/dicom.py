@@ -2,7 +2,7 @@
 
 __all__ = ["read_dicom"]
 
-# import copy
+import copy
 import glob
 import multiprocessing
 import os
@@ -11,11 +11,12 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pydicom
 
-from ..utils.geometry import Geometry
+from ..utils import dicom
+from ..utils.header import Header
 
 def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
     """
-    Read multi-contrast images for parameter mapping.
+    Read image from dicom files.
 
     Parameters
     ----------
@@ -35,8 +36,55 @@ def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
         filepath = sorted(glob.glob(filepath))
 
     # load dicom
-    return _read_dcm(filepath)
-
+    image, dsets = _read_dcm(filepath)
+    
+    # initialize header
+    header = Header.from_dicom(dsets)
+    
+    # get slice locations
+    uSliceLocs, firstSliceIdx, sliceIdx = dicom._get_slice_locations(dsets)
+        
+    # get constrats info
+    inversionTimes = dicom._get_inversion_times(dsets)
+    echoTimes = dicom._get_echo_times(dsets)
+    echoNumbers = dicom._get_echo_numbers(dsets)        
+    repetitionTimes = dicom._get_repetition_times(dsets)        
+    flipAngles = dicom._get_flip_angles(dsets)
+    
+    # get sequence matrix
+    contrasts = np.stack((inversionTimes, echoTimes, echoNumbers, repetitionTimes, flipAngles), axis=1)
+    
+    # get unique contrast and indexes
+    uContrasts, contrastIdx = dicom._get_unique_contrasts(contrasts)
+            
+    # get size
+    n_slices = len(uSliceLocs)
+    n_contrasts = uContrasts.shape[0]
+    ninstances, ny, nx = image.shape
+    
+    # fill sorted image tensor
+    sorted_image = np.zeros((n_contrasts, n_slices, ny, nx), dtype=image.dtype)
+    for n in range(ninstances):
+        sorted_image[contrastIdx[n], sliceIdx[n], :, :] = image[n]
+        
+    # get dicom template
+    ref_dicom = copy.deepcopy(dsets[0])
+    
+    # unpack sequence
+    TI, TE, EC, TR, FA = uContrasts.transpose()
+    
+    # squeeze
+    if sorted_image.shape[0] == 1:
+        sorted_image = sorted_image[0]
+        
+    # update header
+    header.FA = FA
+    header.TI = TI
+    header.TE = TE
+    header.TR = TR
+    header.ref_dicom = ref_dicom
+    
+    return image, header
 
 # %% subroutines
 def _read_dcm(dicomdir):
@@ -63,12 +111,9 @@ def _read_dcm(dicomdir):
     dsets = [dset for dset in dsets if dset is not None]
 
     # cast image to complex
-    img, dsets = _cast_to_complex(dsets)
+    image, dsets = _cast_to_complex(dsets)
     
-    # build header
-    header = Geometry.from_dicom(dsets)
-
-    return img, header, dsets
+    return image, dsets
 
 
 def _dcmread(dcm_path):

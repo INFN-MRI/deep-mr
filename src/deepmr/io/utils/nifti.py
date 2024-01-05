@@ -3,6 +3,7 @@
 import numpy as np
 import nibabel as nib
 
+from nibabel.orientations import axcodes2ornt, ornt_transform
 
 def _get_shape(img):
     """
@@ -87,65 +88,144 @@ def _reorient(shape, affine, orientation):
     return tmp.affine
 
 
-def _make_nifti_affine(shape, position, orientation, resolution):
+def _get_flip_angles(json_list):
     """
-    Return affine transform between voxel coordinates and mm coordinates.
-
-    Args:
-        shape: volume shape (nz, ny, nx).
-        resolution: image resolution in mm (dz, dy, dz).
-        position: position of each slice (3, nz).
-        orientation: image orientation.
-
-    Returns:
-        affine matrix describing image position and orientation.
-
-    Ref: https://nipy.org/nibabel/dicom/spm_dicom.html#spm-volume-sorting
+    Return array of flip angles for each for each volume.
     """
-    # get image size
-    nz, ny, nx = shape
+    flipAngles = []
+    for json_dict in json_list:
+        if 'FlipAngle' in json_dict:
+            flipAngles.append(json_dict['FlipAngle'])
+        else:
+            flipAngles.append(90.0)
 
-    # get resoluzion
-    dz, dy, dx = resolution
+    return np.asarray(flipAngles)
 
-    # common parameters
-    T = position
-    T1 = T[:, 0].round(4)
 
-    F = orientation
-    dr, dc = np.asarray([dy, dx]).round(4)
+def _get_echo_times(json_list):
+    """
+    Return array of echo times for each for each volume.
+    """
+    echoTimes = []
+    for json_dict in json_list:
+        if 'EchoTime' in json_dict:
+            echoTimes.append(1e3 * json_dict['EchoTime'])
+        else:
+            echoTimes.append(0.0)
 
-    if nz == 1:  # single slice case
-        n = _get_plane_normal(orientation)
-        ds = float(dz)
+    return np.asarray(echoTimes)
 
-        A0 = np.stack(
-            (
-                np.append(F[0] * dc, 0),
-                np.append(F[1] * dr, 0),
-                np.append(-ds * n, 0),
-                np.append(T1, 1),
-            ),
-            axis=1,
-        )
 
-    else:  # multi slice case
-        N = nz
-        TN = T[:, -1].round(4)
-        A0 = np.stack(
-            (
-                np.append(F[0] * dc, 0),
-                np.append(F[1] * dr, 0),
-                np.append((TN - T1) / (N - 1), 0),
-                np.append(T1, 1),
-            ),
-            axis=1,
-        )
+def _get_echo_numbers(json_list):
+    """
+    Return array of echo numbers for each for each volume.
+    """
+    echoNumbers = []
+    for json_dict in json_list:
+        if 'EchoNumber' in json_dict:
+            echoNumbers.append(json_dict['EchoNumber'])
+        else:
+            echoNumbers.append(1)
 
-    # sign of affine matrix
-    A0[:2, :] *= -1
+    return np.asarray(echoNumbers)
 
-    # reorient
-    A = _reorient(shape, A0, "LAS")
 
-    return A
+def _get_repetition_times(json_list):
+    """
+    Return array of repetition times for each volume.
+    """
+    repetitionTimes = []
+    for json_dict in json_list:
+        if 'RepetitionTime' in json_dict:
+            repetitionTimes.append(1e3 * json_dict['RepetitionTime'])
+        else:
+            repetitionTimes.append(np.Inf)
+
+    return np.asarray(repetitionTimes)
+
+
+def _get_inversion_times(json_list):
+    """
+    Return array of inversion times for each volume.
+    """
+    inversionTimes = []
+    for json_dict in json_list:
+        if 'InversionTime' in json_dict:
+            inversionTimes.append(1e3 * json_dict['InversionTime'])
+        else:
+            inversionTimes.append(np.Inf)
+
+    return np.asarray(inversionTimes)
+
+
+def _get_unique_contrasts(constrasts):
+    """
+    Return ndarray of unique contrasts and contrast index for each dataset in dsets.
+    """
+    # get unique repetition times
+    uContrasts = np.unique(constrasts, axis=0)
+
+    return uContrasts
+
+# def _make_nifti_affine(shape, position, orientation, resolution):
+#     """
+#     Return affine transform between voxel coordinates and mm coordinates.
+
+#     Args:
+#         shape: volume shape (nz, ny, nx).
+#         resolution: image resolution in mm (dz, dy, dz).
+#         position: position of each slice (3, nz).
+#         orientation: image orientation.
+
+#     Returns:
+#         affine matrix describing image position and orientation.
+
+#     Ref: https://nipy.org/nibabel/dicom/spm_dicom.html#spm-volume-sorting
+#     """
+#     # get image size
+#     nz, ny, nx = shape
+
+#     # get resoluzion
+#     dz, dy, dx = resolution
+
+#     # common parameters
+#     T = position
+#     T1 = T[:, 0].round(4)
+
+#     F = orientation
+#     dr, dc = np.asarray([dy, dx]).round(4)
+
+#     if nz == 1:  # single slice case
+#         n = _get_plane_normal(orientation)
+#         ds = float(dz)
+
+#         A0 = np.stack(
+#             (
+#                 np.append(F[0] * dc, 0),
+#                 np.append(F[1] * dr, 0),
+#                 np.append(-ds * n, 0),
+#                 np.append(T1, 1),
+#             ),
+#             axis=1,
+#         )
+
+#     else:  # multi slice case
+#         N = nz
+#         TN = T[:, -1].round(4)
+#         A0 = np.stack(
+#             (
+#                 np.append(F[0] * dc, 0),
+#                 np.append(F[1] * dr, 0),
+#                 np.append((TN - T1) / (N - 1), 0),
+#                 np.append(T1, 1),
+#             ),
+#             axis=1,
+#         )
+
+#     # sign of affine matrix
+#     A0[:2, :] *= -1
+
+#     # reorient
+#     A = _reorient(shape, A0, "LAS")
+
+#     return A

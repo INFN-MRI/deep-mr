@@ -10,11 +10,13 @@ import os
 import numpy as np
 import nibabel as nib
 
-from ..utils.geometry import Geometry
+from ..utils import nifti
+from ..utils.header import Header
+
 
 def read_nifti(filepath: str | list | tuple) -> (np.ndarray, dict):
     """
-    Read multi-contrast images for parameter mapping.
+    Read image from nifti files.
 
     Parameters
     ----------
@@ -29,11 +31,39 @@ def read_nifti(filepath: str | list | tuple) -> (np.ndarray, dict):
         Image metadata.
 
     """
-    # parse dicom
+    # parse nifti
     if isinstance(filepath, str):
         filepath = sorted(glob.glob(filepath))
-                
-    return _read_nifti(filepath)
+    
+    # load nifti
+    image, header, affine, json_list = _read_nifti(filepath)
+    
+    # initialize header
+    header = Header.from_nifti(image, header, affine, json_list[0])
+    
+    # get constrats info
+    inversionTimes = nifti._get_inversion_times(json_list)
+    echoTimes = nifti._get_echo_times(json_list)
+    echoNumbers = nifti._get_echo_numbers(json_list)        
+    repetitionTimes = nifti._get_repetition_times(json_list)        
+    flipAngles = nifti._get_flip_angles(json_list)
+    
+    # get sequence matrix
+    contrasts = np.stack((inversionTimes, echoTimes, echoNumbers, repetitionTimes, flipAngles), axis=1)
+    
+    # get unique contrast and indexes
+    uContrasts = nifti._get_unique_contrasts(contrasts)
+    
+    # unpack sequence
+    TI, TE, EC, TR, FA = uContrasts.transpose()
+        
+    # update header
+    header.FA = FA
+    header.TI = TI
+    header.TE = TE
+    header.TR = TR
+    
+    return image, header
 
 
 # %% subroutines
@@ -51,15 +81,12 @@ def _read_nifti(file_path):
     json_list = _json_read(json_path)
 
     # load nifti
-    img, head, affine = _nifti_read(nifti_path)
+    image, header, affine = _nifti_read(nifti_path, json_list)
     
-    # build header
-    header = Geometry.from_nifti(img, head, affine, json_list)
-
-    return img, header, {"head": head, "affine": affine, "json": json_list}
+    return image, header, affine, json_list
 
 
-def _nifti_read(file_path):
+def _nifti_read(file_path, json_dict):
     """
     Wrapper to nibabel to handle multi-file datasets.
     """
@@ -68,88 +95,31 @@ def _nifti_read(file_path):
         file_path = np.array(file_path)
 
         # check for complex images
-        # phase
-        idx = np.argwhere(np.array(["phase" in name for name in file_path])).squeeze()
-        files_phase = file_path[idx]
-        if isinstance(files_phase, str):
-            files_phase = np.array([files_phase])
-        else:
-            files_phase = np.array(files_phase)
-        if files_phase.size > 0:
-            file_path.pop(idx)
-            img_phase = [nib.load(file) for file in files_phase]
-            data_phase = np.stack(
-                [d.get_fdata() for d in img_phase], axis=-1
-            ).squeeze()
-            affine = img_phase[0].affine
-            head = img_phase[0].header
-        else:
-            img_phase = np.array([])
-
-        # real
-        idx = np.argwhere(np.array(["real" in name for name in file_path])).squeeze()
-        files_real = file_path[idx]
-        if isinstance(files_real, str):
-            files_real = np.array([files_real])
-        else:
-            files_real = np.array(files_real)
-        if files_real.size > 0:
-            file_path.pop(idx)
-            img_real = [nib.load(file) for file in files_real]
-            data_real = np.stack(
-                [d.get_fdata() for d in img_real], axis=-1
-            ).squeeze()
-            affine = img_real[0].affine
-            head = img_real[0].header
-        else:
-            files_real = np.array([])
-
-        # imaginary
-        idx = np.argwhere(np.array(["imag" in name for name in file_path])).squeeze()
-        files_imag = file_path[idx]
-        if isinstance(files_imag, str):
-            files_imag = np.array([files_imag])
-        else:
-            files_imag = np.array(files_imag)
-        if files_imag.size > 0:
-            file_path.pop(idx)
-            img_imag = [nib.load(file) for file in files_imag]
-            data_imag = np.stack(
-                [d.get_fdata() for d in img_imag], axis=-1
-            ).squeeze()
-            affine = img_imag[0].affine
-            head = img_imag[0].header
-        else:
-            img_imag = np.array([])
-
-        # magnitude
-        files_mag = file_path
-        if isinstance(files_mag, str):
-            files_mag = np.array([files_mag])
-        else:
-            files_mag = np.array(files_mag)
-        if files_mag.size > 0:
-            img_mag = [nib.load(file) for file in files_mag]
-            data = np.stack([d.get_fdata() for d in img_mag], axis=-1).squeeze()
-            affine = img_mag[0].affine
-            head = img_mag[0].header
-        else:
-            img_mag = np.array([])
-                
+        data_phase = _get_phase(file_path)
+        data_real = _get_real(file_path)
+        data_imag = _get_imag(file_path)
+        data, head, affine = _get_magn(file_path)
+        
         # cast to complex image
-        if files_mag.shape[0] != 0 and files_phase.shape[0] != 0:
+        if data_phase.size != 0:
             scale = 2 * np.pi / 4095
             offset = -np.pi
             data = data * np.exp(1j * scale * data_phase + offset)
-        if files_real.shape[0] != 0 and files_imag.shape[0] != 0:
+        if data_real.size != 0 and data_imag.size != 0:
             data = data_real + 1j * data_imag
-
+            
     else:
         file_path = [os.path.normpath(os.path.abspath(file_path))]
         img = nib.load(file_path[0])
         data = img.get_fdata()
         affine = img.affine
         head = img.header
+        
+     # fix fftshift along z
+    if np.iscomplexobj(data) and json_dict['Manufacturer'] == 'GE':
+        phase = np.angle(data)
+        phase[..., 1::2, :, :] = ((1e5 * (phase[..., 1::2, :, :] + 2 * np.pi)) % (2 * np.pi * 1e5)) / 1e5 - np.pi
+        data = np.abs(data) * np.exp(1j * phase)
 
     return np.ascontiguousarray(data.transpose()), head, affine
 
@@ -160,10 +130,11 @@ def _json_read(file_path):
     """
     if not isinstance(file_path, (tuple, list)):
         file_path = [file_path]
-
+    
+    json_list = []
     for json_path in file_path:
         with open(json_path) as json_file:
-            json_list = json.loads(json_file.read())
+            json_list.append(json.loads(json_file.read()))
 
     return json_list
 
@@ -207,4 +178,77 @@ def _get_full_path(file_path):
     Get full path.
     """
     return [os.path.normpath(os.path.abspath(file_path))]
+
+# %% complex data handling
+def _get_real(file_path):
+    idx = np.argwhere(np.array(["real" in name for name in file_path])).squeeze()
+    files_real = file_path[idx]
+    if isinstance(files_real, str):
+        files_real = np.array([files_real])
+    else:
+        files_real = np.array(files_real)
+    if files_real.size > 0:
+        file_path.pop(idx)
+        img_real = [nib.load(file) for file in files_real]
+        data_real = np.stack(
+            [d.get_fdata() for d in img_real], axis=-1
+        ).squeeze()
+    else:
+        data_real = np.asarray([])
+        
+    return data_real
+
+
+def _get_imag(file_path):
+    idx = np.argwhere(np.array(["imag" in name for name in file_path])).squeeze()
+    files_imag = file_path[idx]
+    if isinstance(files_imag, str):
+        files_imag = np.array([files_imag])
+    else:
+        files_imag = np.array(files_imag)
+    if files_imag.size > 0:
+        file_path.pop(idx)
+        img_imag = [nib.load(file) for file in files_imag]
+        data_imag = np.stack(
+            [d.get_fdata() for d in img_imag], axis=-1
+        ).squeeze()
+    else:
+        data_imag = np.asarray([])
+        
+    return data_imag
+
+    
+def _get_phase(file_path):
+    idx = np.argwhere(np.array(["phase" in name for name in file_path])).squeeze()
+    files_phase = file_path[idx]
+    if isinstance(files_phase, str):
+        files_phase = np.array([files_phase])
+    else:
+        files_phase = np.array(files_phase)
+    if files_phase.size > 0:
+        file_path.pop(idx)
+        img_phase = [nib.load(file) for file in files_phase]
+        data_phase = np.stack(
+            [d.get_fdata() for d in img_phase], axis=-1
+        ).squeeze()
+    else:
+        data_phase = np.asarray([])
+        
+    return data_phase
+
+
+def _get_magn(file_path):
+    files_mag = file_path
+    if isinstance(files_mag, str):
+        files_mag = np.array([files_mag])
+    else:
+        files_mag = np.array(files_mag)
+    if files_mag.size > 0:
+        img_mag = [nib.load(file) for file in files_mag]
+        data = np.stack([d.get_fdata() for d in img_mag], axis=-1).squeeze()
+        affine = img_mag[0].affine
+        head = img_mag[0].header
+
+    return data, head, affine
+
 

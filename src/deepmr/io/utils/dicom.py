@@ -2,52 +2,52 @@
 
 import numpy as np
 
-def _make_geometry_tags(affine, shape, resolution, spacing):
-    """
-    Creates DICOM geometry tags from nifti affine.
+# def _make_geometry_tags(affine, shape, resolution, spacing):
+#     """
+#     Creates DICOM geometry tags from nifti affine.
 
-    Args:
-        ds: Existing Pydicom DataSet object
-        nii: nifti containing affine
-        sliceNumber: slice number (counting from 1)
+#     Args:
+#         ds: Existing Pydicom DataSet object
+#         nii: nifti containing affine
+#         sliceNumber: slice number (counting from 1)
 
-    Ref: https://gist.github.com/tomaroberts/8deebaa0ae204d7ae32fecd1e6efdb51
-    """
-    # reorient affine
-    A = _reorient(shape, affine, "LPS")
+#     Ref: https://gist.github.com/tomaroberts/8deebaa0ae204d7ae32fecd1e6efdb51
+#     """
+#     # reorient affine
+#     A = _reorient(shape, affine, "LPS")
 
-    # sign of affine matrix
-    A[:2, :] *= -1
+#     # sign of affine matrix
+#     A[:2, :] *= -1
 
-    # data parameters & pixel dimensions
-    nz, ny, nx = shape
-    dz, dy, dx = resolution
+#     # data parameters & pixel dimensions
+#     nz, ny, nx = shape
+#     dz, dy, dx = resolution
 
-    # direction cosines & position parameters
-    dircosX = A[:3, 0] / dx
-    dircosY = A[:3, 1] / dy
-    orientation = [
-        dircosX[0],
-        dircosX[1],
-        dircosX[2],
-        dircosY[0],
-        dircosY[1],
-        dircosY[2],
-    ]
-    orientation = np.asarray(orientation)
+#     # direction cosines & position parameters
+#     dircosX = A[:3, 0] / dx
+#     dircosY = A[:3, 1] / dy
+#     orientation = [
+#         dircosX[0],
+#         dircosX[1],
+#         dircosX[2],
+#         dircosY[0],
+#         dircosY[1],
+#         dircosY[2],
+#     ]
+#     orientation = np.asarray(orientation)
 
-    # calculate position
-    n = np.arange(nz)
-    zero = 0 * n
-    one = zero + 1
-    arr = np.stack((zero, zero, n, one), axis=0)
-    position = A @ arr
-    position = position[:3, :]
+#     # calculate position
+#     n = np.arange(nz)
+#     zero = 0 * n
+#     one = zero + 1
+#     arr = np.stack((zero, zero, n, one), axis=0)
+#     position = A @ arr
+#     position = position[:3, :]
 
-    # calculate slice location
-    slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
+#     # calculate slice location
+#     slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
 
-    return spacing, orientation, position.transpose(), slice_loc.round(4)
+#     return spacing, orientation, position.transpose(), slice_loc.round(4)
 
 
 def _get_slice_locations(dsets):

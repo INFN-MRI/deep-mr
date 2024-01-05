@@ -7,7 +7,7 @@ import numpy as np
 import ismrmrd as mrd
 
 from ..utils.pathlib import get_filepath
-from ..utils.geometry import Geometry
+from ..utils.header import Header
 
 def read_mrd(filename: str) -> (dict, np.ndarray):
     
@@ -25,7 +25,7 @@ def read_mrd(filename: str) -> (dict, np.ndarray):
     acq = [dset.read_acquisition(n) for n in range(nacq)]
     
     # build header
-    header = Geometry.from_mrd(mrdhead, acq) 
+    header = Header.from_mrd(mrdhead, acq) 
     
     # close
     dset.close()
