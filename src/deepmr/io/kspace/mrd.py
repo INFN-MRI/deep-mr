@@ -24,12 +24,12 @@ def read_mrd(filename: str) -> (dict, np.ndarray):
     nacq = dset.number_of_acquisitions()
     acq = [dset.read_acquisition(n) for n in range(nacq)]
     
-    # build header
-    header = Header.from_mrd(mrdhead, acq) 
-    
     # close
     dset.close()
     
+    # build header
+    header = Header.from_mrd(mrdhead, acq) 
+        
     return acq, header, mrdhead
         
     
@@ -37,7 +37,6 @@ def _read_header(dset):
     xml_header = dset.read_xml_header()
     xml_header = xml_header.decode("utf-8")
     return mrd.xsd.CreateFromDocument(xml_header)
-
 
 
 def _deserialize(mrdprot):
