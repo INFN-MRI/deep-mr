@@ -10,6 +10,7 @@ import numpy as np
 import pydicom
 
 from . import dicom
+from . import mrd
 from . import nifti
 
 @dataclass
@@ -26,65 +27,27 @@ class Header:
     # sequence
     TI: np.ndarray = None
     TE: np.ndarray = None
-    EC: np.ndarray = None
     TR: np.ndarray = None
     FA: np.ndarray = None
-    
+    dt: float = None
+        
     # meta
     ref_dicom: pydicom.Dataset = None
-    
     
     @classmethod
     def from_mrd(cls, header, acquisitions):
         
-        # get relevant fields from mrdheader
+        # first, get relevant fields from mrdheader
         geom = header.encoding[0].encodedSpace
         user = header.userParameters
         
-        # get number of slices, resolution and spacing
-        shape = geom.matrixSize
-        nz, ny, nx = shape.z, shape.y, shape.x
-        shape = (nz, ny, nx)
+        # calculate geometry parameters
+        shape = mrd._get_shape(geom)
+        spacing, dz = mrd._get_spacing(user, geom, shape)
+        resolution = mrd._get_resolution(geom, shape, dz)
+        orientation = mrd._get_image_orientation(acquisitions)
+        origin = mrd._get_origin(acquisitions)
 
-        # calculate slice spacing
-        tmp = _find_in_user_params(user.userParameterDouble, "SliceThickness", "SpacingBetweenSlices")
-        if tmp is not None:
-            dz, spacing = tmp["SpacingBetweenSlices"], tmp["SliceThickness"]
-        else:
-            if nz != 1:
-                warnings.warn(
-                    "Slice thickness and spacing info not found; assuming contiguous"
-                    " slices!",
-                    UserWarning,
-                )
-            rz = geom.fieldOfView_mm.z
-            dz = rz / nz
-            spacing = dz
-        spacing = round(float(spacing), 2)
-
-        # calculate resolution
-        ry, rx = geom.fieldOfView_mm.y, geom.fieldOfView_mm.x 
-        dy, dx = ry / ny, rx / nx
-        resolution = (dz, dy, dx)
-        
-        # calculate orientation
-        tmp = acquisitions[0].getHead()
-        dircosX = np.asarray(tmp.read_dir)
-        dircosY = np.asarray(tmp.phase_dir)
-        orientation = (
-            dircosX[0],
-            dircosX[1],
-            dircosX[2],
-            dircosY[0],
-            dircosY[1],
-            dircosY[2],
-        )
-        
-        # calculate origin
-        pos = [np.asarray(acq.getHead().position) for acq in acquisitions]
-        pos = np.stack(pos, axis=0)
-        origin = tuple(pos.mean(axis=0))
-        
         return cls(shape, resolution, spacing, orientation, origin)
     
     @classmethod
@@ -138,16 +101,3 @@ class Header:
     
 
 # %% mrd utils
-def _find_in_user_params(userField, *keys):
-    
-    # find names
-    names = [field.name for field in userField]
-
-    # find positions    
-    idx = [names.index(k) for k in keys if k in names]
-    values = [userField[i] for i in idx]
-    
-    if len(keys) == len(values):
-        return dict(zip(keys, values))
-    else:
-        return None # One or more keys not found

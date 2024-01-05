@@ -14,7 +14,7 @@ from ..utils import nifti
 from ..utils.header import Header
 
 
-def read_nifti(filepath: str | list | tuple) -> (np.ndarray, dict):
+def read_nifti(filepath: str | list | tuple):
     """
     Read image from nifti files.
 
@@ -25,10 +25,10 @@ def read_nifti(filepath: str | list | tuple) -> (np.ndarray, dict):
 
     Returns
     -------
-    np.ndarray
-        Sorted image data.
-    dict
-        Image metadata.
+    image : np.ndarray
+        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).
+    header : deepmr.Header
+        Metadata for image reconstruction.
 
     """
     # parse nifti

@@ -1,156 +1,158 @@
-"""I/O Routines for MRD files."""
+"""MRD data reading routines."""
 
 __all__ = ["read_mrd"]
 
 import numpy as np
 
-import ismrmrd as mrd
+import ismrmrd
 
-from ..utils.pathlib import get_filepath
+from ..utils import mrd
 from ..utils.header import Header
+from ..utils.pathlib import get_filepath
 
-def read_mrd(filename: str) -> (dict, np.ndarray):
+def read_mrd(filepath: str, return_ordering: bool = False):
+    """
+    Read kspace data from mrd file.
+
+    Parameters
+    ----------
+    filepath : str | list | tuple
+        Path to mrd file.
+    return_ordering : bool, optional
+        If true, return ordering to sort raw data. 
+        Useful if sequence is stored separately from raw data.
+        The default is False.
     
+    Returns
+    -------
+    data : np.ndarray
+        Complex k-space data of shape (ncoils, ncontrasts, nslices, nview, npts).
+    traj : np.ndarray
+        Sampling trajectory of shape (ncontrasts, nslices, nview, npts).
+    dcf : np.ndarray
+        Sampling density compensation factor of shape (ncontrasts, nslices, nview, npts, ndims)
+    header : deepmr.Header
+        Metadata for image reconstruction.
+
+    """
     # get full path
-    filename = get_filepath(filename, True, "h5")
+    filepath = get_filepath(filepath, True, "h5")
     
+    # load mrd
+    acquisitions, mrdhead = _read_mrd(filepath)
+    
+    # build header
+    header = Header.from_mrd(mrdhead, acquisitions)
+    
+    # get all data
+    data, traj, dcf = _get_data(acquisitions)
+    
+    # sort
+    data, traj, dcf, ordering = _sort_data(data, traj, dcf, acquisitions, mrdhead)
+    
+    # get constrats info
+    TI = mrd._get_inversion_times(mrdhead)
+    TE = mrd._get_echo_times(mrdhead)
+    TR = mrd._get_repetition_times(mrdhead)    
+    FA = mrd._get_flip_angles(mrdhead)
+    dt = acquisitions[0].sample_time_us
+    
+    # update header
+    header.FA = FA
+    header.TI = TI
+    header.TE = TE
+    header.TR = TR
+    header.dt = dt
+        
+    return data, traj, dcf, header
+        
+
+# %% subroutines
+def _read_header(dset):
+    xml_header = dset.read_xml_header()
+    xml_header = xml_header.decode("utf-8")
+    return ismrmrd.xsd.CreateFromDocument(xml_header)
+
+
+def _read_mrd(filename):
     # open file
-    dset = mrd.Dataset(filename)
+    dset = ismrmrd.Dataset(filename)
     
     # read header
     mrdhead = _read_header(dset)
     
     # read acquisitions
     nacq = dset.number_of_acquisitions()
-    acq = [dset.read_acquisition(n) for n in range(nacq)]
+    acquisitions = [dset.read_acquisition(n) for n in range(nacq)]
     
     # close
     dset.close()
     
-    # build header
-    header = Header.from_mrd(mrdhead, acq)
-    
-    return acq, header, mrdhead
-        
-    
-def _read_header(dset):
-    xml_header = dset.read_xml_header()
-    xml_header = xml_header.decode("utf-8")
-    return mrd.xsd.CreateFromDocument(xml_header)
+    return acquisitions, mrdhead
 
 
-def _deserialize(mrdprot):
+def _get_data(acquisitions):
+    data = np.stack([acq.data for acq in acquisitions], axis=0)
     
-    # get all waveforms, dcfs and indexes
-    traj0 = []
-    dcf0 = []
-    t0 = []
-    icontrast = []
-    iz = []
-    iview = []
-    
-    # get number of profiles
-    nprofiles = len(mrdprot["profiles"])
-    for n in range(nprofiles):
-        ctraj = mrdprot["profiles"][n].traj
-        cdcf = mrdprot["profiles"][n].data
-        
-        npts = cdcf.shape[-1]
-        dt = mrdprot["profiles"][n].head.sample_time_us
-        ct = np.arange(npts) * dt * 1e-3 # ms
-        
-        cicontrast = mrdprot["profiles"][n].head.idx.contrast
-        ciz = mrdprot["profiles"][n].head.idx.slice
-        ciview = mrdprot["profiles"][n].head.idx.kspace_encode_step_1
-        
-        # append
-        traj0.append(ctraj)
-        dcf0.append(cdcf)
-        t0.append(ct) 
-        icontrast.append(cicontrast)
-        iz.append(ciz)
-        iview.append(ciview)
-    
-    # stack / concatenate
-    traj0 = np.stack(traj0, axis=0)
-    dcf0 = np.stack(dcf0, axis=0)
-    t0 = np.stack(t0, axis=0)
-    icontrast = np.asarray(icontrast)
-    iz = np.asarray(iz)
-    iview = np.asarray(iview)
-        
-    # get geometry from header
-    if isinstance(mrdprot["hdr"].encoding, list):
-        fov = mrdprot["hdr"].encoding[0].encodedSpace.fieldOfView_mm
-        ishape = mrdprot["hdr"].encoding[0].encodedSpace.matrixSize
-        kshape = mrdprot["hdr"].encoding[0].encodingLimits
+    if acquisitions[0].traj.size != 0:
+        trajdcf = np.stack([acq.traj for acq in acquisitions], axis=0)
+        traj = trajdcf[..., :-1]
+        dcf = trajdcf[..., -1]
     else:
-        fov = mrdprot["hdr"].encoding.encodedSpace.fieldOfView_mm
-        ishape = mrdprot["hdr"].encoding.encodedSpace.matrixSize
-        kshape = mrdprot["hdr"].encoding.encodingLimits
-        
+        traj, dcf = None, None
+    
+    return data, traj, dcf
+
+
+def _sort_data(data, traj, dcf, acquisitions, mrdhead):
+    
+    # order
+    icontrast = np.asarray([acq.idx.contrast for acq in acquisitions])
+    iz = np.asarray([acq.idx.slice for acq in acquisitions])
+    iview = np.asarray([acq.idx.kspace_encode_step_1 for acq in acquisitions])
+                
+    # get geometry from header
+    shape = mrdhead.encoding[0].encodingLimits
+                
+    # get sizes
+    ncoils = data.shape[1]
+    ncontrasts = shape.contrast.maximum+1
+    nslices = shape.slice.maximum+1
+    nviews = shape.kspace_encoding_step_1.maximum+1
+    npts = data.shape[-1]
+    ndims = traj.shape[-1] # last tims stores dcfs
+
     # get fov, matrix size and kspace size
-    fov = [fov.x, fov.y, fov.z]
-    ishape = [ishape.x, ishape.y, ishape.z]
-    kshape = [kshape.contrast.maximum+1, kshape.slice.maximum+1, kshape.kspace_encoding_step_1.maximum+1, npts]
+    shape = (ncontrasts, nslices, nviews, npts)
     
     # sort trajectory, dcf and t
-    traj = np.zeros(kshape + [traj0.shape[-1]], dtype=np.float32)
-    dcf = np.zeros(kshape, dtype=np.float32)
-    t = np.zeros(kshape, dtype=np.float32)
-    
-    # cast dcf to real
-    dcf0 = dcf0.real
-    
-    for n in range(nprofiles):
-        traj[icontrast[n], iz[n], iview[n]] = traj0[n]
-        dcf[icontrast[n], iz[n], iview[n]] = dcf0[n]
-        t[icontrast[n], iz[n], iview[n]] = t0[n]
+    datatmp = np.zeros([ncoils] + list(shape), dtype=np.complex64)
+        
+    if traj is not None:
+        # preallocate
+        trajtmp = np.zeros(list(shape) + [ndims], dtype=np.float32)
+        dcftmp = np.zeros(shape, dtype=np.float32)
             
-    # get flip angle, TE, TR, TI
-    flip = mrdprot["hdr"].sequenceParameters.flipAngle_deg
-    TE = mrdprot["hdr"].sequenceParameters.TE
-    TI = mrdprot["hdr"].sequenceParameters.TI
-    TR = mrdprot["hdr"].sequenceParameters.TR
+        # actual sorting
+        for n in range(len(acquisitions)):
+            datatmp[:, icontrast[n], iz[n], iview[n]] = data[n]
+            trajtmp[icontrast[n], iz[n], iview[n]] = traj[n]
+            dcftmp[icontrast[n], iz[n], iview[n]] = dcf[n]
+            
+        # assign
+        data = np.ascontiguousarray(datatmp.squeeze())
+        traj = np.ascontiguousarray(trajtmp.squeeze())
+        dcf = np.ascontiguousarray(dcftmp.squeeze())
+    else:
+        # actual sorting
+        for n in range(len(acquisitions)):
+            datatmp[:, icontrast[n], iz[n], iview[n]] = data[n]
+        # assign
+        data = np.ascontiguousarray(datatmp.squeeze())
+        
+    # keep ordering
+    ordering = np.stack((icontrast, iz, iview), axis=1)
+        
+    return data, traj, dcf, ordering
+        
     
-    # get custom parameters
-    params = {}
-    for n in range(len(mrdprot["hdr"].userParameters.userParameterLong)):
-        try:
-            key = mrdprot["hdr"].userParameters.userParameterLong[n].name.name
-        except:
-            key = mrdprot["hdr"].userParameters.userParameterLong[n].name                
-        if key in params:
-            if isinstance(params[key], list) is False:
-                params[key] = [params[key]]
-            try:
-                params[key].append(mrdprot["hdr"].userParameters.userParameterLong[n].name.value)
-            except:
-                params[key].append(mrdprot["hdr"].userParameters.userParameterLong[n].value)
-        else:
-            try:
-                params[key] = mrdprot["hdr"].userParameters.userParameterLong[n].name.value
-            except:
-                params[key] = mrdprot["hdr"].userParameters.userParameterLong[n].value
-    for n in range(len(mrdprot["hdr"].userParameters.userParameterDouble)):
-        try:
-            key = mrdprot["hdr"].userParameters.userParameterDouble[n].name.name
-        except:
-            key = mrdprot["hdr"].userParameters.userParameterDouble[n].name
-        if key in params:
-            if isinstance(params[key], list) is False:
-                params[key] = [params[key]]
-            try:
-                params[key].append(mrdprot["hdr"].userParameters.userParameterDouble[n].name.value)
-            except:
-                params[key].append(mrdprot["hdr"].userParameters.userParameterDouble[n].value)
-        else:
-            try:
-                params[key] = mrdprot["hdr"].userParameters.userParameterDouble[n].name.value
-            except:
-                params[key] = mrdprot["hdr"].userParameters.userParameterDouble[n].value
-
-    return {"kr": traj, "dcf": dcf, "t": t, "fov": fov, "shape": ishape, "flip": flip, "TE": TE, "TR": TR, "TI": TI, "params": params}
-    
-
-

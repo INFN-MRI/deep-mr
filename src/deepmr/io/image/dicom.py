@@ -14,7 +14,7 @@ import pydicom
 from ..utils import dicom
 from ..utils.header import Header
 
-def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
+def read_dicom(filepath: str | list | tuple):
     """
     Read image from dicom files.
 
@@ -25,10 +25,10 @@ def read_dicom(filepath: str | list | tuple) -> (np.ndarray, dict):
 
     Returns
     -------
-    np.ndarray
-        Sorted image data.
-    dict
-        Image metadata.
+    image : np.ndarray
+        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).
+    header : deepmr.Header
+        Metadata for image reconstruction.
 
     """
     # parse dicom

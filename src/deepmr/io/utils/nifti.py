@@ -5,6 +5,28 @@ import nibabel as nib
 
 from nibabel.orientations import axcodes2ornt, ornt_transform
 
+
+def _reorient(shape, affine, orientation):
+    """
+    Reorient input image to desired orientation.
+    """
+    # get input orientation
+    orig_ornt = nib.io_orientation(affine)
+
+    # get target orientation
+    targ_ornt = axcodes2ornt(orientation)
+
+    # estimate transform
+    transform = ornt_transform(orig_ornt, targ_ornt)
+
+    # reorient
+    tmp = np.ones(shape[-3:], dtype=np.float32)
+    tmp = nib.Nifti1Image(tmp, affine)
+    tmp = tmp.as_reoriented(transform)
+
+    return tmp.affine
+
+
 def _get_shape(img):
     """
     Return image shape.
@@ -22,6 +44,13 @@ def _get_resolution(header, json):
         resolution = (header["pixdim"][3], header["pixdim"][2], header["pixdim"][1])
         
     return resolution
+
+
+def _get_spacing(header):
+    """
+    Return slice spacing.
+    """
+    return header["pixdim"][3]
 
 
 def _get_origin(shape, affine):
@@ -58,34 +87,6 @@ def _get_image_orientation(resolution, affine):
     )
     
     return orientation
-
-
-def _get_spacing(header):
-    """
-    Return slice spacing.
-    """
-    return header["pixdim"][3]
-
-
-def _reorient(shape, affine, orientation):
-    """
-    Reorient input image to desired orientation.
-    """
-    # get input orientation
-    orig_ornt = nib.io_orientation(affine)
-
-    # get target orientation
-    targ_ornt = axcodes2ornt(orientation)
-
-    # estimate transform
-    transform = ornt_transform(orig_ornt, targ_ornt)
-
-    # reorient
-    tmp = np.ones(shape[-3:], dtype=np.float32)
-    tmp = nib.Nifti1Image(tmp, affine)
-    tmp = tmp.as_reoriented(transform)
-
-    return tmp.affine
 
 
 def _get_flip_angles(json_list):

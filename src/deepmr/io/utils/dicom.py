@@ -79,18 +79,6 @@ def _get_relative_slice_position(orientation, position):
     return z @ position
 
 
-def _get_image_orientation(dsets, astuple=False):
-    """
-    Return image orientation matrix.
-    """
-    F = np.asarray(dsets[0].ImageOrientationPatient).reshape(2, 3)
-    
-    if astuple:
-        F = tuple(F.ravel())
-
-    return F
-
-
 def _get_plane_normal(orientation):
     """
     Return array of normal to imaging plane, as the cross product
@@ -127,6 +115,18 @@ def _get_shape(dsets, position):
     """
     nz = np.unique(position, axis=-1).shape[-1]
     return (nz, dsets[0].Columns, dsets[0].Rows)
+
+
+def _get_image_orientation(dsets, astuple=False):
+    """
+    Return image orientation matrix.
+    """
+    F = np.asarray(dsets[0].ImageOrientationPatient).reshape(2, 3)
+    
+    if astuple:
+        F = tuple(F.ravel())
+
+    return F
 
 
 def _get_spacing(dsets):
