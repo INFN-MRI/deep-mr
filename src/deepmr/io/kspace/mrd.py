@@ -33,6 +33,11 @@ def read_mrd(filepath: str, return_ordering: bool = False):
         Sampling density compensation factor of shape (ncontrasts, nslices, nview, npts, ndims)
     header : deepmr.Header
         Metadata for image reconstruction.
+    ordering: np.ndarray, optional
+        Re-ordering indexes of shape (nacquisitions, 3), storing
+        the contrast, slice and view index (in the column axis), respectively,
+        for each acquisition (row) in the dataset. Only returned if 'return_ordering'
+        is True.
 
     """
     # get full path
@@ -64,7 +69,10 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     header.TR = TR
     header.dt = dt
         
-    return data, traj, dcf, header
+    if return_ordering:
+        return data, traj, dcf, header, ordering
+    else:
+        return data, traj, dcf, header
         
 
 # %% subroutines
