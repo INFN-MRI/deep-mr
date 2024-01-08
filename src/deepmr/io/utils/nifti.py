@@ -1,10 +1,14 @@
 """NIfTI header utils."""
 
+import warnings
+
 import numpy as np
 import nibabel as nib
 
 from nibabel.orientations import axcodes2ornt, ornt_transform
 from .dicom import _get_plane_normal
+
+from ...external.nii2dcm.dcm import DicomMRI
 
 
 def _reorient(shape, affine, orientation):
@@ -38,12 +42,16 @@ def _get_shape(img):
 def _get_resolution(header, json):
     """
     Return image resolution.
-    """ 
+    """
     if json:
-        resolution = (float(json["SliceThickness"]), header["pixdim"][2], header["pixdim"][1])
+        resolution = (
+            float(json["SliceThickness"]),
+            header["pixdim"][2],
+            header["pixdim"][1],
+        )
     else:
         resolution = (header["pixdim"][3], header["pixdim"][2], header["pixdim"][1])
-        
+
     return resolution
 
 
@@ -61,7 +69,7 @@ def _get_origin(shape, affine):
     N = shape[0]
     if N > 1:
         T1 = affine[:-1, -1]
-        TN = affine[:-1, 2] * (N-1) + T1
+        TN = affine[:-1, 2] * (N - 1) + T1
         origin = (T1 + TN) / 2
     else:
         origin = affine[:-1, -1]
@@ -86,7 +94,7 @@ def _get_image_orientation(resolution, affine):
         dircosY[1],
         dircosY[2],
     )
-    
+
     return np.around(orientation, 4)
 
 
@@ -96,8 +104,8 @@ def _get_flip_angles(json_list):
     """
     flipAngles = []
     for json_dict in json_list:
-        if 'FlipAngle' in json_dict:
-            flipAngles.append(json_dict['FlipAngle'])
+        if "FlipAngle" in json_dict:
+            flipAngles.append(json_dict["FlipAngle"])
         else:
             flipAngles.append(90.0)
 
@@ -110,8 +118,8 @@ def _get_echo_times(json_list):
     """
     echoTimes = []
     for json_dict in json_list:
-        if 'EchoTime' in json_dict:
-            echoTimes.append(1e3 * json_dict['EchoTime'])
+        if "EchoTime" in json_dict:
+            echoTimes.append(1e3 * json_dict["EchoTime"])
         else:
             echoTimes.append(0.0)
 
@@ -124,8 +132,8 @@ def _get_echo_numbers(json_list):
     """
     echoNumbers = []
     for json_dict in json_list:
-        if 'EchoNumber' in json_dict:
-            echoNumbers.append(json_dict['EchoNumber'])
+        if "EchoNumber" in json_dict:
+            echoNumbers.append(json_dict["EchoNumber"])
         else:
             echoNumbers.append(1)
 
@@ -138,8 +146,8 @@ def _get_repetition_times(json_list):
     """
     repetitionTimes = []
     for json_dict in json_list:
-        if 'RepetitionTime' in json_dict:
-            repetitionTimes.append(1e3 * json_dict['RepetitionTime'])
+        if "RepetitionTime" in json_dict:
+            repetitionTimes.append(1e3 * json_dict["RepetitionTime"])
         else:
             repetitionTimes.append(np.Inf)
 
@@ -152,8 +160,8 @@ def _get_inversion_times(json_list):
     """
     inversionTimes = []
     for json_dict in json_list:
-        if 'InversionTime' in json_dict:
-            inversionTimes.append(1e3 * json_dict['InversionTime'])
+        if "InversionTime" in json_dict:
+            inversionTimes.append(1e3 * json_dict["InversionTime"])
         else:
             inversionTimes.append(np.Inf)
 
@@ -232,3 +240,66 @@ def _make_nifti_affine(shape, position, orientation, resolution):
     A = _reorient(shape, A0, "LAS")
 
     return A.astype(np.float32)
+
+
+def _initialize_series_tag(json):
+    """
+    Initialize common DICOM series tags.
+
+    Adapted from https://github.com/kspaceKelvin/python-ismrmrd-server/blob/master/mrd2dicom.py
+
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # change the hook
+        dicomDset = DicomMRI("nii2dcm_dicom_mri.dcm").ds
+
+    # ----- Update DICOM header from NIfTI JSON -----
+    if "PatientName" in json:
+        dicomDset.PatientName = json["PatientName"]
+    if "PatientWeight" in json:
+        dicomDset.PatientWeight = json["PatientWeight"]
+    if "PatientID" in json:
+        dicomDset.PatientID = json["PatientID"]
+    if "PatientBirthDate" in json:
+        dicomDset.PatientBirthDate = json["PatientBirthDate"]
+    if "PatientSex" in json:
+        dicomDset.PatientSex = json["PatientSex"]
+
+    if "StudyDate" in json:
+        dicomDset.StudyDate = json["StudyDate"]
+    if "StudyTime" in json:
+        dicomDset.StudyTime = json["StudyTime"]
+    if "AccessionNumber" in json:
+        dicomDset.AccessionNumber = json["AccessionNumber"]
+    if "ReferringPhysicianName" in json:
+        dicomDset.ReferringPhysicianName = json["ReferringPhysicianName"]
+    if "StudyDescription" in json:
+        dicomDset.StudyDescription = json["StudyDescription"]
+    if "StudyInstanceUID" in json:
+        dicomDset.StudyInstanceUID = json["StudyInstanceUID"]
+
+    if "SeriesDate" in json:
+        dicomDset.SeriesDate = json["SeriesDate"]
+    if "SeriesTime" in json:
+        dicomDset.SeriesTime = json["SeriesTime"]
+    if "PatientPosition" in json:
+        dicomDset.PatientPosition = json["PatientPosition"]
+    if "IsocenterPosition" in json:
+        dicomDset.IsocenterPosition = json["IsocenterPosition"]
+    if "SequenceName" in json:
+        dicomDset.SequenceName = json["SequenceName"]
+    if "FrameOfReferenceUID" in json:
+        dicomDset.FrameOfReferenceUID = json["FrameOfReferenceUID"]
+
+    if "Manufacturer" in json:
+        dicomDset.Manufacturer = json["Manufacturer"]
+    if "ManufacturerModelName" in json:
+        dicomDset.ManufacturerModelName = json["ManufacturerModelName"]
+    if "MagneticFieldStrength" in json:
+        dicomDset.MagneticFieldStrength = json["MagneticFieldStrength"]
+    if "InstitutionName" in json:
+        dicomDset.InstitutionName = json["InstitutionName"]
+    if "StationName" in json:
+        dicomDset.StationName = json["StationName"]
+
+    return dicomDset

@@ -57,7 +57,6 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     TE = mrd._get_echo_times(mrdhead)
     TR = mrd._get_repetition_times(mrdhead)    
     FA = mrd._get_flip_angles(mrdhead)
-    dt = acquisitions[0].sample_time_us
     
     # get slice locations
     _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
@@ -70,7 +69,6 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     header.TI = TI
     header.TE = TE
     header.TR = TR
-    header.dt = dt
         
     if return_ordering:
         return data, traj, dcf, header, ordering

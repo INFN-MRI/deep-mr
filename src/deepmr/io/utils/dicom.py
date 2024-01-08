@@ -1,7 +1,11 @@
 """DICOM header utils."""
 
 import copy
+import warnings
+
 import numpy as np
+
+from ...external.nii2dcm.dcm import DicomMRI
 
 # def _make_geometry_tags(affine, shape, resolution, spacing):
 #     """
@@ -77,7 +81,7 @@ def _get_first_volume(dsets, index):
     Get first volume in a multi-contrast series.
     """
     out = [copy.deepcopy(dsets[idx]) for idx in index]
-    
+
     return out
 
 
@@ -109,7 +113,11 @@ def _get_resolution(dsets):
     """
     Return image resolution.
     """
-    return (float(dsets[0].SliceThickness), float(dsets[0].PixelSpacing[0]), float(dsets[0].PixelSpacing[1]))
+    return (
+        float(dsets[0].SliceThickness),
+        float(dsets[0].PixelSpacing[0]),
+        float(dsets[0].PixelSpacing[1]),
+    )
 
 
 def _get_origin(position):
@@ -132,7 +140,7 @@ def _get_image_orientation(dsets, astuple=False):
     Return image orientation matrix.
     """
     F = np.asarray(dsets[0].ImageOrientationPatient).reshape(2, 3)
-    
+
     if astuple:
         F = tuple(F.ravel())
 
@@ -214,3 +222,46 @@ def _get_unique_contrasts(constrasts):
 
     return uContrasts, contrastIdx
 
+
+def _initialize_series_tag(ref_dicom):
+    """
+    Initialize common DICOM series tags.
+
+    Adapted from https://github.com/kspaceKelvin/python-ismrmrd-server/blob/master/mrd2dicom.py
+
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # change the hook
+        dicomDset = DicomMRI("nii2dcm_dicom_mri.dcm").ds
+
+    # ----- Update DICOM header from reference dicom -----
+    dicomDset.PatientName = ref_dicom.PatientName
+    dicomDset.PatientWeight = ref_dicom.PatientWeight
+    dicomDset.PatientID = ref_dicom.PatientID
+    dicomDset.PatientBirthDate = ref_dicom.PatientBirthDate
+    dicomDset.PatientSex = ref_dicom.PatientSex
+
+    dicomDset.StudyDate = ref_dicom.StudyDate
+    dicomDset.StudyTime = ref_dicom.StudyTime
+    dicomDset.AccessionNumber = ref_dicom.AccessionNumber
+    dicomDset.ReferringPhysicianName = ref_dicom.ReferringPhysicianName
+    dicomDset.StudyDescription = ref_dicom.StudyDescription
+    dicomDset.StudyInstanceUID = ref_dicom.StudyInstanceUID
+
+    dicomDset.SeriesDate = ref_dicom.SeriesDate
+    dicomDset.SeriesTime = ref_dicom.SeriesTime
+    dicomDset.PatientPosition = ref_dicom.PatientPosition
+    try:
+        dicomDset.IsocenterPosition = ref_dicom.IsocenterPosition
+    except Exception:
+        pass
+    dicomDset.SequenceName = ref_dicom.SequenceName
+    dicomDset.FrameOfReferenceUID = ref_dicom.FrameOfReferenceUID
+
+    dicomDset.Manufacturer = ref_dicom.Manufacturer
+    dicomDset.ManufacturerModelName = ref_dicom.ManufacturerModelName
+    dicomDset.MagneticFieldStrength = ref_dicom.MagneticFieldStrength
+    dicomDset.InstitutionName = ref_dicom.InstitutionName
+    dicomDset.StationName = ref_dicom.StationName
+
+    return dicomDset

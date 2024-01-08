@@ -37,10 +37,7 @@ def read_nifti(filepath: str | list | tuple):
     
     # load nifti
     image, header, affine, json_list = _read_nifti(filepath)
-    
-    # initialize header
-    header = Header.from_nifti(image, header, affine, json_list[0])
-    
+        
     # get constrats info
     inversionTimes = nifti._get_inversion_times(json_list)
     echoTimes = nifti._get_echo_times(json_list)
@@ -56,6 +53,9 @@ def read_nifti(filepath: str | list | tuple):
     
     # unpack sequence
     TI, TE, EC, TR, FA = uContrasts.transpose()
+    
+    # initialize header
+    header = Header.from_nifti(image, header, affine, json_list[0])
         
     # update header
     header.FA = FA

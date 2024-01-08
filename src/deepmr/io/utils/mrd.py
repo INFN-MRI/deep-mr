@@ -2,7 +2,10 @@
 
 
 import warnings
+
 import numpy as np
+
+from ...external.nii2dcm.dcm import DicomMRI
 
 
 def _find_in_user_params(userField, *keys):
@@ -12,15 +15,15 @@ def _find_in_user_params(userField, *keys):
     # find names
     names = [field.name for field in userField]
 
-    # find positions    
+    # find positions
     idx = [names.index(k) for k in keys if k in names]
     values = [userField[i] for i in idx]
-    
+
     if len(keys) == len(values):
         return dict(zip(keys, values))
     else:
-        return None # One or more keys not found
-    
+        return None  # One or more keys not found
+
 
 def _get_slice_locations(acquisitions):
     """
@@ -65,7 +68,7 @@ def _get_first_volume(acquisitions, index):
     Get first volume in a multi-contrast series.
     """
     out = [acquisitions[idx] for idx in index]
-    
+
     return out
 
 
@@ -84,7 +87,9 @@ def _get_spacing(user, geom, shape):
     Return slice spacing.
     """
     nz = shape[0]
-    tmp = _find_in_user_params(user.userParameterDouble, "SliceThickness", "SpacingBetweenSlices")
+    tmp = _find_in_user_params(
+        user.userParameterDouble, "SliceThickness", "SpacingBetweenSlices"
+    )
     if tmp is not None:
         dz, spacing = tmp["SliceThickness"], tmp["SpacingBetweenSlices"]
     else:
@@ -106,7 +111,7 @@ def _get_resolution(geom, shape, dz):
     Return image resolution.
     """
     _, ny, nx = shape
-    ry, rx = geom.fieldOfView_mm.y, geom.fieldOfView_mm.x 
+    ry, rx = geom.fieldOfView_mm.y, geom.fieldOfView_mm.x
     dy, dx = ry / ny, rx / nx
     resolution = (dz, dy, dx)
     return resolution
@@ -127,9 +132,9 @@ def _get_image_orientation(acquisitions):
         dircosY[1],
         dircosY[2],
     )
-    
+
     orientation = np.asarray(orientation).reshape(2, 3)
-    
+
     return np.around(orientation, 4)
 
 
@@ -137,7 +142,13 @@ def _get_position(acquisitions):
     """
     Return matrix of image position of size (3, nslices).
     """
-    return np.stack([np.asarray([acq.position[0], acq.position[1], acq.position[2]]) for acq in acquisitions], axis=1)
+    return np.stack(
+        [
+            np.asarray([acq.position[0], acq.position[1], acq.position[2]])
+            for acq in acquisitions
+        ],
+        axis=1,
+    )
 
 
 def _get_origin(acquisitions):
@@ -157,7 +168,7 @@ def _get_flip_angles(header):
     try:
         flipAngles = header.sequenceParameters.FA
     except:
-        flipAngles = None    
+        flipAngles = None
 
     return np.asarray(flipAngles)
 
@@ -169,8 +180,8 @@ def _get_echo_times(header):
     try:
         echoTimes = header.sequenceParameters.TE
     except:
-        echoTimes = None    
-    
+        echoTimes = None
+
     return np.asarray(echoTimes)
 
 
@@ -181,8 +192,8 @@ def _get_repetition_times(header):
     try:
         repetitionTimes = header.sequenceParameters.TR
     except:
-        repetitionTimes = None    
-    
+        repetitionTimes = None
+
     return np.asarray(repetitionTimes)
 
 
@@ -193,6 +204,121 @@ def _get_inversion_times(header):
     try:
         inversionTimes = header.sequenceParameters.TI
     except:
-        inversionTimes = None    
-    
+        inversionTimes = None
+
     return np.asarray(inversionTimes)
+
+
+def _initialize_series_tag(mrdHead):
+    """
+    Initialize common DICOM series tags.
+
+    Adapted from https://github.com/kspaceKelvin/python-ismrmrd-server/blob/master/mrd2dicom.py
+
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # change the hook
+        dicomDset = DicomMRI("nii2dcm_dicom_mri.dcm").ds
+
+    # ----- Update DICOM header from MRD header -----
+    try:
+        if mrdHead.subjectInformation is None:
+            pass
+        else:
+            if mrdHead.subjectInformation.patientName is not None:
+                dicomDset.PatientName = mrdHead.subjectInformation.patientName
+            if mrdHead.subjectInformation.patientWeight_kg is not None:
+                dicomDset.PatientWeight = mrdHead.subjectInformation.patientWeight_kg
+            if mrdHead.subjectInformation.patientID is not None:
+                dicomDset.PatientID = mrdHead.subjectInformation.patientID
+            if mrdHead.subjectInformation.patientBirthdate is not None:
+                dicomDset.PatientBirthDate = mrdHead.subjectInformation.patientBirthdate
+            if mrdHead.subjectInformation.patientGender is not None:
+                dicomDset.PatientSex = mrdHead.subjectInformation.patientGender
+
+    except Exception:
+        print(
+            "Error setting header information from MRD header's subjectInformationType section"
+        )
+
+    try:
+        if mrdHead.studyInformation is None:
+            pass
+        else:
+            if mrdHead.studyInformation.studyDate is not None:
+                dicomDset.StudyDate = mrdHead.studyInformation.studyDate
+            if mrdHead.studyInformation.studyTime is not None:
+                dicomDset.StudyTime = mrdHead.studyInformation.studyTime
+            if mrdHead.studyInformation.accessionNumber is not None:
+                dicomDset.AccessionNumber = mrdHead.studyInformation.accessionNumber
+            if mrdHead.studyInformation.referringPhysicianName is not None:
+                dicomDset.ReferringPhysicianName = (
+                    mrdHead.studyInformation.referringPhysicianName
+                )
+            if mrdHead.studyInformation.studyInstanceUID is not None:
+                dicomDset.StudyInstanceUID = mrdHead.studyInformation.studyInstanceUID
+
+    except Exception:
+        print(
+            "Error setting header information from MRD header's studyInformationType section"
+        )
+
+    try:
+        if mrdHead.measurementInformation is None:
+            pass
+        else:
+            if mrdHead.measurementInformation.seriesDate is not None:
+                dicomDset.SeriesDate = mrdHead.measurementInformation.seriesDate
+            if mrdHead.measurementInformation.seriesTime is not None:
+                dicomDset.SeriesTime = mrdHead.measurementInformation.seriesTime
+            if mrdHead.measurementInformation.patientPosition is not None:
+                dicomDset.PatientPosition = (
+                    mrdHead.measurementInformation.patientPosition.name
+                )
+            if mrdHead.measurementInformation.relativeTablePosition is not None:
+                dicomDset.IsocenterPosition = (
+                    mrdHead.measurementInformation.relativeTablePosition
+                )
+            if mrdHead.measurementInformation.initialSeriesNumber is not None:
+                dicomDset.SeriesNumber = (
+                    mrdHead.measurementInformation.initialSeriesNumber
+                )
+            if mrdHead.measurementInformation.protocolName is not None:
+                dicomDset.SeriesDescription = (
+                    mrdHead.measurementInformation.protocolName
+                )
+            if mrdHead.measurementInformation.sequenceName is not None:
+                dicomDset.SequenceName = mrdHead.measurementInformation.sequenceName
+            if mrdHead.measurementInformation.frameOfReferenceUID is not None:
+                dicomDset.FrameOfReferenceUID = (
+                    mrdHead.measurementInformation.frameOfReferenceUID
+                )
+
+    except Exception:
+        print(
+            "Error setting header information from MRD header's measurementInformation section"
+        )
+
+    try:
+        if mrdHead.acquisitionSystemInformation.systemVendor is not None:
+            dicomDset.Manufacturer = mrdHead.acquisitionSystemInformation.systemVendor
+        if mrdHead.acquisitionSystemInformation.systemModel is not None:
+            dicomDset.ManufacturerModelName = (
+                mrdHead.acquisitionSystemInformation.systemModel
+            )
+        if mrdHead.acquisitionSystemInformation.systemFieldStrength_T is not None:
+            dicomDset.MagneticFieldStrength = (
+                mrdHead.acquisitionSystemInformation.systemFieldStrength_T
+            )
+        if mrdHead.acquisitionSystemInformation.institutionName is not None:
+            dicomDset.InstitutionName = (
+                mrdHead.acquisitionSystemInformation.institutionName
+            )
+        if mrdHead.acquisitionSystemInformation.stationName is not None:
+            dicomDset.StationName = mrdHead.acquisitionSystemInformation.stationName
+    except Exception:
+        print(
+            "Error setting header information from MRD header's acquisitionSystemInformation section"
+        )
+
+    return dicomDset

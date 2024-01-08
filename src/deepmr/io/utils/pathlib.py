@@ -6,14 +6,17 @@ import glob
 import os
 import warnings
 
-def get_filepath(filename: str = None, pick_largest: bool = False, *extensions: str) -> str:
+
+def get_filepath(
+    filename: str = None, pick_largest: bool = False, *extensions: str
+) -> str:
     """
     Retrieve sorted absolute path for given filename.
 
     If name is not provided, search for all files of given extension.
     If multiple extensions are specified and folder contains files with
-    multiple extensions, pick the first one. 
-    
+    multiple extensions, pick the first one.
+
     Parameters
     ----------
     filename : str, optional
@@ -59,7 +62,7 @@ def get_filepath(filename: str = None, pick_largest: bool = False, *extensions: 
         filename.sort()
     else:
         filename = os.path.normpath(os.path.abspath(filename))
-    
+
     # fix length-1 lists
     if isinstance(filename, list) and len(filename) == 1:
         filename = filename[0]
