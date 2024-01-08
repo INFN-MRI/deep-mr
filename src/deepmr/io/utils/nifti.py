@@ -4,6 +4,7 @@ import numpy as np
 import nibabel as nib
 
 from nibabel.orientations import axcodes2ornt, ornt_transform
+from .dicom import _get_plane_normal
 
 
 def _reorient(shape, affine, orientation):
@@ -86,7 +87,7 @@ def _get_image_orientation(resolution, affine):
         dircosY[2],
     )
     
-    return orientation
+    return np.around(orientation, 4)
 
 
 def _get_flip_angles(json_list):
@@ -168,65 +169,66 @@ def _get_unique_contrasts(constrasts):
 
     return uContrasts
 
-# def _make_nifti_affine(shape, position, orientation, resolution):
-#     """
-#     Return affine transform between voxel coordinates and mm coordinates.
 
-#     Args:
-#         shape: volume shape (nz, ny, nx).
-#         resolution: image resolution in mm (dz, dy, dz).
-#         position: position of each slice (3, nz).
-#         orientation: image orientation.
+def _make_nifti_affine(shape, position, orientation, resolution):
+    """
+    Return affine transform between voxel coordinates and mm coordinates.
 
-#     Returns:
-#         affine matrix describing image position and orientation.
+    Args:
+        shape: volume shape (nz, ny, nx).
+        resolution: image resolution in mm (dz, dy, dz).
+        position: position of each slice (3, nz).
+        orientation: image orientation.
 
-#     Ref: https://nipy.org/nibabel/dicom/spm_dicom.html#spm-volume-sorting
-#     """
-#     # get image size
-#     nz, ny, nx = shape
+    Returns:
+        affine matrix describing image position and orientation.
 
-#     # get resoluzion
-#     dz, dy, dx = resolution
+    Ref: https://nipy.org/nibabel/dicom/spm_dicom.html#spm-volume-sorting
+    """
+    # get image size
+    nz, ny, nx = shape
 
-#     # common parameters
-#     T = position
-#     T1 = T[:, 0].round(4)
+    # get resoluzion
+    dz, dy, dx = resolution
 
-#     F = orientation
-#     dr, dc = np.asarray([dy, dx]).round(4)
+    # common parameters
+    T = position
+    T1 = T[:, 0].round(4)
 
-#     if nz == 1:  # single slice case
-#         n = _get_plane_normal(orientation)
-#         ds = float(dz)
+    F = orientation
+    dr, dc = np.asarray([dy, dx]).round(4)
 
-#         A0 = np.stack(
-#             (
-#                 np.append(F[0] * dc, 0),
-#                 np.append(F[1] * dr, 0),
-#                 np.append(-ds * n, 0),
-#                 np.append(T1, 1),
-#             ),
-#             axis=1,
-#         )
+    if nz == 1:  # single slice case
+        n = _get_plane_normal(orientation)
+        ds = float(dz)
 
-#     else:  # multi slice case
-#         N = nz
-#         TN = T[:, -1].round(4)
-#         A0 = np.stack(
-#             (
-#                 np.append(F[0] * dc, 0),
-#                 np.append(F[1] * dr, 0),
-#                 np.append((TN - T1) / (N - 1), 0),
-#                 np.append(T1, 1),
-#             ),
-#             axis=1,
-#         )
+        A0 = np.stack(
+            (
+                np.append(F[0] * dc, 0),
+                np.append(F[1] * dr, 0),
+                np.append(-ds * n, 0),
+                np.append(T1, 1),
+            ),
+            axis=1,
+        )
 
-#     # sign of affine matrix
-#     A0[:2, :] *= -1
+    else:  # multi slice case
+        N = nz
+        TN = T[:, -1].round(4)
+        A0 = np.stack(
+            (
+                np.append(F[0] * dc, 0),
+                np.append(F[1] * dr, 0),
+                np.append((TN - T1) / (N - 1), 0),
+                np.append(T1, 1),
+            ),
+            axis=1,
+        )
 
-#     # reorient
-#     A = _reorient(shape, A0, "LAS")
+    # sign of affine matrix
+    A0[:2, :] *= -1
 
-#     return A
+    # reorient
+    A = _reorient(shape, A0, "LAS")
+
+    return A.astype(np.float32)

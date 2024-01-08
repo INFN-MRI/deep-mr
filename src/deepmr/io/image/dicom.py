@@ -2,7 +2,6 @@
 
 __all__ = ["read_dicom"]
 
-import copy
 import glob
 import multiprocessing
 import os
@@ -37,12 +36,9 @@ def read_dicom(filepath: str | list | tuple):
 
     # load dicom
     image, dsets = _read_dcm(filepath)
-    
-    # initialize header
-    header = Header.from_dicom(dsets)
-    
+        
     # get slice locations
-    uSliceLocs, firstSliceIdx, sliceIdx = dicom._get_slice_locations(dsets)
+    uSliceLocs, firstVolumeIdx, sliceIdx = dicom._get_slice_locations(dsets)
         
     # get constrats info
     inversionTimes = dicom._get_inversion_times(dsets)
@@ -66,10 +62,7 @@ def read_dicom(filepath: str | list | tuple):
     sorted_image = np.zeros((n_contrasts, n_slices, ny, nx), dtype=image.dtype)
     for n in range(ninstances):
         sorted_image[contrastIdx[n], sliceIdx[n], :, :] = image[n]
-        
-    # get dicom template
-    ref_dicom = copy.deepcopy(dsets[0])
-    
+            
     # unpack sequence
     TI, TE, EC, TR, FA = uContrasts.transpose()
     
@@ -77,14 +70,16 @@ def read_dicom(filepath: str | list | tuple):
     if sorted_image.shape[0] == 1:
         sorted_image = sorted_image[0]
         
+    # initialize header
+    header = Header.from_dicom(dsets, firstVolumeIdx)
+        
     # update header
     header.FA = FA
     header.TI = TI
     header.TE = TE
     header.TR = TR
-    header.ref_dicom = ref_dicom
     
-    return image, header
+    return sorted_image, header
 
 # %% subroutines
 def _read_dcm(dicomdir):

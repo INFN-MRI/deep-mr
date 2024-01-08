@@ -1,5 +1,6 @@
 """DICOM header utils."""
 
+import copy
 import numpy as np
 
 # def _make_geometry_tags(affine, shape, resolution, spacing):
@@ -60,7 +61,7 @@ def _get_slice_locations(dsets):
 
     # get unique slice locations
     sliceLocs = _get_relative_slice_position(orientation, position).round(decimals=4)
-    uSliceLocs, firstSliceIdx = np.unique(sliceLocs, return_index=True)
+    uSliceLocs, firstVolumeIdx = np.unique(sliceLocs, return_index=True)
 
     # get indexes
     sliceIdx = np.zeros(sliceLocs.shape, dtype=np.int16)
@@ -68,7 +69,16 @@ def _get_slice_locations(dsets):
     for n in range(len(uSliceLocs)):
         sliceIdx[sliceLocs == uSliceLocs[n]] = n
 
-    return uSliceLocs, firstSliceIdx, sliceIdx
+    return uSliceLocs, firstVolumeIdx, sliceIdx
+
+
+def _get_first_volume(dsets, index):
+    """
+    Get first volume in a multi-contrast series.
+    """
+    out = [copy.deepcopy(dsets[idx]) for idx in index]
+    
+    return out
 
 
 def _get_relative_slice_position(orientation, position):
@@ -126,7 +136,7 @@ def _get_image_orientation(dsets, astuple=False):
     if astuple:
         F = tuple(F.ravel())
 
-    return F
+    return np.around(F, 4)
 
 
 def _get_spacing(dsets):

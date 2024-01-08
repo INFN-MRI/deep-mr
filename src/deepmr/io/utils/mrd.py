@@ -22,6 +22,53 @@ def _find_in_user_params(userField, *keys):
         return None # One or more keys not found
     
 
+def _get_slice_locations(acquisitions):
+    """
+    Return array of unique slice locations and slice location index for each acquisition in acquisitions.
+    """
+    # get orientation and position
+    orientation = _get_image_orientation(acquisitions)
+    position = _get_position(acquisitions)
+
+    # get unique slice locations
+    sliceLocs = _get_relative_slice_position(orientation, position).round(decimals=4)
+    uSliceLocs, firstVolumeIdx = np.unique(sliceLocs, return_index=True)
+
+    # get indexes
+    sliceIdx = np.zeros(sliceLocs.shape, dtype=np.int16)
+
+    for n in range(len(uSliceLocs)):
+        sliceIdx[sliceLocs == uSliceLocs[n]] = n
+
+    return uSliceLocs, firstVolumeIdx, sliceIdx
+
+
+def _get_relative_slice_position(orientation, position):
+    """
+    Return array of slice coordinates along the normal to imaging plane.
+    """
+    z = _get_plane_normal(orientation)
+    return z @ position
+
+
+def _get_plane_normal(orientation):
+    """
+    Return array of normal to imaging plane, as the cross product
+    between x and y plane versors.
+    """
+    x, y = orientation
+    return np.cross(x, y)
+
+
+def _get_first_volume(acquisitions, index):
+    """
+    Get first volume in a multi-contrast series.
+    """
+    out = [acquisitions[idx] for idx in index]
+    
+    return out
+
+
 def _get_shape(geom):
     """
     Return image shape.
@@ -80,7 +127,17 @@ def _get_image_orientation(acquisitions):
         dircosY[1],
         dircosY[2],
     )
-    return orientation
+    
+    orientation = np.asarray(orientation).reshape(2, 3)
+    
+    return np.around(orientation, 4)
+
+
+def _get_position(acquisitions):
+    """
+    Return matrix of image position of size (3, nslices).
+    """
+    return np.stack([np.asarray([acq.position[0], acq.position[1], acq.position[2]]) for acq in acquisitions], axis=1)
 
 
 def _get_origin(acquisitions):

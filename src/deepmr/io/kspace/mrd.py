@@ -45,10 +45,7 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     
     # load mrd
     acquisitions, mrdhead = _read_mrd(filepath)
-    
-    # build header
-    header = Header.from_mrd(mrdhead, acquisitions)
-    
+        
     # get all data
     data, traj, dcf = _get_data(acquisitions)
     
@@ -61,6 +58,12 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     TR = mrd._get_repetition_times(mrdhead)    
     FA = mrd._get_flip_angles(mrdhead)
     dt = acquisitions[0].sample_time_us
+    
+    # get slice locations
+    _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
+    
+    # build header
+    header = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx)
     
     # update header
     header.FA = FA
