@@ -33,7 +33,7 @@ class Header:
 
     # meta
     ref_dicom: pydicom.Dataset = None
-    dt: float = None  # dwell time
+    dt: float = None  # dwell time in ms
 
     # sequence
     TI: np.ndarray = None

@@ -43,8 +43,8 @@ def read_gehc(filepath: str, return_ordering: bool = False):
     if __GEHC_AVAILABLE__:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")  # change the hook
-            data, header = gehc.read_rawdata(filepath)
-        return data, header
+            data, header, ref_dicom = gehc.read_rawdata(filepath)
+        return data, header, ref_dicom
     else:
         print("GEHC reader is private - ask for access")
         return None, None
