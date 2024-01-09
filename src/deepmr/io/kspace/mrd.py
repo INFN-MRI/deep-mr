@@ -3,6 +3,7 @@
 __all__ = ["read_mrd"]
 
 import numpy as np
+import numba as nb
 
 import ismrmrd
 
@@ -143,25 +144,37 @@ def _sort_data(data, traj, dcf, acquisitions, mrdhead):
         dcftmp = np.zeros(shape, dtype=np.float32)
             
         # actual sorting
-        for n in range(len(acquisitions)):
-            datatmp[:, icontrast[n], iz[n], iview[n]] = data[n]
-            trajtmp[icontrast[n], iz[n], iview[n]] = traj[n]
-            dcftmp[icontrast[n], iz[n], iview[n]] = dcf[n]
-            
+        _loop_sorting(datatmp, data, icontrast, iz, iview)
+        _loop_sorting(trajtmp, traj, icontrast, iz, iview)
+        _loop_sorting(dcftmp, dcf, icontrast, iz, iview)
+           
         # assign
         data = np.ascontiguousarray(datatmp.squeeze())
         traj = np.ascontiguousarray(trajtmp.squeeze())
         dcf = np.ascontiguousarray(dcftmp.squeeze())
     else:
         # actual sorting
-        for n in range(len(acquisitions)):
-            datatmp[:, icontrast[n], iz[n], iview[n]] = data[n]
+        _loop_sorting(datatmp, data, icontrast, iz, iview)
+
         # assign
         data = np.ascontiguousarray(datatmp.squeeze())
         
     # keep ordering
-    ordering = np.stack((icontrast, iz, iview), axis=1)
+    ordering = np.stack((icontrast, iz, iview), axis=0)
         
     return data, traj, dcf, ordering
+
+
+@nb.njit(cache=True)
+def _loop_sorting(output, input, echo_num, slice_num, view_num):
+    # get size
+    nframes = input.shape[0]
+    
+    # actual reordering
+    for n in range(nframes):
+        iecho = echo_num[n]
+        islice = slice_num[n]
+        iview = view_num[n]
+        output[:, iecho, islice, iview, :] = input[n]
         
     
