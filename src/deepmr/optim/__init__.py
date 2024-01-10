@@ -1,7 +1,7 @@
 """Sub-package containing optimization routines.
 
 DeepMR provides optimization routines for compressed sensing.
-All the routines are based on the excellent [Deep Inverse](https://github.com/deepinv/deepinv) package.
+All the routines are based on the excellent Deep Inverse (https://github.com/deepinv/deepinv) package.
 
 """
 

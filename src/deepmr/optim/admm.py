@@ -12,8 +12,7 @@ def admm(input, encoding, prior, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, 
     Alternating Direction Method of Multipliers (ADMM) algorithm for
     minimising :math:`\lambda f(x) + g(x)`.
 
-    If the attribute ``g_first`` is set to False (by default),
-    the iteration is (`see this paper <https://www.nowpublishers.com/article/Details/MAL-016>`_):
+    The iteration is given by (`see this paper <https://www.nowpublishers.com/article/Details/MAL-016>`_):
 
     .. math::
         \begin{equation*}
