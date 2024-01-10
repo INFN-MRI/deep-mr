@@ -4,8 +4,9 @@ __all__ = ["admm"]
 
 from deepinv.optim.data_fidelity import L2
 from deepinv.optim.optimizers import optim_builder
+from deepinv.optim.prior import PnP
 
-def admm(input, encoding, prior, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, verbose=False):
+def admm(input, encoding, denoiser, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, verbose=False):
     r"""
     Alternating direction method of multipliers.
 
@@ -31,8 +32,8 @@ def admm(input, encoding, prior, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, 
         Input data of shape ().
     encoding : deepinv.Physics
         Encoding operator.
-    prior : deepinv.Prior
-        Image prior for denoising.
+    denoiser : deepinv.Model
+        Denoiser to be used as an image prior.
     lamda : float, optional
         Regularization strength. The default is 0.01.
     stepsize : float, optional
@@ -63,7 +64,7 @@ def admm(input, encoding, prior, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, 
     # Instantiate the algorithm class to solve the problem.
     optimalgo = optim_builder(
         iteration="ADMM",
-        prior=prior,
+        prior=PnP(denoiser=denoiser),
         data_fidelity=data_fidelity,
         max_iter=max_iter,
         verbose=verbose,
