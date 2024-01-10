@@ -24,7 +24,8 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
-autodoc_mock_imports = ["h5py",
+autodoc_mock_imports = ["deepinv",
+						"h5py",
 						"ismrmrd",
 						"mat73",
 						"matplotlib",

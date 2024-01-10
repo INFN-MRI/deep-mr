@@ -27,6 +27,7 @@ tutorials/02-dl-mri-recon.ipynb
 :caption: API References
 
 api/io.md
+api/optim.md
 
 ```
 
