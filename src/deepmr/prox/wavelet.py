@@ -36,7 +36,7 @@ class WaveletPrior(nn.Module):
         Mother wavelet (follows the `PyWavelets convention <https://pywavelets.readthedocs.io/en/latest/ref/wavelets.html>`_) 
         The default is "db8".
     device : str, optional
-        ``"cpu"`` or ``"gpu"``. The default if ``"cpu"``.
+        ``"cpu"`` or ``"gpu"``. The default is ``"cpu"``.
     non_linearity : str, optional
         ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         If ``"topk"``, only the top-k wavelet coefficients are kept.
