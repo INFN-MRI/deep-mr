@@ -4,4 +4,6 @@ __version__ = version("deepmr")
 
 from . import io
 from . import optim
+from . import prox
+
 from .testdata import testdata

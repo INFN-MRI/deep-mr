@@ -14,7 +14,7 @@ from ..utils import nifti
 from ..utils.header import Header
 
 
-def read_nifti(filepath: str | list | tuple):
+def read_nifti(filepath):# str | list | tuple):
     """
     Read image from nifti files.
 

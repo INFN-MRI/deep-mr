@@ -28,6 +28,7 @@ tutorials/02-dl-mri-recon.ipynb
 
 api/io.md
 api/optim.md
+api/prox.md
 
 ```
 

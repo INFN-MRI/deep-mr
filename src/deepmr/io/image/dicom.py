@@ -13,7 +13,7 @@ import pydicom
 from ..utils import dicom
 from ..utils.header import Header
 
-def read_dicom(filepath: str | list | tuple):
+def read_dicom(filepath):# str | list | tuple):
     """
     Read image from dicom files.
 
