@@ -33,6 +33,8 @@ autodoc_mock_imports = ["deepinv",
 						"numpy",
 						"numba",
 						"pydicom",
+						"pywt",
+						"ptwt",
 						"scipy",
 						"torch",
 						"tqdm"]
