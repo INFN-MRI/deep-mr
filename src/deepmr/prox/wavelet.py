@@ -28,7 +28,7 @@ class WaveletPrior(nn.Module):
 
     Attributes
     ----------
-    dim: int,
+    dim: int
         Number of spatial dimensions.
     level : int, optional
         Decomposition level of the wavelet transform. The default is 3.
@@ -65,7 +65,7 @@ class WaveletPrior(nn.Module):
         self.iwt = lambda x : iwt(x.to(self.device), wavelet, mode="zero", level=self.level)
         self.non_linearity = non_linearity
 
-    def get_ths_map(self, ths):
+    def _get_ths_map(self, ths):
         if isinstance(ths, float) or isinstance(ths, int):
             ths_map = ths
         elif len(ths.shape) == 0 or ths.shape[0] == 1:
@@ -92,7 +92,7 @@ class WaveletPrior(nn.Module):
             Threshold. The default is 0.1.
 
         """
-        ths_map = self.get_ths_map(ths)
+        ths_map = self._get_ths_map(ths)
         return torch.maximum(
             torch.tensor([0], device=x.device).type(x.dtype), x - ths_map
         ) + torch.minimum(torch.tensor([0], device=x.device).type(x.dtype), x + ths_map)
@@ -112,7 +112,7 @@ class WaveletPrior(nn.Module):
         if isinstance(ths, float):
             ths_map = ths
         else:
-            ths_map = self.get_ths_map(ths)
+            ths_map = self._get_ths_map(ths)
             ths_map = ths_map.repeat(
                 1, 1, 1, x.shape[-2], x.shape[-1]
             )  # Reshaping to image wavelet shape
