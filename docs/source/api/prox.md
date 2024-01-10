@@ -7,6 +7,7 @@
 ```{eval-rst}
 .. autosummary::
 	:toctree: generated
+	:nosignatures:
 	
 	deepmr.prox.BM3D
 	deepmr.prox.TV
