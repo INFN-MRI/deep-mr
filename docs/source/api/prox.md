@@ -1,15 +1,18 @@
-# Iterative Optimization (`deepmr.optim`)
+# Image Priors (`deepmr.prox`)
 
 ```{eval-rst}
-.. automodule:: deepmr.optim
+.. automodule:: deepmr.prox
 ```
-## First-order Gradient Methods
+## Classical Priors
 ```{eval-rst}
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
+	deepmr.prox.BM3D
+	deepmr.prox.TV
+	deepmr.prox.TGV
 	deepmr.prox.wavelet
 ```
 
-## Other Methods
+## Learnable Priors
