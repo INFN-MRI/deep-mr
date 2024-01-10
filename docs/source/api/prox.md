@@ -11,7 +11,7 @@
 	deepmr.prox.BM3D
 	deepmr.prox.TV
 	deepmr.prox.TGV
-	deepmr.prox.wavelet
+	deepmr.prox.WaveletPrior
 ```
 
 ## Learnable Priors
