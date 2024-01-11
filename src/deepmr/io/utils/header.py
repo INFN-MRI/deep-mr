@@ -14,6 +14,7 @@ import pydicom
 from ...external.nii2dcm.dcm import DicomMRI
 
 from . import dicom
+from . import gehc
 from . import mrd
 from . import nifti
 
@@ -126,7 +127,27 @@ class Header:
 
     @classmethod
     def from_gehc(cls, header):
-        print("Not Implemented")
+        
+        # calculate geometry parameters
+        shape = header["shape"]
+        spacing = header["spacing"]
+        resolution = header["resolution"]
+        orientation = header["orientation"]
+        position = header["position"]
+        affine = nifti._make_nifti_affine(shape, position, orientation, resolution)
+
+        # get reference dicom
+        ref_dicom = gehc._initialize_series_tag(header["meta"])
+
+        # get dwell time
+        dt = header["dt"]
+        TI = header["TI"]
+        TE = header["TE"]
+        TR = header["TR"]
+        FA = header["FA"] 
+        
+        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, dt, TI, TE, TR, FA)
+
 
     @classmethod
     def from_siemens(cls):
