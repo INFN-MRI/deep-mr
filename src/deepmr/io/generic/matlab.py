@@ -7,7 +7,7 @@ import mat73
 
 from ..utils.pathlib import get_filepath
 
-def read_matfile(filename: str) -> dict:
+def read_matfile(filename, return_fullpath=False):
     """
     Read matfile as a Python dictionary.
 
@@ -17,6 +17,8 @@ def read_matfile(filename: str) -> dict:
     ----------
     filename : str
         Path of the file on disk.
+    return_fullpath : bool, optional
+        If True, also return expanded file path. The default is False.
 
     Returns
     -------
@@ -64,5 +66,7 @@ def read_matfile(filename: str) -> dict:
     except:
         matfile = mat73.loadmat(filename)
         
+    if return_fullpath:
+        return matfile, filename
     return matfile
 

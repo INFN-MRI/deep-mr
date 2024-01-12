@@ -16,18 +16,23 @@ from ..utils import mrd
 from ..utils.header import Header
 from ..utils.pathlib import get_filepath
 
-def read_gehc(filepath: str, return_ordering: bool = False):
+
+def read_gehc(filepath, acqheader=None, ordering=None):
     """
     Read kspace data from GEHC file.
 
     Parameters
     ----------
-    filepath : str | list | tuple
-        Path to mrd file.
-    return_ordering : bool, optional
-        If true, return ordering to sort raw data. 
-        Useful if sequence is stored separately from raw data.
-        The default is False.
+    filepath : str
+        Path to PFile or ScanArchive file.
+    acqheader : Header, deepmr.optional
+        Acquisition header loaded from trajectory.
+        If not provided, assume Cartesian acquisition and infer from data.
+        The default is None.
+    ordering: np.ndarray, optional
+        Data ordering loaded from external file (e.g, trajectory).
+        If not provided, infer from data.
+        The default is None.
     
     Returns
     -------
@@ -43,7 +48,7 @@ def read_gehc(filepath: str, return_ordering: bool = False):
     if __GEHC_AVAILABLE__:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")  # change the hook
-            data, header = gehc.read_rawdata(filepath)
+            data, header = gehc.read_rawdata(filepath, acqheader, ordering)
             
             # build header
             header = Header.from_gehc(header)
