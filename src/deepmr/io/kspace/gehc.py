@@ -46,7 +46,7 @@ def read_gehc(filepath: str, return_ordering: bool = False):
             data, header = gehc.read_rawdata(filepath)
             
             # build header
-            # header = Header.from_gehc(header)
+            header = Header.from_gehc(header)
             
         return data, header
     else:

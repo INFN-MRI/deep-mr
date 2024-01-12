@@ -10,8 +10,10 @@
 	:nosignatures:
 	
 	deepmr.io.read_matfile
+    deepmr.io.read_mrd
 	deepmr.io.read_hdf5
 	deepmr.io.write_hdf5
+
 ```
 
 ## Image I/O routines
@@ -30,7 +32,6 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.io.read_mrd
 	deepmr.io.read_gehc
 ```
 
