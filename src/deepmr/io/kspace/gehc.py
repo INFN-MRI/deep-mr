@@ -17,7 +17,7 @@ from ..utils.header import Header
 from ..utils.pathlib import get_filepath
 
 
-def read_gehc(filepath, acqheader=None, ordering=None):
+def read_gehc(filepath, acqheader=None):
     """
     Read kspace data from GEHC file.
 
@@ -28,10 +28,6 @@ def read_gehc(filepath, acqheader=None, ordering=None):
     acqheader : Header, deepmr.optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
-        The default is None.
-    ordering: np.ndarray, optional
-        Data ordering loaded from external file (e.g, trajectory).
-        If not provided, infer from data.
         The default is None.
     
     Returns
@@ -48,7 +44,7 @@ def read_gehc(filepath, acqheader=None, ordering=None):
     if __GEHC_AVAILABLE__:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")  # change the hook
-            data, header = gehc.read_rawdata(filepath, acqheader, ordering)
+            data, header = gehc.read_rawdata(filepath, acqheader)
             
             # build header
             header = Header.from_gehc(header)

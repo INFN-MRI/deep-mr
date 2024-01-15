@@ -19,8 +19,8 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
 
     Returns
     -------
-    dict
-        Deserialized matfile.
+    dict : deepmr.Header
+        Deserialized trajectory.
         
     """
     # load dcf
@@ -32,11 +32,12 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     
     # get indexes
     if "ind" in matfile:
-        ind = matfile["ind"][0]
+        ind = matfile["ind"][0].astype(bool)
     elif "inds" in matfile:
-        ind = matfile["inds"].squeeze()
+        ind = matfile["inds"].squeeze().astype(bool)
     else:
         raise RuntimeError("ADC indexes not found!")
+    ind = np.argwhere(ind)[[0, -1]].squeeze()
     
     # get dcf
     if "dcf" in matfile:
@@ -52,11 +53,14 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
             
     # get sampling time
     if "t" in matfile:
-        dt = np.diff(matfile["t"][0])[0] * 1e3 # ms
+        t = matfile["t"][0] * 1e3 # ms
     elif "ts" in matfile:
-        dt = np.diff(matfile["ts"].squeeze())[0] * 1e3 # ms
+        t = matfile["ts"].squeeze() * 1e3 # ms
     else:
         raise RuntimeError("Sampling time not found!")
+        
+    # remove offset from sampling time
+    t -= t[0]
     
     # get matrix
     if "mtx" in matfile:
@@ -72,13 +76,9 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     else:
         raise RuntimeError("Field of View not found!")
     resolution = (np.asarray(fov) / np.asarray(shape)).tolist() 
-    
-    # if ndim != 3:
-    #     shape = [1] + shape
-    #     resolution = [1.0] + resolution
-        
+            
     # initialize header
-    head = Header(shape, resolution, dt=dt)
+    head = Header(shape, resolution, t=t)
     head.adc = ind
    
     # get schedule file
@@ -93,8 +93,12 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     if dcf is not None:
         dcf = dcf.reshape(nviews, ncontrasts, -1).swapaxes(0, 1)
         dcf = np.ascontiguousarray(dcf).astype(np.float32)
+        
+    # append
+    head.traj = k
+    head.dcf = dcf
     
-    return k, dcf, head
+    return head
 
     
 # %% subroutines
@@ -103,12 +107,12 @@ def _get_trajectory(matfile):
     if "k" in matfile:
         k = matfile["k"]
         # get shape
-        if "ind" in matfile:
-            npts = matfile["ind"].shape[-1]
-        elif "inds" in matfile:
-            npts = matfile["inds"].shape[-1]
+        if "t" in matfile:
+            npts = matfile["t"].shape[-1]
+        elif "ts" in matfile:
+            npts = matfile["ts"].shape[-1]
         else:
-            raise RuntimeError("ADC indexes not found!")
+            raise RuntimeError("Time not found!")
         nviews = int(k.shape[1] / npts)
         
         # reshape
@@ -164,24 +168,24 @@ def _get_schedule(head, matfile, schedulename):
             schedule = None
     if schedule is not None:
         if "VariableFlip" in schedule.dtype.fields:
-            FA = schedule["VariableFlip"][0][0].squeeze()
+            FA = schedule["VariableFlip"][0][0].squeeze().astype(np.float32)
         else:
             FA = 0.0
         if "VariablePhase" in schedule.dtype.fields:
-            phase = schedule["VariableFlip"][0][0].squeeze()
+            phase = schedule["VariableFlip"][0][0].squeeze().astype(np.float32)
             FA = FA * np.exp(1j * np.deg2rad(phase))
         else:
             FA = 0.0
         if "VariableTE" in schedule.dtype.fields:
-            TE = schedule["VariableTE"][0][0].squeeze()
+            TE = schedule["VariableTE"][0][0].squeeze().astype(np.float32)
         elif "TE" in schedule.dtype.fields:
-            TE = float(schedule["TE"][0][0].squeeze())
+            TE = schedule["TE"][0][0].squeeze().astype(np.float32)
         if "VariableTR" in schedule.dtype.fields:
-            TR = schedule["VariableTR"][0][0].squeeze()
+            TR = schedule["VariableTR"][0][0].squeeze().astype(np.float32)
         else:
             TR = 0.0
         if "InversionTime" in schedule.dtype.fields:
-            TI = schedule["InversionTime"][0][0].squeeze()
+            TI = schedule["InversionTime"][0][0].squeeze().astype(np.float32)
         else:
             TI = 0.0
     else:

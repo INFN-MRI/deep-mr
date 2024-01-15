@@ -284,8 +284,6 @@ def _initialize_series_tag(json):
         dicomDset.SeriesTime = json["SeriesTime"]
     if "PatientPosition" in json:
         dicomDset.PatientPosition = json["PatientPosition"]
-    if "IsocenterPosition" in json:
-        dicomDset.IsocenterPosition = json["IsocenterPosition"]
     if "SequenceName" in json:
         dicomDset.SequenceName = json["SequenceName"]
     if "FrameOfReferenceUID" in json:

@@ -46,8 +46,6 @@ def _initialize_series_tag(head):
         dicomDset.SeriesTime = head["SeriesTime"]
     if "PatientPosition" in head:
         dicomDset.PatientPosition = head["PatientPosition"]
-    if "IsocenterPosition" in head:
-        dicomDset.IsocenterPosition = head["IsocenterPosition"]
     if "SequenceName" in head:
         dicomDset.SequenceName = head["SequenceName"]
     if "FrameOfReferenceUID" in head:

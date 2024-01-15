@@ -1,180 +1,231 @@
-"""MRD data reading routines."""
+"""I/O Routines for MRD trajectories."""
 
-__all__ = ["read_mrd"]
+__all__ = ["read_mrd_traj", "write_mrd_traj"]
+
+import os
 
 import numpy as np
 import numba as nb
 
 import ismrmrd
 
-from ..utils import mrd
-from ..utils.header import Header
-from ..utils.pathlib import get_filepath
+from ..generic import mrd
 
-def read_mrd(filepath: str, return_ordering: bool = False):
+def read_mrd_traj(filepath):
     """
-    Read kspace data from mrd file.
+    Read trajectory data from mrd file.
 
     Parameters
     ----------
     filepath : str | list | tuple
         Path to mrd file.
-    return_ordering : bool, optional
-        If true, return ordering to sort raw data. 
-        Useful if sequence is stored separately from raw data.
-        The default is False.
     
     Returns
     -------
-    data : np.ndarray
-        Complex k-space data of shape (ncoils, ncontrasts, nslices, nview, npts).
-    traj : np.ndarray
-        Sampling trajectory of shape (ncontrasts, nslices, nview, npts).
-    dcf : np.ndarray
-        Sampling density compensation factor of shape (ncontrasts, nslices, nview, npts, ndims)
-    header : deepmr.Header
-        Metadata for image reconstruction.
-    ordering: np.ndarray, optional
-        Re-ordering indexes of shape (nacquisitions, 3), storing
-        the contrast, slice and view index (in the column axis), respectively,
-        for each acquisition (row) in the dataset. Only returned if 'return_ordering'
-        is True.
-
+    dict : deepmr.Header
+        Deserialized trajectory.
+        
     """
-    # get full path
-    filepath = get_filepath(filepath, True, "h5")
-    
-    # load mrd
-    acquisitions, mrdhead = _read_mrd(filepath)
-        
-    # get all data
-    data, traj, dcf = _get_data(acquisitions)
-    
-    # sort
-    data, traj, dcf, ordering = _sort_data(data, traj, dcf, acquisitions, mrdhead)
-    
-    # get constrats info
-    TI = mrd._get_inversion_times(mrdhead)
-    TE = mrd._get_echo_times(mrdhead)
-    TR = mrd._get_repetition_times(mrdhead)    
-    FA = mrd._get_flip_angles(mrdhead)
-    
-    # get slice locations
-    _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
-    
-    # build header
-    header = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx)
-    
-    # update header
-    header.FA = FA
-    header.TI = TI
-    header.TE = TE
-    header.TR = TR
-        
-    if return_ordering:
-        return data, traj, dcf, header, ordering
-    else:
-        return data, traj, dcf, header
-        
+    _, head = mrd.read_mrd(filepath, return_ordering=True)
+    return head
+     
+def write_mrd_traj(head, filepath):
+    """
+    Write trajectory data to mrd file.
 
-# %% subroutines
-def _read_header(dset):
-    xml_header = dset.read_xml_header()
-    xml_header = xml_header.decode("utf-8")
-    return ismrmrd.xsd.CreateFromDocument(xml_header)
-
-
-def _read_mrd(filename):
-    # open file
-    dset = ismrmrd.Dataset(filename)
-    
-    # read header
-    mrdhead = _read_header(dset)
-    
-    # read acquisitions
-    nacq = dset.number_of_acquisitions()
-    acquisitions = [dset.read_acquisition(n) for n in range(nacq)]
-    
-    # close
-    dset.close()
-    
-    return acquisitions, mrdhead
-
-
-def _get_data(acquisitions):
-    data = np.stack([acq.data for acq in acquisitions], axis=0)
-    
-    if acquisitions[0].traj.size != 0:
-        trajdcf = np.stack([acq.traj for acq in acquisitions], axis=0)
-        traj = trajdcf[..., :-1]
-        dcf = trajdcf[..., -1]
-    else:
-        traj, dcf = None, None
-    
-    return data, traj, dcf
-
-
-def _sort_data(data, traj, dcf, acquisitions, mrdhead):
-    
-    # order
-    icontrast = np.asarray([acq.idx.contrast for acq in acquisitions])
-    iz = np.asarray([acq.idx.slice for acq in acquisitions])
-    iview = np.asarray([acq.idx.kspace_encode_step_1 for acq in acquisitions])
-                
-    # get geometry from header
-    shape = mrdhead.encoding[0].encodingLimits
-                
-    # get sizes
-    ncoils = data.shape[1]
-    ncontrasts = shape.contrast.maximum+1
-    nslices = shape.slice.maximum+1
-    nviews = shape.kspace_encoding_step_1.maximum+1
-    npts = data.shape[-1]
-    ndims = traj.shape[-1] # last tims stores dcfs
-
-    # get fov, matrix size and kspace size
-    shape = (ncontrasts, nslices, nviews, npts)
-    
-    # sort trajectory, dcf and t
-    datatmp = np.zeros([ncoils] + list(shape), dtype=np.complex64)
-        
-    if traj is not None:
-        # preallocate
-        trajtmp = np.zeros(list(shape) + [ndims], dtype=np.float32)
-        dcftmp = np.zeros(shape, dtype=np.float32)
+    Parameters
+    ----------
+    head: deepmr.Header
+        Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
+        and meta information (shape, resolution, spacing, etc).
+    filepath : str | list | tuple
+        Path to mrd file.
             
-        # actual sorting
-        _loop_sorting(datatmp, data, icontrast, iz, iview)
-        _loop_sorting(trajtmp, traj, icontrast, iz, iview)
-        _loop_sorting(dcftmp, dcf, icontrast, iz, iview)
-           
-        # assign
-        data = np.ascontiguousarray(datatmp.squeeze())
-        traj = np.ascontiguousarray(trajtmp.squeeze())
-        dcf = np.ascontiguousarray(dcftmp.squeeze())
+    """    
+    # prepare path
+    if filepath.endswith(".h5"):
+        filepath = filepath[:-3]
+    filepath += ".h5"
+    filepath = os.path.realpath(filepath)
+    
+    if os.path.exists(filepath):
+        raise RuntimeError(f"{filepath} already existing!")
+    
+    # initialize xml header
+    xmlhead = _create_hdr(head)
+    
+    # get dwell time
+    dt = int(np.diff(head.t)[0] * 1e3) # ms to us
+    
+    # prepare trajecoty and dcf
+    traj = head.traj.astype(np.float32)
+    if head.dcf is None:
+        dcf = np.ones(traj.shape[:-1], dtype=np.float32)
     else:
-        # actual sorting
-        _loop_sorting(datatmp, data, icontrast, iz, iview)
-
-        # assign
-        data = np.ascontiguousarray(datatmp.squeeze())
+        dcf = head.dcf.astype(np.float32)
+    traj = np.concatenate((traj, dcf[..., None]), axis=-1)
+    
+    # get number of acquisitions
+    nacq = np.prod(traj.shape[:-2])
+    
+    # loop and prepare acquisitions
+    if "ordering" in head.user:
+        ordering = head.user["ordering"]
+    else:
+        ordering = None
         
-    # keep ordering
-    ordering = np.stack((icontrast, iz, iview), axis=0)
+    # preallocate inverse ordering
+    ncontrasts, nslices, nviews, npts = traj.shape[0], head.shape[0], traj.shape[1], traj.shape[-2]
+    iordering = np.zeros((ncontrasts, nslices, nviews), dtype=int)
+    if ordering is not None:
+        icontrast, iz, iview = ordering
+        _invert_ordering(iordering, nacq, icontrast, iz, iview)
+    else:
+        # assume (from innermost to outermost) contrast -> views -> slices
+        _initialize_ordering(iordering, ncontrasts, nslices, nviews)
+        icontrast, iview, iz = np.broadcast_arrays(np.arange(ncontrasts), np.arange(nviews)[:, None], np.arange(nslices)[:, None, None])
+        icontrast, iview, iz = icontrast.ravel(), iview.ravel(), iz.ravel()
+                                                   
+    # reshape trajectory and prepare dummy data
+    traj = traj.reshape(nacq, npts, -1)
+    dummy = np.zeros((1, npts), dtype=np.complex64)
         
-    return data, traj, dcf, ordering
+    # prepare
+    prot = ismrmrd.Dataset(filepath)
+    prot.write_xml_header(xmlhead)
+    for n in range(nacq):
+        # add acquisitions to metadata
+        acq = ismrmrd.Acquisition.from_array(dummy, traj[n])
+        acq.sample_time_us = dt
+        acq.idx.kspace_encode_step_1 = iview[n]
+        acq.idx.slice = iz[n]
+        acq.idx.contrast = icontrast[n]
+        prot.append_acquisition(acq)
+        
+    # finalize
+    prot.close()
+    
+# %% utils
+def _create_hdr(head):
 
+    hdr = ismrmrd.xsd.ismrmrdHeader()
+
+    # encoding
+    encoding = ismrmrd.xsd.encodingType()
+    encoding.trajectory = ismrmrd.xsd.trajectoryType("other")
+
+    # set fov and matrix size
+    fov = np.asarray(head.shape) * np.asarray([head.spacing] + list(head.resolution)[1:])
+    
+    efov = ismrmrd.xsd.fieldOfViewMm()
+    efov.z, efov.y, efov.x = fov
+    
+    rfov = ismrmrd.xsd.fieldOfViewMm()
+    rfov.z, rfov.y, rfov.x = fov
+    
+    ematrix = ismrmrd.xsd.matrixSizeType()
+    ematrix.z, ematrix.y, ematrix.x = head.shape
+    
+    rmatrix = ismrmrd.xsd.matrixSizeType()
+    rmatrix.z, rmatrix.y, rmatrix.x = head.shape
+
+    # set encoded and recon spaces
+    espace = ismrmrd.xsd.encodingSpaceType()
+    espace.matrixSize = ematrix
+    espace.fieldOfView_mm = efov
+    
+    rspace = ismrmrd.xsd.encodingSpaceType()
+    rspace.matrixSize = rmatrix
+    rspace.fieldOfView_mm = rfov
+    
+    encoding.encodedSpace = espace
+    encoding.reconSpace = rspace
+
+    # encoding limits
+    nslices, ncontrasts, nviews = head.shape[0], head.traj.shape[0], head.traj.shape[1]
+    
+    limits = ismrmrd.xsd.encodingLimitsType()
+    limits.slice = ismrmrd.xsd.limitType()
+    limits.slice.minimum = 0
+    limits.slice.maximum = nslices - 1
+    limits.slice.center = int(nslices // 2)
+
+    limits.contrast = ismrmrd.xsd.limitType()
+    limits.contrast.minimum = 0
+    limits.contrast.maximum = ncontrasts - 1
+    limits.contrast.center = int(ncontrasts // 2)
+    
+    limits.kspace_encoding_step_1 = ismrmrd.xsd.limitType()
+    limits.kspace_encoding_step_1.minimum = 0
+    limits.kspace_encoding_step_1.maximum = nviews - 1
+    limits.kspace_encoding_step_1.center = int(nviews // 2)
+    
+    encoding.encodingLimits = limits
+
+    # append encoding
+    hdr.encoding.append(encoding)
+        
+    # sequence parameters
+    sequence = ismrmrd.xsd.sequenceParametersType()
+    
+    # append sequence parameters
+    for n in range(ncontrasts):
+        if head.FA is not None:
+            sequence.flipAngle_deg.append(abs(head.FA[n]))
+        if head.TI is not None:
+            sequence.TI.append(head.TI[n])
+        if head.TE is not None:
+            sequence.TE.append(head.TE[n])
+        if head.TR is not None:
+            sequence.TR.append(head.TR[n])
+        
+    # user parameters
+    hdr.userParameters = ismrmrd.xsd.userParametersType()
+    slice_thickness = ismrmrd.xsd.userParameterDoubleType()
+    slice_thickness.name = "SliceThickness"
+    slice_thickness.value = head.resolution[0]
+    hdr.userParameters.userParameterDouble.append(slice_thickness)
+    
+    spacing = ismrmrd.xsd.userParameterDoubleType()
+    spacing.name = "SpacingBetweenSlices"
+    spacing.value = head.spacing
+    hdr.userParameters.userParameterDouble.append(spacing)
+    
+    for k in head.user:
+        value = head.user[k]
+        if np.issubdtype(type(value), int):
+            tmp = ismrmrd.xsd.userParameterLongType()
+            tmp.name = k
+            tmp.value = int(value)
+            hdr.userParameters.userParameterLong.append(tmp)
+        if np.issubdtype(type(value), np.floating):
+            tmp = ismrmrd.xsd.userParameterDoubleType()
+            tmp.name = k
+            tmp.value = float(value)
+            hdr.userParameters.userParameterDouble.append(tmp)
+        if isinstance(value, str):
+            tmp = ismrmrd.xsd.userParameterStringType()
+            tmp.name = k
+            tmp.value = value
+            hdr.userParameters.userParameterString.append(tmp)
+    
+    return hdr.toXML("utf-8")
 
 @nb.njit(cache=True)
-def _loop_sorting(output, input, echo_num, slice_num, view_num):
-    # get size
-    nframes = input.shape[0]
-    
+def _invert_ordering(output, nframes, echo_num, slice_num, view_num):  
     # actual reordering
     for n in range(nframes):
         iecho = echo_num[n]
         islice = slice_num[n]
         iview = view_num[n]
-        output[:, iecho, islice, iview, :] = input[n]
+        output[iecho, islice, iview] = n
         
-    
+@nb.njit(cache=True)
+def _initialize_ordering(output, echo_num, slice_num, view_num):
+    nframes = 0
+    for z in range(slice_num):
+        for v in range(view_num):
+            for c in range(echo_num):
+                output[c, z, v] = nframes
+                nframes += 1
+                

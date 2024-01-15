@@ -34,7 +34,6 @@ class Header:
 
     # meta
     ref_dicom: pydicom.Dataset = None
-    dt: float = None  # dwell time in ms
 
     # sequence
     TI: np.ndarray = None
@@ -44,8 +43,27 @@ class Header:
     
     # reconstruction
     adc: np.ndarray = None
+    shift: tuple = (0.0, 0.0, 0.0)
+    t: np.ndarray = None  # sampling time in ms
+    traj: np.ndarray = None
+    dcf: np.ndarray = None
+    user: dict = field(default_factory=lambda: {})
 
     def __post_init__(self):
+        
+        # cast
+        if self.TI is not None:
+            self.TI = np.asarray(self.TI, dtype=np.float32)
+        if self.TE is not None:
+            self.TE = np.asarray(self.TE, dtype=np.float32)
+        if self.TR is not None:
+            self.TR = np.asarray(self.TR, dtype=np.float32)
+        if self.FA is not None:
+            if np.iscomplexobj(self.FA):
+                self.FA = np.asarray(self.FA, dtype=np.complex64)
+            else:
+                self.FA = np.asarray(self.FA, dtype=np.float32)
+        
         # fix spacing
         if self.spacing is None:
             self.spacing = self.resolution[0]
@@ -129,9 +147,9 @@ class Header:
         ref_dicom = mrd._initialize_series_tag(header)
 
         # get dwell time
-        dt = float(acquisitions[0].sample_time_us) * 1e-3  # ms
+        # dt = float(acquisitions[0].sample_time_us) * 1e-3  # ms
 
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, dt)
+        return cls(shape, resolution, spacing, orientation, affine, ref_dicom)
 
     @classmethod
     def from_gehc(cls, header):
@@ -148,15 +166,17 @@ class Header:
         ref_dicom = gehc._initialize_series_tag(header["meta"])
 
         # get dwell time
-        dt = header["dt"]
         TI = header["TI"]
         TE = header["TE"]
         TR = header["TR"]
         FA = header["FA"] 
         adc = header["adc"]
+        shift = header["shift"]
+        t = header["t"]
+        traj = header["traj"]
+        dcf = header["dcf"]
         
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, dt, TI, TE, TR, FA, adc)
-
+        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, TI, TE, TR, FA, adc, shift, t, traj, dcf)
 
     @classmethod
     def from_siemens(cls):
@@ -183,14 +203,12 @@ class Header:
         ref_dicom = dicom._initialize_series_tag(copy.deepcopy(dsets[0]))
 
         # get dwell time
-        try:
-            dt = float(dsets[0][0x0019, 0x1018].value) * 1e-6  # ms
-        except Exception:
-            dt = None
+        # try:
+        #     dt = float(dsets[0][0x0019, 0x1018].value) * 1e-6  # ms
+        # except Exception:
+        #     dt = None
 
-        return cls(
-            shape, resolution, spacing, orientation.ravel(), affine, ref_dicom, dt
-        )
+        return cls(shape, resolution, spacing, orientation.ravel(), affine, ref_dicom)
 
     @classmethod
     def from_nifti(cls, img, header, affine, json):
@@ -210,12 +228,12 @@ class Header:
         ref_dicom = nifti._initialize_series_tag(json)
 
         # get dwell time
-        try:
-            dt = float(json["DwellTime"]) * 1e3  # ms
-        except Exception:
-            dt = None
+        # try:
+        #     dt = float(json["DwellTime"]) * 1e3  # ms
+        # except Exception:
+        #     dt = None
 
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, dt)
+        return cls(shape, resolution, spacing, orientation, affine, ref_dicom)
 
     def to_dicom(self):
         pass

@@ -17,7 +17,7 @@ def _find_in_user_params(userField, *keys):
 
     # find positions
     idx = [names.index(k) for k in keys if k in names]
-    values = [userField[i] for i in idx]
+    values = [userField[i].value for i in idx]
 
     if len(keys) == len(values):
         return dict(zip(keys, values))

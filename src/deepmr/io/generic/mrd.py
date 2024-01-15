@@ -11,7 +11,7 @@ from ..utils import mrd
 from ..utils.header import Header
 from ..utils.pathlib import get_filepath
 
-def read_mrd(filepath: str, return_ordering: bool = False):
+def read_mrd(filepath, return_ordering=False):
     """
     Read kspace data from mrd file.
 
@@ -28,17 +28,8 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     -------
     data : np.ndarray
         Complex k-space data of shape (ncoils, ncontrasts, nslices, nview, npts).
-    traj : np.ndarray
-        Sampling trajectory of shape (ncontrasts, nslices, nview, npts).
-    dcf : np.ndarray
-        Sampling density compensation factor of shape (ncontrasts, nslices, nview, npts, ndims)
     header : deepmr.Header
         Metadata for image reconstruction.
-    ordering: np.ndarray, optional
-        Re-ordering indexes of shape (nacquisitions, 3), storing
-        the contrast, slice and view index (in the column axis), respectively,
-        for each acquisition (row) in the dataset. Only returned if 'return_ordering'
-        is True.
 
     """
     # get full path
@@ -63,46 +54,59 @@ def read_mrd(filepath: str, return_ordering: bool = False):
     _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
     
     # build header
-    header = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx)
+    head = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx)
     
     # update header
-    header.FA = FA
-    header.TI = TI
-    header.TE = TE
-    header.TR = TR
-        
-    if return_ordering:
-        return data, traj, dcf, header, ordering
+    head.FA = FA
+    head.TI = TI
+    head.TE = TE
+    head.TR = TR
+    
+    # get npts
+    if data.size != 0:
+        npts = data.shape[-1]
+    elif traj.size != 0:
+        npts = traj.shape[-2]
     else:
-        return data, traj, dcf, header
+        raise RuntimeError("HDF5 did not contain data nor trajectory")
+    
+    head.adc = (acquisitions[0].discard_pre, npts - acquisitions[0].discard_post)
+    dt = acquisitions[0].sample_time_us * 1e-3 # ms    
+    head.t = dt * np.arange(npts, dtype=np.float32)
+    head.traj = traj
+    head.dcf = dcf
+    
+    if return_ordering:
+        head.user["ordering"] = ordering
+        
+    return data, head
         
 
 # %% subroutines
-def _read_header(dset):
-    xml_header = dset.read_xml_header()
-    xml_header = xml_header.decode("utf-8")
-    return ismrmrd.xsd.CreateFromDocument(xml_header)
-
-
 def _read_mrd(filename):
     # open file
-    dset = ismrmrd.Dataset(filename)
-    
-    # read header
-    mrdhead = _read_header(dset)
-    
-    # read acquisitions
-    nacq = dset.number_of_acquisitions()
-    acquisitions = [dset.read_acquisition(n) for n in range(nacq)]
-    
-    # close
-    dset.close()
+    with ismrmrd.File(filename) as dset:
+        
+        # read header
+        mrdhead = _read_header(dset["dataset"])
+        
+        # read acquisitions
+        acquisitions = dset["acquisitions"]
     
     return acquisitions, mrdhead
 
 
+def _read_header(dset):
+    xml_header = dset["xml"]
+    xml_header = xml_header.decode("utf-8")
+    return ismrmrd.xsd.CreateFromDocument(xml_header)
+
+
 def _get_data(acquisitions):
-    data = np.stack([acq.data for acq in acquisitions], axis=0)
+    if acquisitions[0].data.size != 0:
+        data = np.stack([acq.data for acq in acquisitions], axis=0)
+    else:
+        data = None
     
     if acquisitions[0].traj.size != 0:
         trajdcf = np.stack([acq.traj for acq in acquisitions], axis=0)
@@ -144,9 +148,9 @@ def _sort_data(data, traj, dcf, acquisitions, mrdhead):
         dcftmp = np.zeros(shape, dtype=np.float32)
             
         # actual sorting
-        _loop_sorting(datatmp, data, icontrast, iz, iview)
-        _loop_sorting(trajtmp, traj, icontrast, iz, iview)
-        _loop_sorting(dcftmp, dcf, icontrast, iz, iview)
+        _data_sorting(datatmp, data, icontrast, iz, iview)
+        _traj_sorting(trajtmp, traj, icontrast, iz, iview)
+        _dcf_sorting(dcftmp, dcf, icontrast, iz, iview)
            
         # assign
         data = np.ascontiguousarray(datatmp.squeeze())
@@ -154,7 +158,7 @@ def _sort_data(data, traj, dcf, acquisitions, mrdhead):
         dcf = np.ascontiguousarray(dcftmp.squeeze())
     else:
         # actual sorting
-        _loop_sorting(datatmp, data, icontrast, iz, iview)
+        _data_sorting(datatmp, data, icontrast, iz, iview)
 
         # assign
         data = np.ascontiguousarray(datatmp.squeeze())
@@ -166,7 +170,7 @@ def _sort_data(data, traj, dcf, acquisitions, mrdhead):
 
 
 @nb.njit(cache=True)
-def _loop_sorting(output, input, echo_num, slice_num, view_num):
+def _data_sorting(output, input, echo_num, slice_num, view_num):
     # get size
     nframes = input.shape[0]
     
@@ -176,5 +180,29 @@ def _loop_sorting(output, input, echo_num, slice_num, view_num):
         islice = slice_num[n]
         iview = view_num[n]
         output[:, iecho, islice, iview, :] = input[n]
+        
+@nb.njit(cache=True)
+def _traj_sorting(output, input, echo_num, slice_num, view_num):
+    # get size
+    nframes = input.shape[0]
+    
+    # actual reordering
+    for n in range(nframes):
+        iecho = echo_num[n]
+        islice = slice_num[n]
+        iview = view_num[n]
+        output[iecho, islice, iview, :, :] = input[n]
+        
+@nb.njit(cache=True)
+def _dcf_sorting(output, input, echo_num, slice_num, view_num):
+    # get size
+    nframes = input.shape[0]
+    
+    # actual reordering
+    for n in range(nframes):
+        iecho = echo_num[n]
+        islice = slice_num[n]
+        iview = view_num[n]
+        output[iecho, islice, iview, :] = input[n]
         
     
