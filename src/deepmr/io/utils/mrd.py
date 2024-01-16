@@ -121,9 +121,9 @@ def _get_image_orientation(acquisitions):
     """
     Return image orientation matrix.
     """
-    tmp = acquisitions[0].getHead()
-    dircosX = np.asarray(tmp.read_dir)
-    dircosY = np.asarray(tmp.phase_dir)
+    tmp = acquisitions[0]["head"]
+    dircosX = np.asarray(tmp["read_dir"])
+    dircosY = np.asarray(tmp["phase_dir"])
     orientation = (
         dircosX[0],
         dircosX[1],
@@ -142,10 +142,13 @@ def _get_position(acquisitions):
     """
     Return matrix of image position of size (3, nslices).
     """
+    nacq = len(acquisitions)
     return np.stack(
         [
-            np.asarray([acq.position[0], acq.position[1], acq.position[2]])
-            for acq in acquisitions
+            np.asarray([acquisitions[n]["head"]["position"][0], 
+                        acquisitions[n]["head"]["position"][1], 
+                        acquisitions[n]["head"]["position"][2]])
+            for n in range(nacq)
         ],
         axis=1,
     )
@@ -155,7 +158,8 @@ def _get_origin(acquisitions):
     """
     Return image origin.
     """
-    pos = [np.asarray(acq.getHead().position) for acq in acquisitions]
+    nacq = len(acquisitions)
+    pos = [np.asarray(acquisitions[n]["head"]["position"]) for n in range(nacq)]
     pos = np.stack(pos, axis=0)
     origin = tuple(pos.mean(axis=0))
     return origin
@@ -237,9 +241,7 @@ def _initialize_series_tag(mrdHead):
                 dicomDset.PatientSex = mrdHead.subjectInformation.patientGender
 
     except Exception:
-        print(
-            "Error setting header information from MRD header's subjectInformationType section"
-        )
+        pass
 
     try:
         if mrdHead.studyInformation is None:
@@ -259,9 +261,7 @@ def _initialize_series_tag(mrdHead):
                 dicomDset.StudyInstanceUID = mrdHead.studyInformation.studyInstanceUID
 
     except Exception:
-        print(
-            "Error setting header information from MRD header's studyInformationType section"
-        )
+        pass
 
     try:
         if mrdHead.measurementInformation is None:
@@ -295,9 +295,7 @@ def _initialize_series_tag(mrdHead):
                 )
 
     except Exception:
-        print(
-            "Error setting header information from MRD header's measurementInformation section"
-        )
+        pass
 
     try:
         if mrdHead.acquisitionSystemInformation.systemVendor is not None:
@@ -317,8 +315,6 @@ def _initialize_series_tag(mrdHead):
         if mrdHead.acquisitionSystemInformation.stationName is not None:
             dicomDset.StationName = mrdHead.acquisitionSystemInformation.stationName
     except Exception:
-        print(
-            "Error setting header information from MRD header's acquisitionSystemInformation section"
-        )
+        pass
 
     return dicomDset

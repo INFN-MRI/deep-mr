@@ -127,9 +127,7 @@ class Header:
             self.ref_dicom[0x0018, 0x0086].value = "1"  # Echo Number
 
     @classmethod
-    def from_mrd(cls, header, acquisitions, firstVolumeIdx):
-        # first, get acquisition for the first contrast
-        acquisitions = mrd._get_first_volume(acquisitions, firstVolumeIdx)
+    def from_mrd(cls, header, acquisitions, firstVolumeIdx, external):
 
         # get other relevant info from header
         geom = header.encoding[0].encodedSpace
@@ -139,17 +137,23 @@ class Header:
         shape = mrd._get_shape(geom)
         spacing, dz = mrd._get_spacing(user, geom, shape)
         resolution = mrd._get_resolution(geom, shape, dz)
-        orientation = mrd._get_image_orientation(acquisitions)
-        position = mrd._get_position(acquisitions)
-        affine = nifti._make_nifti_affine(shape, position, orientation, resolution)
-
+    
         # get reference dicom
         ref_dicom = mrd._initialize_series_tag(header)
 
         # get dwell time
-        # dt = float(acquisitions[0].sample_time_us) * 1e-3  # ms
+        dt = float(acquisitions[0]["head"]["sample_time_us"]) * 1e-3  # ms
+        t = np.arange(acquisitions[0]["head"]["number_of_samples"]) * dt
+        
+        if external:
+            return cls(shape, resolution, spacing, ref_dicom=ref_dicom, t=t)
+        else:
+            acquisitions = mrd._get_first_volume(acquisitions, firstVolumeIdx)
+            orientation = mrd._get_image_orientation(acquisitions)
+            position = mrd._get_position(acquisitions)
+            affine = nifti._make_nifti_affine(shape, position, orientation, resolution)
 
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom)
+            return cls(shape, resolution, spacing, orientation, affine, ref_dicom, t=t)
 
     @classmethod
     def from_gehc(cls, header):

@@ -17,7 +17,7 @@ def read_mrd_traj(filepath):
 
     Parameters
     ----------
-    filepath : str | list | tuple
+    filepath : str
         Path to mrd file.
     
     Returns
@@ -26,10 +26,10 @@ def read_mrd_traj(filepath):
         Deserialized trajectory.
         
     """
-    _, head = mrd.read_mrd(filepath, return_ordering=True)
+    _, head = mrd.read_mrd(filepath, external=True)
     return head
      
-def write_mrd_traj(head, filepath):
+def write_mrd_traj(head, filepath, compress=False):
     """
     Write trajectory data to mrd file.
 
@@ -38,9 +38,12 @@ def write_mrd_traj(head, filepath):
     head: deepmr.Header
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc).
-    filepath : str | list | tuple
+    filepath : str 
         Path to mrd file.
-            
+    compress: bool, optional
+        If true, compress trajectory before writing.
+        This will discard DCFs. The default is False.
+        
     """    
     # prepare path
     if filepath.endswith(".h5"):
@@ -75,7 +78,11 @@ def write_mrd_traj(head, filepath):
         ordering = None
         
     # preallocate inverse ordering
-    ncontrasts, nslices, nviews, npts = traj.shape[0], head.shape[0], traj.shape[1], traj.shape[-2]
+    if traj.shape[-1]-1 == 2:
+        ncontrasts, nslices, nviews, npts = traj.shape[0], head.shape[0], traj.shape[1], traj.shape[-2]
+    elif traj.shape[-1]-1 == 3:
+        ncontrasts, nslices, nviews, npts = traj.shape[0], 1, traj.shape[1], traj.shape[-2]
+        
     iordering = np.zeros((ncontrasts, nslices, nviews), dtype=int)
     if ordering is not None:
         icontrast, iz, iview = ordering
@@ -142,7 +149,10 @@ def _create_hdr(head):
     encoding.reconSpace = rspace
 
     # encoding limits
-    nslices, ncontrasts, nviews = head.shape[0], head.traj.shape[0], head.traj.shape[1]
+    if head.traj.shape[-1]-1 == 2:
+        nslices, ncontrasts, nviews = head.shape[0], head.traj.shape[0], head.traj.shape[1]
+    elif head.traj.shape[-1]-1 == 3:
+        nslices, ncontrasts, nviews = 1, head.traj.shape[0], head.traj.shape[1]
     
     limits = ismrmrd.xsd.encodingLimitsType()
     limits.slice = ismrmrd.xsd.limitType()
@@ -228,4 +238,7 @@ def _initialize_ordering(output, echo_num, slice_num, view_num):
             for c in range(echo_num):
                 output[c, z, v] = nframes
                 nframes += 1
+    
+
+    
                 

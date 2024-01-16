@@ -11,7 +11,7 @@ from ..utils import mrd
 from ..utils.header import Header
 from ..utils.pathlib import get_filepath
 
-def read_mrd(filepath, return_ordering=False):
+def read_mrd(filepath, external=False):
     """
     Read kspace data from mrd file.
 
@@ -19,8 +19,8 @@ def read_mrd(filepath, return_ordering=False):
     ----------
     filepath : str | list | tuple
         Path to mrd file.
-    return_ordering : bool, optional
-        If true, return ordering to sort raw data. 
+    external : bool, optional
+        If true, skip data and return ordering to sort raw data. 
         Useful if sequence is stored separately from raw data.
         The default is False.
     
@@ -36,132 +36,144 @@ def read_mrd(filepath, return_ordering=False):
     filepath = get_filepath(filepath, True, "h5")
     
     # load mrd
-    acquisitions, mrdhead = _read_mrd(filepath)
+    with ismrmrd.File(filepath) as file:
+        # read data
+        acquisitions, mrdhead = _read_mrd(file)
+            
+        # get all data
+        data, trajdcf = _get_data(acquisitions, external)
+                
+        # sort
+        data, traj, dcf, ordering = _sort_data(data, trajdcf, acquisitions, mrdhead)
+    
+        # get constrats info
+        TI = mrd._get_inversion_times(mrdhead)
+        TE = mrd._get_echo_times(mrdhead)
+        TR = mrd._get_repetition_times(mrdhead)    
+        FA = mrd._get_flip_angles(mrdhead)
         
-    # get all data
-    data, traj, dcf = _get_data(acquisitions)
-    
-    # sort
-    data, traj, dcf, ordering = _sort_data(data, traj, dcf, acquisitions, mrdhead)
-    
-    # get constrats info
-    TI = mrd._get_inversion_times(mrdhead)
-    TE = mrd._get_echo_times(mrdhead)
-    TR = mrd._get_repetition_times(mrdhead)    
-    FA = mrd._get_flip_angles(mrdhead)
-    
-    # get slice locations
-    _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
-    
-    # build header
-    head = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx)
+        # get npts
+        if data is not None:
+            npts = data.shape[-1]
+        elif traj is not None:
+            npts = traj.shape[-2]
+        else:
+            raise RuntimeError("HDF5 did not contain data nor trajectory")
+            
+        # get adc
+        adc = (acquisitions[0]["head"]["discard_pre"], npts - acquisitions[0]["head"]["discard_post"])
+        
+        # build header
+        if external:
+            firstVolumeIdx = 0
+        else:
+            _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
+            
+        head = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx, external)
     
     # update header
     head.FA = FA
     head.TI = TI
     head.TE = TE
-    head.TR = TR
-    
-    # get npts
-    if data.size != 0:
-        npts = data.shape[-1]
-    elif traj.size != 0:
-        npts = traj.shape[-2]
-    else:
-        raise RuntimeError("HDF5 did not contain data nor trajectory")
-    
-    head.adc = (acquisitions[0].discard_pre, npts - acquisitions[0].discard_post)
-    dt = acquisitions[0].sample_time_us * 1e-3 # ms    
-    head.t = dt * np.arange(npts, dtype=np.float32)
+    head.TR = TR    
+    head.adc = adc
     head.traj = traj
     head.dcf = dcf
     
-    if return_ordering:
+    if external:
         head.user["ordering"] = ordering
         
     return data, head
         
 
 # %% subroutines
-def _read_mrd(filename):
-    # open file
-    with ismrmrd.File(filename) as dset:
+def _read_mrd(file):
         
-        # read header
-        mrdhead = _read_header(dset["dataset"])
-        
-        # read acquisitions
-        acquisitions = dset["acquisitions"]
+    # read header
+    mrdhead = file["dataset"].header
+    
+    # read acquisitions
+    acquisitions = file["dataset"].acquisitions.data
     
     return acquisitions, mrdhead
 
 
-def _read_header(dset):
-    xml_header = dset["xml"]
-    xml_header = xml_header.decode("utf-8")
-    return ismrmrd.xsd.CreateFromDocument(xml_header)
-
-
-def _get_data(acquisitions):
-    if acquisitions[0].data.size != 0:
-        data = np.stack([acq.data for acq in acquisitions], axis=0)
-    else:
+def _get_data(acquisitions, external):
+    
+    # number of acquisitions
+    nacq = len(acquisitions)
+    
+    # get data
+    if external:
         data = None
-    
-    if acquisitions[0].traj.size != 0:
-        trajdcf = np.stack([acq.traj for acq in acquisitions], axis=0)
-        traj = trajdcf[..., :-1]
-        dcf = trajdcf[..., -1]
     else:
-        traj, dcf = None, None
+        data = np.stack([acquisitions[n]["data"] for n in range(nacq)], axis=0)
+        data = data[..., ::2] + 1j * data[..., 1::2] 
     
-    return data, traj, dcf
+    # get trajectory and dcf
+    if acquisitions[0]["traj"].size != 0:
+        trajdcf = np.stack([acquisitions[n]["traj"] for n in range(nacq)], axis=0)
+    else:
+        trajdcf = None
+        
+    # reshape
+    if data is not None:
+        npts = acquisitions[0]["head"]["number_of_samples"]
+        nchannels = acquisitions[0]["head"]["available_channels"]
+        data = data.reshape(-1, nchannels, npts)
+    
+    if trajdcf is not None:
+        npts = acquisitions[0]["head"]["number_of_samples"]
+        ndims = acquisitions[0]["head"]["trajectory_dimensions"]
+        trajdcf = trajdcf.reshape(-1, npts, ndims)
+    else:
+        trajdcf = None
+        
+    return data, trajdcf
 
 
-def _sort_data(data, traj, dcf, acquisitions, mrdhead):
+def _sort_data(data, trajdcf, acquisitions, mrdhead):
+    
+    # number of acquisitions
+    nacq = len(acquisitions)
     
     # order
-    icontrast = np.asarray([acq.idx.contrast for acq in acquisitions])
-    iz = np.asarray([acq.idx.slice for acq in acquisitions])
-    iview = np.asarray([acq.idx.kspace_encode_step_1 for acq in acquisitions])
+    icontrast = np.asarray([acquisitions[n]["head"]["idx"]["contrast"] for n in range(nacq)])
+    iz = np.asarray([acquisitions[n]["head"]["idx"]["slice"] for n in range(nacq)])
+    iview = np.asarray([acquisitions[n]["head"]["idx"]["kspace_encode_step_1"] for n in range(nacq)])
                 
     # get geometry from header
     shape = mrdhead.encoding[0].encodingLimits
                 
     # get sizes
-    ncoils = data.shape[1]
+    ncoils = acquisitions[0]["head"]["available_channels"]
     ncontrasts = shape.contrast.maximum+1
-    nslices = shape.slice.maximum+1
     nviews = shape.kspace_encoding_step_1.maximum+1
-    npts = data.shape[-1]
-    ndims = traj.shape[-1] # last tims stores dcfs
+    npts = acquisitions[0]["head"]["number_of_samples"]
+    ndims = acquisitions[0]["head"]["trajectory_dimensions"] # last tims stores dcfs
+    
+    if ndims-1 == 2:
+        nslices = shape.slice.maximum+1
+    elif ndims-1 == 3:
+        nslices = 1
 
     # get fov, matrix size and kspace size
     shape = (ncontrasts, nslices, nviews, npts)
     
-    # sort trajectory, dcf and t
-    datatmp = np.zeros([ncoils] + list(shape), dtype=np.complex64)
-        
-    if traj is not None:
-        # preallocate
-        trajtmp = np.zeros(list(shape) + [ndims], dtype=np.float32)
-        dcftmp = np.zeros(shape, dtype=np.float32)
-            
-        # actual sorting
+    # sort data, trajectory, dcf
+    if data is not None:
+        datatmp = np.zeros([ncoils] + list(shape), dtype=np.complex64)
         _data_sorting(datatmp, data, icontrast, iz, iview)
-        _traj_sorting(trajtmp, traj, icontrast, iz, iview)
-        _dcf_sorting(dcftmp, dcf, icontrast, iz, iview)
-           
-        # assign
         data = np.ascontiguousarray(datatmp.squeeze())
-        traj = np.ascontiguousarray(trajtmp.squeeze())
-        dcf = np.ascontiguousarray(dcftmp.squeeze())
+        
+    if trajdcf is not None:
+        trajdcftmp = np.zeros(list(shape) + [ndims], dtype=np.float32)
+        _trajdcf_sorting(trajdcftmp, trajdcf, icontrast, iz, iview)
+        trajdcf = np.ascontiguousarray(trajdcftmp.squeeze())           
+        traj, dcf = trajdcf[..., :-1], trajdcf[..., -1]
     else:
         # actual sorting
-        _data_sorting(datatmp, data, icontrast, iz, iview)
-
-        # assign
-        data = np.ascontiguousarray(datatmp.squeeze())
+        traj, dcf = None, None
         
     # keep ordering
     ordering = np.stack((icontrast, iz, iview), axis=0)
@@ -181,8 +193,9 @@ def _data_sorting(output, input, echo_num, slice_num, view_num):
         iview = view_num[n]
         output[:, iecho, islice, iview, :] = input[n]
         
+        
 @nb.njit(cache=True)
-def _traj_sorting(output, input, echo_num, slice_num, view_num):
+def _trajdcf_sorting(output, input, echo_num, slice_num, view_num):
     # get size
     nframes = input.shape[0]
     
@@ -193,16 +206,4 @@ def _traj_sorting(output, input, echo_num, slice_num, view_num):
         iview = view_num[n]
         output[iecho, islice, iview, :, :] = input[n]
         
-@nb.njit(cache=True)
-def _dcf_sorting(output, input, echo_num, slice_num, view_num):
-    # get size
-    nframes = input.shape[0]
-    
-    # actual reordering
-    for n in range(nframes):
-        iecho = echo_num[n]
-        islice = slice_num[n]
-        iview = view_num[n]
-        output[iecho, islice, iview, :] = input[n]
-        
-    
+
