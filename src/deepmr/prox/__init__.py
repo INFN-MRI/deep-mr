@@ -5,12 +5,16 @@ All the routines are based on the excellent Deep Inverse (https://github.com/dee
 
 """
 
-from deepinv.models import BM3D, TV, TGV
+import warnings
 
-from . import llr as _llr
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from deepinv.models import BM3D, TV, TGV
+
+# from . import llr as _llr
 from . import wavelet as _wavelet
 
-from .llr import * # noqa
+# from .llr import * # noqa
 from .wavelet import *  # noqa
 
 __all__ = ["BM3D", "TV", "TGV"]

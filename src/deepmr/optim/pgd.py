@@ -2,9 +2,13 @@
 
 __all__ = ["pgd"]
 
-from deepinv.optim.data_fidelity import L2
-from deepinv.optim.optimizers import optim_builder
-from deepinv.optim.prior import PnP
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from deepinv.optim.data_fidelity import L2
+    from deepinv.optim.optimizers import optim_builder
+    from deepinv.optim.prior import PnP
 
 def pgd(input, encoding, denoiser, lamda=0.01, stepsize=1.0, accelerate=True, max_iter=20, verbose=False):
     r"""
