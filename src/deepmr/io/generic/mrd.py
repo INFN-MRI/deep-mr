@@ -70,6 +70,11 @@ def read_mrd(filepath, external=False):
             _, firstVolumeIdx, _ = mrd._get_slice_locations(acquisitions)
             
         head = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx, external)
+        
+        # get slice profile
+        slice_profile = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "slice_profile")
+        if slice_profile is not None:
+            head.user["slice_profile"] = np.frombuffer(slice_profile, dtype=np.float32)
     
     # update header
     head.FA = FA

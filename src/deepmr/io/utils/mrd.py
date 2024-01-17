@@ -170,9 +170,14 @@ def _get_flip_angles(header):
     Return array of flip angles for each for each volume.
     """
     try:
-        flipAngles = header.sequenceParameters.FA
+        flipAngles = header.sequenceParameters.flipAngle_deg
     except:
         flipAngles = None
+        
+    rf_phase = _find_in_user_params(header.userParameters.userParameterString, "rf_phase")
+    if rf_phase is not None and flipAngles is not None:
+        rf_phase = np.frombuffer(rf_phase, dtype=np.float32)
+        flipAngles = np.asarray(flipAngles) * np.exp(1j * np.deg2rad(rf_phase))
 
     return np.asarray(flipAngles)
 

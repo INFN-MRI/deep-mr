@@ -27,6 +27,7 @@ def read_mrd_traj(filepath):
         
     """
     _, head = mrd.read_mrd(filepath, external=True)
+    
     return head
      
 def write_mrd_traj(head, filepath, compress=False):
@@ -174,21 +175,7 @@ def _create_hdr(head):
 
     # append encoding
     hdr.encoding.append(encoding)
-        
-    # sequence parameters
-    sequence = ismrmrd.xsd.sequenceParametersType()
     
-    # append sequence parameters
-    for n in range(ncontrasts):
-        if head.FA is not None:
-            sequence.flipAngle_deg.append(abs(head.FA[n]))
-        if head.TI is not None:
-            sequence.TI.append(head.TI[n])
-        if head.TE is not None:
-            sequence.TE.append(head.TE[n])
-        if head.TR is not None:
-            sequence.TR.append(head.TR[n])
-        
     # user parameters
     hdr.userParameters = ismrmrd.xsd.userParametersType()
     slice_thickness = ismrmrd.xsd.userParameterDoubleType()
@@ -201,6 +188,12 @@ def _create_hdr(head):
     spacing.value = head.spacing
     hdr.userParameters.userParameterDouble.append(spacing)
     
+    if "slice_profile" in head.user:
+        slice_profile = ismrmrd.xsd.userParameterStringType()
+        slice_profile.name = "slice_profile"
+        slice_profile.value = head.user["slice_profile"].astype(np.float32).tobytes()
+        hdr.userParameters.userParameterString.append(slice_profile)
+        
     for k in head.user:
         value = head.user[k]
         if np.issubdtype(type(value), int):
@@ -218,7 +211,31 @@ def _create_hdr(head):
             tmp.name = k
             tmp.value = value
             hdr.userParameters.userParameterString.append(tmp)
+        
+    # sequence parameters
+    sequence = ismrmrd.xsd.sequenceParametersType()
     
+    # append sequence parameters
+    if head.FA is not None:
+        if np.iscomplexobj(head.FA):
+            head.FA = head.FA.astype(np.complex64)
+            rf_phase = np.angle(head.FA).tobytes()
+            tmp = ismrmrd.xsd.userParameterStringType()
+            tmp.name = "rf_phase"
+            tmp.value = np.rad2deg(rf_phase)
+            hdr.userParameters.userParameterString.append(tmp)       
+        head.FA = abs(head.FA)
+            
+    for n in range(ncontrasts):
+        if head.FA is not None:
+            sequence.flipAngle_deg.append(head.FA[n])
+        if head.TI is not None:
+            sequence.TI.append(head.TI[n])
+        if head.TE is not None:
+            sequence.TE.append(head.TE[n])
+        if head.TR is not None:
+            sequence.TR.append(head.TR[n])
+        
     return hdr.toXML("utf-8")
 
 @nb.njit(cache=True)

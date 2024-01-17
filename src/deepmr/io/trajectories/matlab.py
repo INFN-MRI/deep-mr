@@ -27,17 +27,20 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     matfile, filename = matlab.read_matfile(filename, True)
     
     # get k space trajectory
-    k = _get_trajectory(matfile)
+    k, reshape = _get_trajectory(matfile)
     ndim = k.shape[-1]
     
     # get indexes
-    if "ind" in matfile:
-        ind = matfile["ind"][0].astype(bool)
-    elif "inds" in matfile:
-        ind = matfile["inds"].squeeze().astype(bool)
+    if "adc" in matfile:
+        ind = matfile["ind"]
     else:
-        raise RuntimeError("ADC indexes not found!")
-    ind = np.argwhere(ind)[[0, -1]].squeeze()
+        if "ind" in matfile:
+            ind = matfile["ind"][0].astype(bool)
+        elif "inds" in matfile:
+            ind = matfile["inds"].squeeze().astype(bool)
+        else:
+            raise RuntimeError("ADC indexes not found!")
+        ind = np.argwhere(ind)[[0, -1]].squeeze()
     
     # get dcf
     if "dcf" in matfile:
@@ -53,17 +56,23 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
             
     # get sampling time
     if "t" in matfile:
-        t = matfile["t"][0] * 1e3 # ms
+        t = np.atleast_2d(matfile["t"][0])
     elif "ts" in matfile:
-        t = matfile["ts"].squeeze() * 1e3 # ms
+        t = matfile["ts"].squeeze()
     else:
         raise RuntimeError("Sampling time not found!")
+    
+    # s to ms
+    if np.round(t).max() == 0:
+        t *= 1e3
         
     # remove offset from sampling time
     t -= t[0]
     
     # get matrix
-    if "mtx" in matfile:
+    if "shape" in matfile:
+        shape = matfile["shape"]
+    elif "mtx" in matfile:
         shape = [int(matfile["mtx"].squeeze())] * ndim
     elif "npix" in matfile:
         shape = [int(matfile["npix"].squeeze())] * ndim
@@ -71,28 +80,38 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
         raise RuntimeError("Matrix size not found!")
     
     # get resolution
-    if "fov" in matfile:
-        fov = [float(matfile["fov"].squeeze()) * 1e3] * ndim # mm
+    if "resolution" in matfile:
+        resolution = matfile["resolution"]
     else:
-        raise RuntimeError("Field of View not found!")
-    resolution = (np.asarray(fov) / np.asarray(shape)).tolist() 
+        if "fov" in matfile:
+            fov = [float(matfile["fov"].squeeze()) * 1e3] * ndim # mm
+        else:
+            raise RuntimeError("Field of View not found!")
+        resolution = (np.asarray(fov) / np.asarray(shape)).tolist() 
+    
+    # get spacing
+    if "spacing" in matfile:
+        spacing = matfile["spacing"]
+    else:
+        spacing = resolution[0]
             
     # initialize header
-    head = Header(shape, resolution, t=t)
+    head = Header(shape, resolution, spacing, t=t)
     head.adc = ind
    
     # get schedule file
     head = _get_schedule(head, matfile, schedulename)
     
     # get ordering
-    ncontrasts = len(head.FA)
-    nviews = int(k.shape[0] / ncontrasts)  
-    
-    k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
-    k = np.ascontiguousarray(k).astype(np.float32)
-    if dcf is not None:
-        dcf = dcf.reshape(nviews, ncontrasts, -1).swapaxes(0, 1)
-        dcf = np.ascontiguousarray(dcf).astype(np.float32)
+    if reshape:
+        ncontrasts = len(head.FA)
+        nviews = int(k.shape[0] / ncontrasts)  
+        
+        k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
+        k = np.ascontiguousarray(k).astype(np.float32)
+        if dcf is not None:
+            dcf = dcf.reshape(nviews, ncontrasts, -1).swapaxes(0, 1)
+            dcf = np.ascontiguousarray(dcf).astype(np.float32)
         
     # append
     head.traj = k
@@ -103,8 +122,12 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     
 # %% subroutines
 def _get_trajectory(matfile):
-        
-    if "k" in matfile:
+    
+    reshape = True
+    if "traj" in matfile:
+        k = matfile["traj"]
+        reshape = False
+    elif "k" in matfile:
         k = matfile["k"]
         # get shape
         if "t" in matfile:
@@ -152,10 +175,11 @@ def _get_trajectory(matfile):
     else:
         raise RuntimeError("K-space trajectory not found!")
         
-    return k
+    return k, reshape
 
 
 def _get_schedule(head, matfile, schedulename):
+    
     if "method" in matfile:
         schedule = matfile["method"]
     else:
@@ -166,6 +190,7 @@ def _get_schedule(head, matfile, schedulename):
             schedule = schedule["method"]
         except Exception:
             schedule = None
+            
     if schedule is not None:
         if "VariableFlip" in schedule.dtype.fields:
             FA = schedule["VariableFlip"][0][0].squeeze().astype(np.float32)
@@ -189,11 +214,28 @@ def _get_schedule(head, matfile, schedulename):
         else:
             TI = 0.0
     else:
-        FA = 0.0
-        TE = 0.0
-        TR = 0.0
-        TI = 0.0
+        if "FA" in matfile:
+            FA = matfile["FA"]
+        else:
+            FA = 0.0
+        if "TE" in matfile:
+            TE = matfile["TE"]
+        else:
+            TE = 0.0
+        if "TR" in matfile:
+            TR = matfile["TR"]
+        else:
+            TR = 0.0
+        if "TI" in matfile:
+            TI = matfile["TI"]
+        else:
+            TI = 0.0
         
+        # rf phase
+        if "user" in matfile and "rf_phase" in matfile["user"]:
+            phase = np.frombuffer(matfile["user"]["rf_phase"], dtype=np.float32)
+            FA = FA * np.exp(1j * np.deg2rad(phase))
+            
     # broadcast contrasts
     FA, TI, TE, TR = np.broadcast_arrays(FA, TI, TE, TR)
     
