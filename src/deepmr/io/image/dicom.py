@@ -3,6 +3,7 @@
 __all__ = ["read_dicom"]
 
 import glob
+import math
 import multiprocessing
 import os
 from multiprocessing.dummy import Pool as ThreadPool
@@ -251,8 +252,8 @@ def _cast_to_complex_ge(dsets_in):
         do_recon = False
 
     if magnitude and phase and do_recon:
-        scale = 2 * np.pi / 4095
-        offset = -np.pi
+        scale = 2 * math.pi / 4095
+        offset = -math.pi
         img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(
             1j * (scale * np.stack(phase, axis=0) + offset).astype(np.float32)
         )
@@ -264,8 +265,8 @@ def _cast_to_complex_ge(dsets_in):
     if np.iscomplexobj(img):
         phase = np.angle(img)
         phase[..., 1::2, :, :] = (
-            (1e5 * (phase[..., 1::2, :, :] + 2 * np.pi)) % (2 * np.pi * 1e5)
-        ) / 1e5 - np.pi
+            (1e5 * (phase[..., 1::2, :, :] + 2 * math.pi)) % (2 * math.pi * 1e5)
+        ) / 1e5 - math.pi
         img = np.abs(img) * np.exp(1j * phase)
 
     # count number of instances
@@ -302,8 +303,8 @@ def _cast_to_complex_philips(dsets_in):
             phase.append(dset.pixel_array)
 
     if magnitude and phase:
-        scale = 2 * np.pi / 4095
-        offset = -np.pi
+        scale = 2 * math.pi / 4095
+        offset = -math.pi
         img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(
             1j * (scale * np.stack(phase, axis=0) + offset).astype(np.float32)
         )
@@ -342,8 +343,8 @@ def _cast_to_complex_siemens(dsets_in):
             phase.append(dset.pixel_array)
 
     if magnitude and phase:
-        scale = 2 * np.pi / 4095
-        offset = -np.pi
+        scale = 2 * math.pi / 4095
+        offset = -math.pi
         img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(
             1j * (scale * np.stack(phase, axis=0) + offset).astype(np.float32)
         )

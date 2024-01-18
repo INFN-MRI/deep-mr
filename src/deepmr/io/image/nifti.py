@@ -2,9 +2,9 @@
 
 __all__ = ["read_nifti"]
 
-# import copy
 import glob
 import json
+import math
 import os
 
 import numpy as np
@@ -102,8 +102,8 @@ def _nifti_read(file_path, json_dict):
         
         # cast to complex image
         if data_phase.size != 0:
-            scale = 2 * np.pi / 4095
-            offset = -np.pi
+            scale = 2 * math.pi / 4095
+            offset = -math.pi
             data = data * np.exp(1j * scale * data_phase + offset)
         if data_real.size != 0 and data_imag.size != 0:
             data = data_real + 1j * data_imag
@@ -118,7 +118,7 @@ def _nifti_read(file_path, json_dict):
      # fix fftshift along z
     if np.iscomplexobj(data) and json_dict['Manufacturer'] == 'GE':
         phase = np.angle(data)
-        phase[..., 1::2, :, :] = ((1e5 * (phase[..., 1::2, :, :] + 2 * np.pi)) % (2 * np.pi * 1e5)) / 1e5 - np.pi
+        phase[..., 1::2, :, :] = ((1e5 * (phase[..., 1::2, :, :] + 2 * math.pi)) % (2 * math.pi * 1e5)) / 1e5 - math.pi
         data = np.abs(data) * np.exp(1j * phase)
 
     return np.ascontiguousarray(data.transpose()), head, affine

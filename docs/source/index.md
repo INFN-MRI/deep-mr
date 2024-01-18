@@ -2,6 +2,7 @@
 ```{include} ../../_README.md
 ```
 
+<!---
 ```{toctree}
 :hidden:
 :caption: User Guide
@@ -10,7 +11,9 @@ user_guide/getting_started.md
 user_guide/overview.md
 
 ```
+-->
 
+<!---
 ```{toctree}
 :hidden:
 :maxdepth: 2
@@ -21,14 +24,13 @@ tutorials/01-warmup-mri-recon.ipynb
 tutorials/02-dl-mri-recon.ipynb
 
 ```
+-->
 
 ```{toctree}
 :hidden:
-:caption: API References
+:caption: Core Modules
 
-api/io.md
-api/optim.md
-api/prox.md
+core/io.md
 
 ```
 
