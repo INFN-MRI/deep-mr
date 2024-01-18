@@ -1,26 +1,25 @@
-"""I/O Routines for MATLAB trajectories."""
+"""I/O routines for MATLAB acquisition header."""
 
-__all__ = ["read_matfile_traj"]
+__all__ = ["read_matlab_acqhead"]
 
 import numpy as np
 
 from ..generic import matlab
-from ..utils.header import Header
+from ..types.header import Header
 
-
-def read_matfile_traj(filename, dcfname=None, schedulename=None):
+def read_matlab_acqhead(filename, dcfname=None, schedulename=None):
     """
-    Read MR trajectory written as a matfile.
+    Read acquistion header from matlab file.
 
     Parameters
     ----------
     filename : str
-        Path of the file on disk.
+        Path to the file on disk.
 
     Returns
     -------
-    dict : deepmr.Header
-        Deserialized trajectory.
+    head : deepmr.Header
+        Deserialized acqusition header.
         
     """
     # load dcf
@@ -70,14 +69,18 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     t -= t[0]
     
     # get matrix
-    if "shape" in matfile:
-        shape = matfile["shape"]
-    elif "mtx" in matfile:
-        shape = [int(matfile["mtx"].squeeze())] * ndim
+    if "mtx" in matfile:
+        shape = matfile["mtx"].squeeze()[::-1]
     elif "npix" in matfile:
-        shape = [int(matfile["npix"].squeeze())] * ndim
+        shape = matfile["npix"].squeeze()[::-1]
+    elif "shape" in matfile:
+        shape = matfile["shape"]
     else:
         raise RuntimeError("Matrix size not found!")
+        
+    # expand scalar
+    if len(shape) == 1:
+        shape = [int(shape)] * ndim
     
     # get resolution
     if "resolution" in matfile:
@@ -118,8 +121,7 @@ def read_matfile_traj(filename, dcfname=None, schedulename=None):
     head.dcf = dcf
     
     return head
-
-    
+ 
 # %% subroutines
 def _get_trajectory(matfile):
     
@@ -176,7 +178,6 @@ def _get_trajectory(matfile):
         raise RuntimeError("K-space trajectory not found!")
         
     return k, reshape
-
 
 def _get_schedule(head, matfile, schedulename):
     

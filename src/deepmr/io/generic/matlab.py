@@ -5,7 +5,7 @@ __all__ = ["read_matfile"]
 import scipy.io
 import mat73
 
-from ..utils.pathlib import get_filepath
+from .pathlib import get_filepath
 
 def read_matfile(filename, return_fullpath=False):
     """

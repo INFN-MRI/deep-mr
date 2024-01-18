@@ -7,9 +7,10 @@ import numba as nb
 
 import ismrmrd
 
-from ..utils import mrd
-from ..utils.header import Header
-from ..utils.pathlib import get_filepath
+from ..types import mrd
+from ..types.header import Header
+
+from .pathlib import get_filepath
 
 def read_mrd(filepath, external=False):
     """
@@ -17,7 +18,7 @@ def read_mrd(filepath, external=False):
 
     Parameters
     ----------
-    filepath : str | list | tuple
+    filepath : str
         Path to mrd file.
     external : bool, optional
         If true, skip data and return ordering to sort raw data. 

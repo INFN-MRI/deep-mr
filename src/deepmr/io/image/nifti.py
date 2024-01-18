@@ -10,11 +10,10 @@ import os
 import numpy as np
 import nibabel as nib
 
-from ..utils import nifti
-from ..utils.header import Header
+from ..types import nifti
+from ..types.header import Header
 
-
-def read_nifti(filepath):# str | list | tuple):
+def read_nifti(filepath):
     """
     Read image from nifti files.
 

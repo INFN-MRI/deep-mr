@@ -1,4 +1,4 @@
-"""I/O Routines for BART files."""
+"""I/O routines for BART acquisition header."""
 
 from __future__ import print_function
 from __future__ import with_statement
@@ -16,7 +16,7 @@ def read_bart(filename: str) -> np.ndarray:
     Parameters
     ----------
     filename : str
-        Path of the file on disk.
+        Path to the file on disk.
 
     Returns
     -------

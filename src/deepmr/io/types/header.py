@@ -18,7 +18,6 @@ from . import gehc
 from . import mrd
 from . import nifti
 
-
 @dataclass
 class Header:
     """ """
@@ -74,8 +73,15 @@ class Header:
         if isinstance(self.orientation, list) is False:
             self.orientation = list(self.orientation)
 
-        # transfer Series tags from NIfTI
-        if self.ref_dicom is not None:
+        # prepare Series tags
+        if self.ref_dicom is None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")  # change the hook
+                self.ref_dicom = DicomMRI("nii2dcm_dicom_mri.dcm").ds
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+        
             self.ref_dicom.Rows = self.shape[2]
             self.ref_dicom.Columns = self.shape[1]
             self.ref_dicom.PixelSpacing = [
@@ -93,11 +99,11 @@ class Header:
                 pass
             try:
                 self.ref_dicom[0x0025, 0x1007].value = ""
-            except:
+            except Exception:
                 pass
             try:
                 self.ref_dicom[0x0025, 0x1019].value = ""
-            except:
+            except Exception:
                 pass
             try:
                 self.ref_dicom[0x2001, 0x9000][0][0x2001, 0x1068][0][

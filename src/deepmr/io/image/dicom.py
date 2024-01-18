@@ -11,10 +11,10 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pydicom
 
-from ..utils import dicom
-from ..utils.header import Header
+from ..types import dicom
+from ..types.header import Header
 
-def read_dicom(filepath):# str | list | tuple):
+def read_dicom(filepath):
     """
     Read image from dicom files.
 

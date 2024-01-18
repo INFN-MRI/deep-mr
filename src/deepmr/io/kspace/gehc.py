@@ -1,6 +1,6 @@
-"""GEHC data reading routines."""
+"""I/O routines for GEHC raw data."""
 
-__all__ = ["read_gehc"]
+__all__ = ["read_gehc_rawdata"]
 
 import warnings
 
@@ -11,13 +11,12 @@ try:
     __GEHC_AVAILABLE__ = True
 except Exception:
     __GEHC_AVAILABLE__ = False
-    
-from ..utils import mrd
-from ..utils.header import Header
-from ..utils.pathlib import get_filepath
 
+from ..generic.pathlib import get_filepath
+from ..types import mrd
+from ..types.header import Header
 
-def read_gehc(filepath, acqheader=None):
+def read_gehc_rawdata(filepath, acqheader=None):
     """
     Read kspace data from GEHC file.
 
@@ -34,7 +33,7 @@ def read_gehc(filepath, acqheader=None):
     -------
     data : np.ndarray
         Complex k-space data of shape (ncoils, ncontrasts, nslices, nview, npts).
-    header : deepmr.Header
+    head : deepmr.Header
         Metadata for image reconstruction.
     """
     # get full path
@@ -44,12 +43,12 @@ def read_gehc(filepath, acqheader=None):
     if __GEHC_AVAILABLE__:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")  # change the hook
-            data, header = gehc.read_rawdata(filepath, acqheader)
+            data, head = gehc.read_rawdata(filepath, acqheader)
             
             # build header
-            header = Header.from_gehc(header)
+            head = Header.from_gehc(head)
             
-        return data, header
+        return data, head
     else:
         print("GEHC reader is private - ask for access")
         return None, None

@@ -1,6 +1,6 @@
-"""I/O Routines for MRD trajectories."""
+"""I/O routines for MRD acquisition headers."""
 
-__all__ = ["read_mrd_traj", "write_mrd_traj"]
+__all__ = ["read_mrd_acqhead", "write_mrd_acqhead"]
 
 import os
 
@@ -11,28 +11,28 @@ import ismrmrd
 
 from ..generic import mrd
 
-def read_mrd_traj(filepath):
+def read_mrd_acqhead(filepath):
     """
-    Read trajectory data from mrd file.
+    Read acquistion header from mrd file.
 
     Parameters
     ----------
     filepath : str
-        Path to mrd file.
+        Path to the file on disk.
     
     Returns
     -------
-    dict : deepmr.Header
-        Deserialized trajectory.
+    head : deepmr.Header
+        Deserialized acquiistion header.
         
     """
     _, head = mrd.read_mrd(filepath, external=True)
     
     return head
      
-def write_mrd_traj(head, filepath, compress=False):
+def write_mrd_acqhead(head, filepath):
     """
-    Write trajectory data to mrd file.
+    Write acquistion header to mrd file.
 
     Parameters
     ----------
@@ -41,9 +41,6 @@ def write_mrd_traj(head, filepath, compress=False):
         and meta information (shape, resolution, spacing, etc).
     filepath : str 
         Path to mrd file.
-    compress: bool, optional
-        If true, compress trajectory before writing.
-        This will discard DCFs. The default is False.
         
     """    
     # prepare path
@@ -235,6 +232,9 @@ def _create_hdr(head):
             sequence.TE.append(head.TE[n])
         if head.TR is not None:
             sequence.TR.append(head.TR[n])
+            
+    # append
+    hdr.sequenceParameters = sequence
         
     return hdr.toXML("utf-8")
 

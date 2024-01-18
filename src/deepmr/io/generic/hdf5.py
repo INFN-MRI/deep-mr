@@ -7,7 +7,7 @@ import copy
 import h5py
 import numpy as np
 
-from ..utils.pathlib import get_filepath
+from .pathlib import get_filepath
 
 dtypes = (
     np.uint8,
@@ -106,6 +106,8 @@ def _recursively_load_dict_contents_from_group(h5file, path):
             tmp = item[()]
             if isinstance(tmp, bytes):
                 tmp = tmp.decode()
+            if isinstance(tmp, np.ndarray):
+                tmp = tmp.squeeze()
             ans[key] = tmp
         elif isinstance(item, h5py._hl.group.Group):
             ans[key] = _recursively_load_dict_contents_from_group(
