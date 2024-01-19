@@ -2,7 +2,8 @@
 
 import math
 import numpy as np
-import numba as nb
+
+import torch
 
 from . import gehc as _gehc
 from . import mrd as _mrd
@@ -10,14 +11,14 @@ from . import mrd as _mrd
 
 __all__ = ["read_rawdata"]
 
-def read_rawdata(filepath, acqheader=None, device=None):
+def read_rawdata(filepath, acqheader=None, device="cpu"):
     """
-    Read kspace data from GEHC file.
+    Read kspace data from file.
 
     Parameters
     ----------
     filepath : str
-        Path to PFile or ScanArchive file.
+        Path to kspace file.
     acqheader : Header, deepmr.optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
@@ -26,14 +27,15 @@ def read_rawdata(filepath, acqheader=None, device=None):
     Returns
     -------
     data : np.ndarray
-        Complex k-space data of shape (ncoils, ncontrasts, nslices, nview, npts).
+        Complex k-space data of shape (nslices, ncoils, ncontrasts, nviews, nsamples).
     head : deepmr.Header
         Metadata for image reconstruction.
     """
     done = False
     
     # convert header to numpy
-    
+    head.numpy()
+
     # mrd
     try:
         data, head = _mrd.read_mrd_rawdata(filepath)
@@ -62,7 +64,7 @@ def read_rawdata(filepath, acqheader=None, device=None):
         raise RuntimeError("File not recognized!")
         
     # transpose
-    data = data.transpose(2, 0, 1, 3, 4)
+    data = data.transpose(2, 0, 1, 3, 4) # (slice, coil, contrast, view, sample)
     
     # select actual readout
     data = _select_readout(data, head)    
@@ -70,22 +72,50 @@ def read_rawdata(filepath, acqheader=None, device=None):
     # center fov
     data = _fov_centering(data, head)
     
-    # check individual axis for cartesian
+    # remove oversampling for Cartesian
+    if "mode" in head.user:
+        if head.user["mode"][2:] == "cart":
+            data, head = _remove_oversampling(data, head)
+    
+    # transpose readout in slice direction for 3D Cartesian
+    if "mode" in head.user:
+        if head.user["mode"] == "3Dcart":
+            data = data.transpose(-1, 1, 2, 0, 3) # (z, ch, e, y, x) -> (x, ch, e, z, y)
+            
+    # decouple separable acquisition
+    if "separable" in head.user and head.user["separable"]:
+        data = _fft(data, 0)
+        
+    # set-up transposition
+    if "mode" in head.user:
+        if head.user["mode"][:2] == "2D":
+            head.transpose = [1, 0, 2, 3]
+        elif head.user["mode"] == "3Dnoncart":
+            head.transpose = [1, 0, 2, 3]
+        elif head.user["mode"] == "3Dcart":
+            head.transpose = [1, 2, 3, 0]
+        
+        # remove unused trajectory for cartesian
+        if head.user["mode"][2:] == "cart":
+            head.traj = None
+            head.dcf = None
+            
+    # clean header
+    head.user.pop("mode", None)
+    head.user.pop("separable", None)
+        
+    # cast
+    data = torch.as_tensor(np.ascontigousarray(data), dtype=torch.complex64, device=device)
+    head.torch(device)
 
-    # separation of slices in fourier space for hybrid trajectories
-    
-    # estimate mask
-    
-    # cast to data and header to torch
-    
     return data, head
 
 # %% sub routines
 def _select_readout(data, head):
-    if head.adc[-1] == data.shape[-1]:
-        data = data[..., head.adc[0]:]
+    if head._adc[-1] == data.shape[-1]:
+        data = data[..., head._adc[0]:]
     else:
-        data = data[..., head.adc[0]:head.adc[1]+1]
+        data = data[..., head._adc[0]:head._adc[1]+1]
     return data
     
 def _fov_centering(data, head):
@@ -96,109 +126,27 @@ def _fov_centering(data, head):
         ndim = head.traj.shape[-1]
         
         # shift (mm)
-        dr = np.asarray(head.shift)[:ndim]
+        dr = np.asarray(head._shift)[:ndim]
         
         # convert in units of voxels
-        dr /= head.resolution[::-1]
+        dr /= head._resolution[::-1][:ndim]
         
         # apply
         data *= np.exp(1j * 2 * math.pi * (head.traj * dr).sum(axis=-1))
         
     return data
 
-def _estimate_acq_type(data, head):
+def _remove_oversampling(data, head):
+    if data.shape[-1] != head.shape[-1]: # oversampled
+        center = int(data.shape[-1] // 2)
+        hwidth = int(head.shape[-1] // 2)
+        data = _fft(data, -1)
+        data = data[..., center-hwidth:center+hwidth]
+        data = _fft(data, -1)
+        dt = np.diff(head.t)[0]
+        head.t = np.arange(data.shape[-1]) * dt
     
-    if head.traj is not None:
-        ndim = head.traj.shape[-1]
-        traj = head.traj * head.shape
-        iscart = [np.allclose(traj[..., n].astype(float), traj[..., n].astype(int)) for n in range(ndim)]
-        if np.all(iscart):
-            acq_type = "cartesian"
-        elif np.any(iscart):
-            acq_type = "hybrid"
-        else:
-            acq_type = "noncartesian"
-    else:
-        acq_type = "cartesian"
-        iscart = None
-    
-    return acq_type, iscart
-
-def _decouple_hybrid(data, head, iscart):
-    assert np.sum(iscart) == 1, f"Only one Cartesian axis is allowed for hybrid trajectores, found {np.sum(iscart)}"
-    
-    # find cartesian axis
-    cartax = int(np.argwhere(iscart).squeeze())
-    
-    # get trajectory and dcf
-    traj = head.traj    
-    dcf = head.dcf
-
-    # if trajectory does not account for partition already, assume
-    # it is flattened in the contrast dimension (all contrasts, then next slice)
-    if len(traj.shape) < 5:
-        nz = len(np.unique(traj[..., cartax]))
-        traj = traj.reshape(nz, int(traj.shape[0] / nz), traj.shape[2], traj.shape[3], -1)
-        if dcf is not None:
-            dcf = dcf.reshape(nz, int(dcf.shape[0] / nz), dcf.shape[2], -1)
-        data = data.reshape(data.shape[0], data.shape[1], nz, int(data.shape[2] / nz), data.shape[3], -1)
-    else:
-        nz = traj.shape[0]
-    
-    # split cartesian and noncartesians axes
-    cart = traj[:, 0, 0, 0, cartax]
-    noncart = np.delete(traj, cartax, axis=-1)
-    
-    # check if it is separable
-    isseparable = np.asarray([np.allclose(noncart[0], noncart[n]) for n in range(nz)])
-    isseparable = np.all(isseparable)
-    
-    # if it is separable, sort
-    if isseparable:
-        order = np.argsort(cart[:, 0, 0, 0])
-        
-        # sort
-        data = data[order, ...]
-        
-        # actual separation
-        data = np.fft.fftshift(np.fft.fft(np.fft.fftshift(data, axes=0), axis=0), axes=0)
-        head.traj = noncart[0]
-        if dcf is not None:
-            head.dcf = dcf[0]
-    else: # if it is not separable, stack all along view dimension
-        data = data.transpose(1, 2, 0, 3, -1)
-        traj = traj.swapaxes(0, 1)
-        dcf = dcf.swapaxes(0, 1)
-        
-        data = data.reshape(data.shape[0], data.shape[1], -1, data.shape[-1]) 
-        traj = traj.reshape(traj.shape[0], -1, traj.shape[-2], traj.shape[-1]) 
-        dcf = dcf.reshape(dcf.shape[0], -1, dcf.shape[-1])
-        
-        head.traj = traj
-        head.dcf = dcf
-        
     return data, head
 
-def _decouple_cartesian(data, head):
-    pass
-    # # estimate mask
-    # if head.traj is not None:
-    #     coord = (head.traj * head.shape).astype(int)
-        
-    #     # 3D sample y-k plane (trajectory should be (ncontrasts, nviews=ny*nz, nsample, ndim))
-    #     if coord.shape[-1] == 3:
-    #         coord = coord[..., :-1] # (ncontrasts, ny*nz, 2)
-            
-    #         # initialize mask
-    #         mask = np.zeros([coord.shape[0]] + list(head.shape[:-1]), dtype=int)
-            
-    # else:
-        
-            
-        
-    
-        
-    
-    
-    
-    
+def _fft(data, axis):
+    return np.fft.fftshift(np.fft.fft(np.fft.fftshift(data, axes=axis), axis=axis), axes=axis)

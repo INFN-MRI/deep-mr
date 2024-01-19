@@ -190,6 +190,28 @@ def _create_hdr(head):
         slice_profile.name = "slice_profile"
         slice_profile.value = head.user["slice_profile"].astype(np.float32).tobytes()
         hdr.userParameters.userParameterString.append(slice_profile)
+        head.user.pop("slice_profile", None)
+    
+    if "basis" in head.user:
+        basis = ismrmrd.xsd.userParameterStringType()
+        basis.name = "basis"
+        basis.value = head.user["basis"].astype(np.complex64).tobytes()
+        hdr.userParameters.userParameterString.append(basis)
+        head.user.pop("basis", None)
+        
+    if "mode" in head.user:
+        mode = ismrmrd.xsd.userParameterStringType()
+        mode.name = "mode"
+        mode.value = head.user["mode"]
+        hdr.userParameters.userParameterString.append(mode)
+        head.user.pop("mode", None)
+        
+    if "separable" in head.user:
+        mode = ismrmrd.xsd.userParameterStringType()
+        mode.name = "separable"
+        mode.value = str(head.user["separable"])
+        hdr.userParameters.userParameterString.append(mode)
+        head.user.pop("separable", None)
         
     for k in head.user:
         value = head.user[k]
@@ -256,6 +278,3 @@ def _initialize_ordering(output, echo_num, slice_num, view_num):
                 output[c, z, v] = nframes
                 nframes += 1
     
-
-    
-                

@@ -76,15 +76,39 @@ def read_mrd(filepath, external=False):
         slice_profile = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "slice_profile")
         if slice_profile is not None:
             head.user["slice_profile"] = np.frombuffer(slice_profile, dtype=np.float32)
+            
+        # get basis
+        basis = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "basis")
+        if basis is not None:
+            basis = np.frombuffer(basis, dtype=np.complex64)
+            if np.isreal(basis).all():
+                basis = basis.real
+            elif np.isreal(basis.imag + 1j * basis.real).all():
+                basis = basis.imag
+            head.user["basis"] = basis
+            
+        # get separability
+        separable = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "separable")
+        if separable is not None:
+            if separable == "True":
+                separable = True
+            elif separable == "False":
+                separable = False
+            head.user["separable"] = separable
+            
+        # get mode
+        mode = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "mode")
+        if mode is not None:
+            head.user["mode"] = mode
     
     # update header
+    head.traj = traj
+    head.dcf = dcf
     head.FA = FA
     head.TI = TI
     head.TE = TE
     head.TR = TR    
-    head.adc = adc
-    head.traj = traj
-    head.dcf = dcf
+    head._adc = adc
     
     if external:
         head.user["ordering"] = ordering

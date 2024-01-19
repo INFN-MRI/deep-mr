@@ -10,6 +10,7 @@ import warnings
 
 import numpy as np
 import pydicom
+import torch
 
 from ...external.nii2dcm.dcm import DicomMRI
 
@@ -21,34 +22,92 @@ from . import nifti
 @dataclass
 class Header:
     """ """
-
-    # geometry
-    shape: tuple
-    resolution: tuple = (1.0, 1.0, 1.0)
-    spacing: float = None
-    orientation: tuple = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
-    affine: np.ndarray = field(
-        default_factory=lambda: np.eye(4, dtype=np.float32)
-    )
-
-    # meta
-    ref_dicom: pydicom.Dataset = None
-
-    # sequence
-    TI: np.ndarray = None
-    TE: np.ndarray = None
-    TR: np.ndarray = None
-    FA: np.ndarray = None
     
-    # reconstruction
-    adc: np.ndarray = None
-    shift: tuple = (0.0, 0.0, 0.0)
+    ## public attributes
+    # recon
+    shape: tuple
     t: np.ndarray = None  # sampling time in ms
     traj: np.ndarray = None
     dcf: np.ndarray = None
-    user: dict = field(default_factory=lambda: {})
+    
+    # image post processing
+    flip: list = field(default_factory=lambda: [])
+    transpose: list = field(default_factory=lambda: np.arange(4).tolist())
+    
+    # image export
+    affine: np.ndarray = field(default_factory=lambda: np.eye(4, dtype=np.float32))
+    ref_dicom: pydicom.Dataset = None
+    
+    # contrast parameters
+    FA: np.ndarray = None
+    TR: np.ndarray = None
+    TE: np.ndarray = None
+    TI: np.ndarray = None
+    user: dict = field(default_factory=lambda: {}) # mainly (slice_profile , basis)
+    
+    ## private attributes
+    _adc: np.ndarray = None
+    _shift: tuple = (0.0, 0.0, 0.0)   
+    _resolution: tuple = (1.0, 1.0, 1.0)
+    _spacing: float = None
+    _orientation: tuple = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+    
+    def torch(self, device="cpu"):
+        """
+        Cast internal attributes to Pytorch.
 
-    def __post_init__(self):
+        Parameters
+        ----------
+        device : str, optional
+            Computational device for internal attributes. The default is "cpu".
+
+        """
+        self.shape = torch.as_tensor(self.shape, dtype=int, device=device)
+        if self.traj is not None:
+            self.traj = torch.as_tensor(np.ascontigousarray(self.traj), dtype=torch.float32, device=device)
+        if self.dcf is not None:
+            self.dcf = torch.as_tensor(np.ascontigousarray(self.dcf), dtype=torch.float32, device=device)
+        if self.FA is not None:
+            if np.isreal(self.FA).all():
+                self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+            else:
+                self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
+        if self.TR is not None:
+            self.TR = torch.as_tensor(self.TR, dtype=torch.float32, device=device)
+        if self.TE is not None:
+            self.TE = torch.as_tensor(self.TE, dtype=torch.float32, device=device)
+        if self.TI is not None:
+            self.TI = torch.as_tensor(self.TI, dtype=torch.float32, device=device)
+        if "slice_profile" in self.user:
+            self.user["slice_profile"] = torch.as_tensor(self.user["slice_profile"], dtype=torch.float32, device=device)
+        if "basis" in self.user:
+            if np.isreal(self.user["basis"]).all():
+                self.user["basis"] = torch.as_tensor(self.user["basis"], dtype=torch.float32, device=device)
+            else:
+                self.user["basis"] = torch.as_tensor(self.user["basis"], dtype=torch.complex64, device=device)
+    
+    def numpy(self):
+        """Cast internal attributes to Numpy."""
+        self.shape = self.shape.numpy()
+        if self.traj is not None:
+            self.traj = self.traj.numpy()
+        if self.dcf is not None:
+            self.dcf = self.dcf.numpy()
+        if self.FA is not None:
+            self.FA.numpy()
+        if self.TR is not None:
+            self.TR.numpy()
+        if self.TE is not None:
+            self.TE.numpy()
+        if self.TI is not None:
+            self.TI.numpy()
+        if "slice_profile" in self.user:
+            self.user["slice_profile"].numpy()
+        if "basis" in self.user:
+            self.user["basis"].numpy()
+            
+
+    def __post_init__(self): # noqa
         
         # cast
         if self.TI is not None:
@@ -64,14 +123,14 @@ class Header:
                 self.FA = np.asarray(self.FA, dtype=np.float32)
         
         # fix spacing
-        if self.spacing is None:
-            self.spacing = self.resolution[0]
+        if self._spacing is None:
+            self._spacing = self._spacing[0]
             
         # convert orientation to tuple
-        if isinstance(self.orientation, np.ndarray):
-            self.orientation = self.orientation.ravel()
+        if isinstance(self._orientation, np.ndarray):
+            self._orientation = self._orientation.ravel()
         if isinstance(self.orientation, list) is False:
-            self.orientation = list(self.orientation)
+            self._orientation = list(self._orientation)
 
         # prepare Series tags
         if self.ref_dicom is None:
@@ -152,20 +211,29 @@ class Header:
         t = np.arange(acquisitions[0]["head"]["number_of_samples"]) * dt
         
         if external:
-            return cls(shape, resolution, spacing, ref_dicom=ref_dicom, t=t)
+            return cls(shape, t, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing)
         else:
             acquisitions = mrd._get_first_volume(acquisitions, firstVolumeIdx)
             orientation = mrd._get_image_orientation(acquisitions)
             position = mrd._get_position(acquisitions)
             affine = nifti._make_nifti_affine(shape, position, orientation, resolution)
 
-            return cls(shape, resolution, spacing, orientation, affine, ref_dicom, t=t)
+            return cls(shape, t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
 
     @classmethod
     def from_gehc(cls, header):
         
-        # calculate geometry parameters
+        # image reconstruction
         shape = header["shape"]
+        t = header["t"]
+        traj = header["traj"]
+        dcf = header["dcf"]
+        
+        # image post processing
+        flip = header["flip"]
+        transpose = header["transpose"]
+        
+        # affine
         spacing = header["spacing"]
         resolution = header["resolution"]
         orientation = header["orientation"]
@@ -175,18 +243,18 @@ class Header:
         # get reference dicom
         ref_dicom = gehc._initialize_series_tag(header["meta"])
 
-        # get dwell time
-        TI = header["TI"]
-        TE = header["TE"]
+        # get sequence time
+        FA = header["FA"]
         TR = header["TR"]
-        FA = header["FA"] 
+        TE = header["TE"]
+        TI = header["TI"]
+        user = header["user"]
+        
+        # reconstruction options
         adc = header["adc"]
         shift = header["shift"]
-        t = header["t"]
-        traj = header["traj"]
-        dcf = header["dcf"]
         
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom, TI, TE, TR, FA, adc, shift, t, traj, dcf)
+        return cls(shape, t, traj, dcf, flip, transpose, affine, ref_dicom, FA, TR, TE, TI, user, adc, shift, resolution, spacing, orientation)
 
     @classmethod
     def from_siemens(cls):
@@ -218,7 +286,7 @@ class Header:
         # except Exception:
         #     dt = None
 
-        return cls(shape, resolution, spacing, orientation.ravel(), affine, ref_dicom)
+        return cls(shape, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation.ravel())
 
     @classmethod
     def from_nifti(cls, img, header, affine, json):
@@ -243,13 +311,10 @@ class Header:
         # except Exception:
         #     dt = None
 
-        return cls(shape, resolution, spacing, orientation, affine, ref_dicom)
+        return cls(shape, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
 
     def to_dicom(self):
         pass
 
     def to_nifti(self):
         pass
-
-
-# %% mrd utils
