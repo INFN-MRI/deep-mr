@@ -3,6 +3,7 @@
 __all__ = ["read_mrd_acqhead", "write_mrd_acqhead"]
 
 import os
+import warnings
 
 import numpy as np
 import numba as nb
@@ -10,6 +11,7 @@ import numba as nb
 import ismrmrd
 
 from ..generic import mrd
+from ..types.mrd import _numpy_to_bytes
 
 def read_mrd_acqhead(filepath):
     """
@@ -53,7 +55,9 @@ def write_mrd_acqhead(head, filepath):
         raise RuntimeError(f"{filepath} already existing!")
     
     # initialize xml header
-    xmlhead = _create_hdr(head)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        xmlhead = _create_hdr(head)
     
     # get dwell time
     dt = int(np.diff(head.t)[0] * 1e3) # ms to us
@@ -120,7 +124,7 @@ def _create_hdr(head):
     encoding.trajectory = ismrmrd.xsd.trajectoryType("other")
 
     # set fov and matrix size
-    fov = np.asarray(head.shape) * np.asarray([head.spacing] + list(head.resolution)[1:])
+    fov = np.asarray(head.shape) * np.asarray([head._spacing] + list(head._resolution)[1:])
     
     efov = ismrmrd.xsd.fieldOfViewMm()
     efov.z, efov.y, efov.x = fov
@@ -177,25 +181,25 @@ def _create_hdr(head):
     hdr.userParameters = ismrmrd.xsd.userParametersType()
     slice_thickness = ismrmrd.xsd.userParameterDoubleType()
     slice_thickness.name = "SliceThickness"
-    slice_thickness.value = head.resolution[0]
+    slice_thickness.value = head._resolution[0]
     hdr.userParameters.userParameterDouble.append(slice_thickness)
     
     spacing = ismrmrd.xsd.userParameterDoubleType()
     spacing.name = "SpacingBetweenSlices"
-    spacing.value = head.spacing
+    spacing.value = head._spacing
     hdr.userParameters.userParameterDouble.append(spacing)
     
     if "slice_profile" in head.user:
         slice_profile = ismrmrd.xsd.userParameterStringType()
         slice_profile.name = "slice_profile"
-        slice_profile.value = head.user["slice_profile"].astype(np.float32).tobytes()
+        slice_profile.value = _numpy_to_bytes(head.user["slice_profile"].astype(np.float32))
         hdr.userParameters.userParameterString.append(slice_profile)
         head.user.pop("slice_profile", None)
     
     if "basis" in head.user:
         basis = ismrmrd.xsd.userParameterStringType()
         basis.name = "basis"
-        basis.value = head.user["basis"].astype(np.complex64).tobytes()
+        basis.value = _numpy_to_bytes(head.user["basis"].astype(np.complex64))
         hdr.userParameters.userParameterString.append(basis)
         head.user.pop("basis", None)
         
@@ -238,12 +242,12 @@ def _create_hdr(head):
     if head.FA is not None:
         if np.iscomplexobj(head.FA):
             head.FA = head.FA.astype(np.complex64)
-            rf_phase = np.angle(head.FA).tobytes()
+            rf_phase = np.angle(head.FA)
             tmp = ismrmrd.xsd.userParameterStringType()
             tmp.name = "rf_phase"
-            tmp.value = np.rad2deg(rf_phase)
+            tmp.value = _numpy_to_bytes(np.rad2deg(rf_phase).astype(np.float32))
             hdr.userParameters.userParameterString.append(tmp)       
-        head.FA = abs(head.FA)
+            head.FA = abs(head.FA).astype(np.float32)
             
     for n in range(ncontrasts):
         if head.FA is not None:

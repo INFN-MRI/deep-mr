@@ -73,14 +73,14 @@ def read_mrd(filepath, external=False):
         head = Header.from_mrd(mrdhead, acquisitions, firstVolumeIdx, external)
         
         # get slice profile
-        slice_profile = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "slice_profile")
-        if slice_profile is not None:
-            head.user["slice_profile"] = np.frombuffer(slice_profile, dtype=np.float32)
+        tmp = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "slice_profile")
+        if tmp is not None:
+            head.user["slice_profile"] = mrd._bytes_to_numpy(tmp["slice_profile"]).astype(np.float32)
             
         # get basis
-        basis = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "basis")
-        if basis is not None:
-            basis = np.frombuffer(basis, dtype=np.complex64)
+        tmp = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "basis")
+        if tmp is not None:
+            basis = mrd._bytes_to_numpy(tmp["basis"]).astype(np.complex64)
             if np.isreal(basis).all():
                 basis = basis.real
             elif np.isreal(basis.imag + 1j * basis.real).all():
@@ -88,8 +88,9 @@ def read_mrd(filepath, external=False):
             head.user["basis"] = basis
             
         # get separability
-        separable = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "separable")
-        if separable is not None:
+        tmp = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "separable")
+        if tmp is not None:
+            separable = tmp["separable"]
             if separable == "True":
                 separable = True
             elif separable == "False":
@@ -97,8 +98,9 @@ def read_mrd(filepath, external=False):
             head.user["separable"] = separable
             
         # get mode
-        mode = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "mode")
-        if mode is not None:
+        tmp = mrd._find_in_user_params(mrdhead.userParameters.userParameterString, "mode")
+        if tmp is not None:
+            mode = tmp["mode"]
             head.user["mode"] = mode
     
     # update header

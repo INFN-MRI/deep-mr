@@ -2,6 +2,7 @@
 
 
 import warnings
+import pickle
 
 import numpy as np
 
@@ -174,9 +175,9 @@ def _get_flip_angles(header):
     except:
         flipAngles = None
         
-    rf_phase = _find_in_user_params(header.userParameters.userParameterString, "rf_phase")
-    if rf_phase is not None and flipAngles is not None:
-        rf_phase = np.frombuffer(rf_phase, dtype=np.float32)
+    tmp = _find_in_user_params(header.userParameters.userParameterString, "rf_phase")
+    if tmp is not None and flipAngles is not None:
+        rf_phase = _bytes_to_numpy(tmp["rf_phase"]).astype(np.float32)
         flipAngles = np.asarray(flipAngles) * np.exp(1j * np.deg2rad(rf_phase))
 
     return np.asarray(flipAngles)
@@ -323,3 +324,12 @@ def _initialize_series_tag(mrdHead):
         pass
 
     return dicomDset
+
+     
+def _numpy_to_bytes(arr):
+    return arr.dumps().hex()
+
+
+def _bytes_to_numpy(serialized_arr):
+    arr = pickle.loads(bytes.fromhex(serialized_arr))
+    return arr

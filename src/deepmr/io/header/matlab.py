@@ -7,21 +7,21 @@ import numpy as np
 from ..generic import matlab
 from ..types.header import Header
 
-def read_matlab_acqhead(filename, dcfname=None, methodname=None, sliceprofname=None):
+def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=None):
     """
     Read acquistion header from matlab file.
 
     Parameters
     ----------
-    filename : str
+    filepath : str
         Path to the file.
-    dcfname : str, optional
+    dcfpath : str, optional
         Path to the dcf file.
         The default is None.
-    methodname : str, optional
+    methodpath : str, optional
         Path to the schedule description file.
         The default is None.
-    sliceprofname : str, optional
+    sliceprofpath : str, optional
         Path to the slice profile file.
         The default is None.
 
@@ -32,7 +32,7 @@ def read_matlab_acqhead(filename, dcfname=None, methodname=None, sliceprofname=N
         
     """
     # load dcf
-    matfile, filename = matlab.read_matfile(filename, True)
+    matfile, filepath = matlab.read_matfile(filepath, True)
     
     # get k space trajectory
     k, reshape = _get_trajectory(matfile)
@@ -42,7 +42,7 @@ def read_matlab_acqhead(filename, dcfname=None, methodname=None, sliceprofname=N
     adc = _get_adc(matfile)
      
     # get dcf
-    dcf = _get_dcf(matfile, k, filename, dcfname)
+    dcf = _get_dcf(matfile, k, filepath, dcfpath)
             
     # get sampling time
     t = _get_sampling_time(matfile)
@@ -60,7 +60,7 @@ def read_matlab_acqhead(filename, dcfname=None, methodname=None, sliceprofname=N
     head._adc = adc
    
     # get schedule file
-    head = _get_schedule(head, matfile, methodname)
+    head = _get_schedule(head, matfile, methodpath)
     
     # reformat trajectory
     acq_type = _estimate_acq_type(k, shape)
@@ -69,7 +69,7 @@ def read_matlab_acqhead(filename, dcfname=None, methodname=None, sliceprofname=N
     head, _reformat_trajectory(head, acq_type, reshape)
     
     # get slice profile
-    head = _get_slice_profile(head, matfile, filename, sliceprofname)
+    head = _get_slice_profile(head, matfile, filepath, sliceprofpath)
     
     # get basis
     head = _get_basis(head, matfile)
@@ -188,16 +188,16 @@ def _get_sampling_time(matfile):
 
 def _get_shape(matfile, ndim):
     if "mtx" in matfile:
-        shape = matfile["mtx"].squeeze()[::-1]
+        shape = matfile["mtx"][::-1].squeeze()
     elif "npix" in matfile:
-        shape = matfile["npix"].squeeze()[::-1]
+        shape = matfile["npix"][::-1].squeeze()
     elif "shape" in matfile:
         shape = matfile["shape"]
     else:
         raise RuntimeError("Matrix size not found!")
         
-    # expand scalar
-    if len(shape) == 1:
+    # expand scalar    
+    if np.isscalar(shape) or shape.size == 1:
         shape = [int(shape)] * ndim
         
     return shape

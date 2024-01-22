@@ -64,9 +64,9 @@ class Header:
         """
         self.shape = torch.as_tensor(self.shape, dtype=int, device=device)
         if self.traj is not None:
-            self.traj = torch.as_tensor(np.ascontigousarray(self.traj), dtype=torch.float32, device=device)
+            self.traj = torch.as_tensor(np.ascontiguousarray(self.traj), dtype=torch.float32, device=device)
         if self.dcf is not None:
-            self.dcf = torch.as_tensor(np.ascontigousarray(self.dcf), dtype=torch.float32, device=device)
+            self.dcf = torch.as_tensor(np.ascontiguousarray(self.dcf), dtype=torch.float32, device=device)
         if self.FA is not None:
             if np.isreal(self.FA).all():
                 self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
@@ -88,23 +88,24 @@ class Header:
     
     def numpy(self):
         """Cast internal attributes to Numpy."""
-        self.shape = self.shape.numpy()
-        if self.traj is not None:
+        if isinstance(self.shape, torch.Tensor):
+            self.shape = self.shape.numpy()
+        if self.traj is not None and isinstance(self.traj, torch.Tensor):
             self.traj = self.traj.numpy()
-        if self.dcf is not None:
+        if self.dcf is not None and isinstance(self.dcf, torch.Tensor):
             self.dcf = self.dcf.numpy()
-        if self.FA is not None:
-            self.FA.numpy()
-        if self.TR is not None:
-            self.TR.numpy()
-        if self.TE is not None:
-            self.TE.numpy()
-        if self.TI is not None:
-            self.TI.numpy()
-        if "slice_profile" in self.user:
-            self.user["slice_profile"].numpy()
-        if "basis" in self.user:
-            self.user["basis"].numpy()
+        if self.FA is not None and isinstance(self.FA, torch.Tensor):
+            self.FA = self.FA.numpy()
+        if self.TR is not None and isinstance(self.TR, torch.Tensor):
+            self.TR = self.TR.numpy()
+        if self.TE is not None and isinstance(self.TE, torch.Tensor):
+            self.TE = self.TE.numpy()
+        if self.TI is not None and isinstance(self.TI, torch.Tensor):
+            self.TI = self.TI.numpy()
+        if "slice_profile" in self.user and isinstance(self.user["slice_profile"], torch.Tensor):
+            self.user["slice_profile"] = self.user["slice_profile"].numpy()
+        if "basis" in self.user and isinstance(self.user["basis"], torch.Tensor):
+            self.user["basis"] = self.user["basis"].numpy()
             
 
     def __post_init__(self): # noqa
@@ -129,7 +130,7 @@ class Header:
         # convert orientation to tuple
         if isinstance(self._orientation, np.ndarray):
             self._orientation = self._orientation.ravel()
-        if isinstance(self.orientation, list) is False:
+        if isinstance(self._orientation, list) is False:
             self._orientation = list(self._orientation)
 
         # prepare Series tags
@@ -144,13 +145,13 @@ class Header:
             self.ref_dicom.Rows = self.shape[2]
             self.ref_dicom.Columns = self.shape[1]
             self.ref_dicom.PixelSpacing = [
-                round(self.resolution[2], 2),
-                round(self.resolution[1], 2),
+                np.round(self._resolution[2], 2),
+                np.round(self._resolution[1], 2),
             ]
-            self.ref_dicom.SliceThickness = round(self.resolution[0], 2)
-            self.ref_dicom.SpacingBetweenSlices = round(self.spacing, 2)
-            self.ref_dicom.ImageOrientationPatient = self.orientation
-            self.ref_dicom.AcquisitionMatrix = [self.shape[2], self.shape[1], self.shape[0]]
+            self.ref_dicom.SliceThickness = np.round(self._resolution[0], 2)
+            self.ref_dicom.SpacingBetweenSlices = np.round(self._spacing, 2)
+            self.ref_dicom.ImageOrientationPatient = self._orientation
+            self.ref_dicom.AcquisitionMatrix = [self.shape[1], self.shape[0]]
     
             try:
                 self.ref_dicom.ImagesInAcquisition = ""
