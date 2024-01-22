@@ -3,6 +3,8 @@
 import copy
 import time
 
+import numpy as np
+
 from . import base as _base
 # from . import bart as _bart
 from . import matlab as _matlab
@@ -21,8 +23,8 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
         Path to acquisition header file.
     device : str, optional
         Computational device for internal attributes. The default is "cpu".
-    verbose : bool, optional
-        Verbosity flag. The default is False.
+    verbose : int, optional
+        Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
     
     Args (matfiles)
     ---------------
@@ -44,7 +46,7 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
         
     """
     tstart = time.time()
-    if verbose:
+    if verbose >= 1:
         print(f"Reading acquisition header from file {filepath}...", end="\t")
         
     done = False
@@ -93,8 +95,40 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
     # cast
     head.torch(device)
     
+    # final report
+    if verbose == 2:
+        print(f"Readout time: {round(float(head.t[-1]), 2)} ms")
+        if head.traj is not None:
+            print(f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})")      
+        if head.dcf is not None:
+            print(f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})")
+        if head.FA is not None:
+            if len(np.unique(head.FA)) > 1:
+                print(f"Flip Angle train length: {len(head.FA)}")
+            else:
+                FA = float(np.unique(head.FA)[0])
+                print(f"Constant FA: {round(abs(FA), 2)} deg")
+        if head.TR is not None:
+            if len(np.unique(head.TR)) > 1:
+                print(f"TR train length: {len(head.TR)}")
+            else:
+                TR = float(np.unique(head.TR)[0])
+                print(f"Constant TR: {round(TR, 2)} ms")
+        if head.TE is not None:
+            if len(np.unique(head.TE)) > 1:
+                print(f"Echo train length: {len(head.TE)}")
+            else:
+                TE = float(np.unique(head.TE)[0])
+                print(f"Constant TE: {round(TE, 2)} ms")
+        if head.TI is not None and np.allclose(head.TI, 0.0) is False:
+            if len(np.unique(head.TI)) > 1:
+                print(f"Inversion train length: {len(head.TI)}")
+            else:
+                TI = float(np.unique(head.TI)[0])
+                print(f"Constant TI: {round(TI, 2)} ms")
+    
     tend = time.time()
-    if verbose:
+    if verbose >= 1:
         print(f"done! Elapsed time: {round(tend-tstart, 2)} s...")
             
     return head
@@ -122,12 +156,4 @@ def write_acquisition_header(head, filepath, dataformat="hdf5"):
         _mrd.write_mrd_acqhead(head, filepath)
     else:
         raise RuntimeError(f"Data format = {dataformat} not recognized! Please use 'mrd' or 'hdf5'")
-        
-        
-        
-        
-        
-        
-        
-        
-        
+             
