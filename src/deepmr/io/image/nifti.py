@@ -1,6 +1,6 @@
 """NIfTI reading routines."""
 
-__all__ = ["read_nifti"]
+__all__ = ["read_nifti", "write_nifti"]
 
 import glob
 import json
@@ -12,6 +12,8 @@ import nibabel as nib
 
 from ..types import nifti
 from ..types.header import Header
+
+from .common import _prepare_image
 
 def read_nifti(filepath):
     """
@@ -64,83 +66,91 @@ def read_nifti(filepath):
     
     return image, header
 
-# def write_nifti(image, head):
-#     """
-#     Write parametric map to dicom.
-    
-#     Args:
-#         image: ndarray of image data to be written.
-#         info: dict with the following fields:
-#             - template: the DICOM template.
-#             - slice_locations: ndarray of Slice Locations [mm].
-#             - TI: ndarray of Inversion Times [ms].
-#             - TE: ndarray of Echo Times [ms].
-#             - TR: ndarray of Repetition Times [ms].
-#             - FA: ndarray of Flip Angles [deg].
-#         filename: name of the output nifti file.
-#         outpath: desired output path
-#     """
-#     # generate file name
-#     if filename.endswith('.nii') is False and filename.endswith('.nii.gz') is False:
-#         filename += '.nii'
-    
-#     # generate output path
-#     outpath = os.path.abspath(outpath)
-    
-#     # create output folder
-#     if not os.path.exists(outpath):
-#         os.makedirs(outpath)
+def write_nifti(filename, image, filepath="./", head=None, series_description="", series_number_offset=0, series_number_scale=1000, rescale=False):
+    """
+    Write image to NIfTI.
+
+    Parameters
+    ----------
+    filename : str 
+        Name of the file.
+    image : np.ndarray
+        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).    
+    filepath : str, optional
+        Path to file. The default is "./".
+    head : deepmr.Header, optional
+        Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
+        and meta information (shape, resolution, spacing, etc). If None,
+        assume 1mm isotropic resolution, contiguous slices and axial orientation.
+        The default is None
+    series_description : str, optional
+        Custom series description. The default is "".
+    series_number_offset : int, optional
+        Series number offset with respect to the acquired.
+        Final series number is series_number_scale * acquired_series_number + series_number_offset.
+        he default is 0.
+    series_number_scale : int, optional
+        Series number multiplicative with respect to the acquired. 
+        Final series number is series_number_scale * acquired_series_number + series_number_offset.
+        The default is 1000.
+    rescale : bool, optional
+        If true, rescale image intensity between 0 and int16_max.
+        Beware! Avoid this if you are working with quantitative maps.
+        The default is False.
         
-#     # cast image to numpy
+    """
+    # generate file name
+    if filename.endswith('.nii') is False and filename.endswith('.nii.gz') is False:
+        filename += '.nii'
+    
+    # generate output path
+    filepath = os.path.realpath(filepath)
+    
+    # create output folder
+    if not os.path.exists(filepath):
+        os.makedirs(filepath)
         
-#     # reformat image
-#     image = np.flip(image.transpose(), axis=1)
+    # get permutations and flips
+    if head is not None:
+        transpose = head.transpose
+        flip = head.flip
     
-#     # cast image
-#     minval = np.iinfo(np.int16).min
-#     maxval = np.iinfo(np.int16).max
-#     image[image < minval] = minval
-#     image[image > maxval] = maxval
-#     image = image.astype(np.int16)
-               
-#     # # get voxel size
-#     # dx, dy = np.array(info['dcm_template'][0].PixelSpacing).round(4)
-#     # dz = round(float(info['dcm_template'][0].SliceThickness), 4)
+    # cast image to numpy
+    image, windowRange = _prepare_image(image, transpose, flip, rescale)
     
-#     # # get affine
-#     # affine, _ = utils._get_nifti_affine(info['dcm_template'], image.shape[-3:])
-                
-#     try:
-#         windowMin = 0.5 * np.percentile(image[image < 0], 95)
-#     except:
-#         windowMin = 0
-#     try:
-#         windowMax = 0.5 * np.percentile(image[image > 0], 95)
-#     except:
-#         windowMax = 0
+    # initialize header if not provided
+    if head is None:
+        head = Header(image.shape[-3:])
+    
+    # unpack header
+    affine = head.affine 
+    resolution = head._resolution
+    if head.TR is not None:
+        TR = float(head.TR.min())
+    else:
+        TR = 1000.0
+    
+    # prepare json dictionary
+    head.ref_dicom.SeriesDescription = series_description
+    head.ref_dicom.SeriesNumber = series_number_scale * head.ref_dicom.SeriesNumber + series_number_offset
+    json_dict = nifti._initialize_json_dict(head.ref_dicom)
+    
+    # add stuff
+    if head.FA is not None:
+        json_dict["FA"] = head.FA
+    if head.TE is not None:
+        json_dict["TE"] = head.TE
+    if head.TR is not None:
+        json_dict["TR"] = head.TR
+    if head.TI is not None:
+        json_dict["TI"] = head.TI
         
-#     # write nifti
-#     nifti = nib.Nifti1Image(image, affine)
-#     nifti.header['pixdim'][1:4] = np.array([dx, dy, dz])
-#     nifti.header['sform_code'] = 0
-#     nifti.header['qform_code'] = 2
-#     nifti.header['cal_min'] = windowMin 
-#     nifti.header['cal_max'] = windowMax 
-#     nifti.header.set_xyzt_units('mm', 'sec')
+    # # actual writing
+    _nifti_write(filename, filepath, image, affine, resolution, TR, windowRange)
     
-#     # actual writing
-#     nib.save(nifti, os.path.join(outpath, filename))
-    
-#     # write json
-#     if json_dict is not None:
-#         # fix series description
-#         if series_description is not None:
-#             json_dict['SeriesDescription'] = series_description
-#         jsoname = filename.split('.')[0] + '.json'
-#         with open(os.path.join(outpath, jsoname), 'w', encoding='utf-8') as f:
-#             json.dump(json_dict, f, ensure_ascii=False, indent=4)
-            
-            
+    # write json
+    _json_write(filename, filepath, json_dict)
+                    
 # %% subroutines
 def _read_nifti(file_path):
     """
@@ -159,7 +169,6 @@ def _read_nifti(file_path):
     image, header, affine = _nifti_read(nifti_path, json_list)
     
     return image, header, affine, json_list
-
 
 def _nifti_read(file_path, json_dict):
     """
@@ -198,22 +207,44 @@ def _nifti_read(file_path, json_dict):
 
     return np.ascontiguousarray(data.transpose()), head, affine
 
+def _nifti_write(filepath, filename, image, affine, resolution, TR, windowRange):
+    """Actual nifti writing routine."""
+    
+    # get voxel size
+    dz, dy, dx = np.round(resolution, 2)
 
-def _json_read(file_path):
+    # write nifti
+    out = nib.Nifti1Image(image, affine)
+    out.header['pixdim'][1:5] = np.asarray([dx, dy, dz, TR])
+    out.header['sform_code'] = 0
+    out.header['qform_code'] = 2
+    out.header['cal_min'] = windowRange[0] 
+    out.header['cal_max'] = windowRange[1] 
+    out.header.set_xyzt_units('mm', 'sec')
+    
+    # actual writing
+    nib.save(out, os.path.join(filepath, filename))
+
+def _json_read(filepath):
     """
     Wrapper to handle multi-file json.
     """
-    if not isinstance(file_path, (tuple, list)):
-        file_path = [file_path]
+    if not isinstance(filepath, (tuple, list)):
+        filepath = [filepath]
     
     json_list = []
-    for json_path in file_path:
+    for json_path in filepath:
         with open(json_path) as json_file:
             json_list.append(json.loads(json_file.read()))
 
     return json_list
 
-
+def _json_write(filepath, filename, json_dict):
+    if json_dict is not None:
+        jsoname = filename.split('.')[0] + '.json'
+        with open(os.path.join(filepath, jsoname), 'w', encoding='utf-8') as f:
+            json.dump(json_dict, f, ensure_ascii=False, indent=4)
+            
 # %% paths
 def _get_json_paths(input):
     """
@@ -224,7 +255,6 @@ def _get_json_paths(input):
     else:
         json_path = input.split(".nii")[0] + ".json"
     return json_path
-
 
 def _get_nifti_paths(input):
     """
@@ -246,7 +276,6 @@ def _get_nifti_paths(input):
         file_path = _get_full_path(input)[0]
 
     return file_path
-
 
 def _get_full_path(file_path):
     """
@@ -273,7 +302,6 @@ def _get_real(file_path):
         
     return data_real
 
-
 def _get_imag(file_path):
     idx = np.argwhere(np.array(["imag" in name for name in file_path])).squeeze()
     files_imag = file_path[idx]
@@ -291,8 +319,7 @@ def _get_imag(file_path):
         data_imag = np.asarray([])
         
     return data_imag
-
-    
+ 
 def _get_phase(file_path):
     idx = np.argwhere(np.array(["phase" in name for name in file_path])).squeeze()
     files_phase = file_path[idx]
@@ -310,7 +337,6 @@ def _get_phase(file_path):
         data_phase = np.asarray([])
         
     return data_phase
-
 
 def _get_magn(file_path):
     files_mag = file_path

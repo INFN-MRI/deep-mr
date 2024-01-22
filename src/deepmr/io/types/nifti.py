@@ -301,3 +301,60 @@ def _initialize_series_tag(json):
         dicomDset.StationName = json["StationName"]
 
     return dicomDset
+
+def _initialize_json_dict(dicomDset):
+    """
+    Initialize Json dictionary.
+
+    """
+    
+    json = {}
+    
+    if "PatientName" in dicomDset:
+        json["PatientName"] = dicomDset.PatientName
+    if "PatientWeight" in dicomDset:
+        json["PatientWeight"] = dicomDset.PatientWeight
+    if "PatientID" in dicomDset:
+        json["PatientID"] = dicomDset.PatientID
+    if "PatientBirthDate" in dicomDset:
+        json["PatientBirthDate"] = dicomDset.PatientBirthDate
+    if "PatientSex" in dicomDset:
+        json["PatientSex"] = dicomDset.PatientSex
+
+    if "StudyDate" in dicomDset:
+        json["StudyDate"] = dicomDset.StudyDate
+    if "StudyTime" in dicomDset:
+        json["StudyTime"] = dicomDset.StudyTime
+    if "AccessionNumber" in dicomDset:
+        json["AccessionNumber"] = dicomDset.AccessionNumber
+    if "ReferringPhysicianName" in dicomDset:
+        json["ReferringPhysicianName"] = dicomDset.ReferringPhysicianName
+    if "StudyDescription" in dicomDset:
+        json["StudyDescription"] = dicomDset.StudyDescription
+    if "StudyInstanceUID" in dicomDset:
+        json["StudyInstanceUID"] = dicomDset.StudyInstanceUID
+
+    if "SeriesDate" in dicomDset:
+        json["SeriesDate"] = dicomDset.SeriesDate
+    if "SeriesTime" in dicomDset:
+        json["SeriesTime"] = dicomDset.SeriesTime
+    if "PatientPosition" in dicomDset:
+        json["PatientPosition"] = dicomDset.PatientPosition
+    if "SequenceName" in dicomDset:
+        json["SequenceName"] = dicomDset.SequenceName
+    if "FrameOfReferenceUID" in dicomDset:
+        json["FrameOfReferenceUID"] = dicomDset.FrameOfReferenceUID
+
+    if "Manufacturer" in dicomDset:
+        json["Manufacturer"] = dicomDset.Manufacturer
+    if "ManufacturerModelName" in dicomDset:
+        json["ManufacturerModelName"] = dicomDset.ManufacturerModelName
+    if "MagneticFieldStrength" in dicomDset:
+        json["MagneticFieldStrength"] = dicomDset.MagneticFieldStrength
+    if "InstitutionName" in dicomDset:
+        json["InstitutionName"] = dicomDset.InstitutionName
+    if "StationName" in dicomDset:
+        json["StationName"] = dicomDset.StationName
+        
+    return json
+    

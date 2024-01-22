@@ -1,6 +1,7 @@
 """Acquisition Header IO routines."""
 
 import copy
+import os
 import time
 
 import numpy as np
@@ -133,17 +134,19 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
             
     return head
             
-def write_acquisition_header(head, filepath, dataformat="hdf5"):
+def write_acquisition_header(filename, head, filepath="./", dataformat="hdf5"):
     """
     Write acquisition header to file.
 
     Parameters
     ----------
+    filename : str 
+        Name of the file.
     head: deepmr.Header
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc).
-    filepath : str 
-        Path to file.
+    filepath : str, optional
+        Path to file. The default is "./".
     dataformat: str, optional
         Available formats ('mrd' or 'hdf5'). The default is 'hdf5.'
         
@@ -151,9 +154,9 @@ def write_acquisition_header(head, filepath, dataformat="hdf5"):
     head = copy.deepcopy(head)
     head.ref_dicom = None
     if dataformat == 'hdf5':
-        _base.write_base_acqheader(head, filepath)
+        _base.write_base_acqheader(head, os.path.join(filepath, filename))
     elif dataformat == 'mrd':
-        _mrd.write_mrd_acqhead(head, filepath)
+        _mrd.write_mrd_acqhead(head, os.path.join(filepath, filename))
     else:
         raise RuntimeError(f"Data format = {dataformat} not recognized! Please use 'mrd' or 'hdf5'")
              

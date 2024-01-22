@@ -116,8 +116,9 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
                 ns2 = head.shape[0]
                 print(f"Removing oversampling along readout ({round(ns1/ns2, 2)})...", end="\t")
             data, head = _remove_oversampling(data, head)
-            t1 = time.time()
-            print(f"done! Elapsed time: {round(t1-t0, 2)} s")
+            if verbose == 2:
+                t1 = time.time()
+                print(f"done! Elapsed time: {round(t1-t0, 2)} s")
     
     # transpose readout in slice direction for 3D Cartesian
     if "mode" in head.user:

@@ -14,6 +14,8 @@ import pydicom
 from ..types import dicom
 from ..types.header import Header
 
+from .common import _prepare_image
+
 def read_dicom(filepath):
     """
     Read image from dicom files.
@@ -81,6 +83,87 @@ def read_dicom(filepath):
     header.TR = TR
     
     return sorted_image, header
+
+def write_dicom(filename, image, filepath="./", head=None, series_description="", series_number_offset=0, series_number_scale=1000, rescale=False):
+    """
+    Write image to DICOM.
+
+    Parameters
+    ----------
+    filename : str 
+        Name of the folder containing all the DICOM files.
+    image : np.ndarray
+        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).    
+    filepath : str, optional
+        Path to filaname. The default is "./".
+    head : deepmr.Header, optional
+        Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
+        and meta information (shape, resolution, spacing, etc). If None,
+        assume 1mm isotropic resolution, contiguous slices and axial orientation.
+        The default is None
+    series_description : str, optional
+        Custom series description. The default is "".
+    series_number_offset : int, optional
+        Series number offset with respect to the acquired.
+        Final series number is series_number_scale * acquired_series_number + series_number_offset.
+        he default is 0.
+    series_number_scale : int, optional
+        Series number multiplicative with respect to the acquired. 
+        Final series number is series_number_scale * acquired_series_number + series_number_offset.
+        The default is 1000.
+    rescale : bool, optional
+        If true, rescale image intensity between 0 and int16_max.
+        Beware! Avoid this if you are working with quantitative maps.
+        The default is False.
+        
+    """    
+    # generate output path
+    filepath = os.path.realpath(os.path.join(filepath, filename))
+    
+    # create output folder
+    if not os.path.exists(filepath):
+        os.makedirs(filepath)
+        
+    # get permutations and flips
+    if head is not None:
+        transpose = head.transpose
+        flip = head.flip
+    
+    # cast image to numpy
+    image, windowRange = _prepare_image(image, transpose, flip, rescale)
+    
+    # initialize header if not provided
+    if head is None:
+        head = Header(image.shape[-3:])
+    
+    # unpack header
+    affine = head.affine
+    
+    # prepare json dictionary
+    head.ref_dicom.SeriesDescription = series_description
+    head.ref_dicom.SeriesNumber = series_number_scale * head.ref_dicom.SeriesNumber + series_number_offset
+    
+    # remove constant parameters from header
+    if head.FA is not None:
+        if len(np.unique(head.FA)) == 1:
+            head.FA = None
+    if head.TR is not None:
+        if len(np.unique(head.TR)) == 1:
+            head.TR = None
+    if head.TE is not None:
+        if len(np.unique(head.TE)) == 1:
+            head.TE = None
+    if head.TI is not None:
+        if len(np.unique(head.TI)) == 1:
+            head.TI = None
+            
+    # generate position and slice location
+                
+    # actual writing
+    _nifti_write(filename, filepath, image, affine, resolution, TR, windowRange)
+    
+    # write json
+    _json_write(filename, filepath, json_dict)
 
 # %% subroutines
 def _read_dcm(dicomdir):

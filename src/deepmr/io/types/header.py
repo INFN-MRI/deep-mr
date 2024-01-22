@@ -31,8 +31,8 @@ class Header:
     dcf: np.ndarray = None
     
     # image post processing
-    flip: list = field(default_factory=lambda: [])
-    transpose: list = field(default_factory=lambda: np.arange(4).tolist())
+    flip: list = None
+    transpose: list = None
     
     # image export
     affine: np.ndarray = field(default_factory=lambda: np.eye(4, dtype=np.float32))
@@ -145,13 +145,16 @@ class Header:
             self.ref_dicom.Rows = self.shape[2]
             self.ref_dicom.Columns = self.shape[1]
             self.ref_dicom.PixelSpacing = [
-                np.round(self._resolution[2], 2),
-                np.round(self._resolution[1], 2),
+                np.round(float(self._resolution[2]), 2),
+                np.round(float(self._resolution[1]), 2),
             ]
             self.ref_dicom.SliceThickness = np.round(self._resolution[0], 2)
             self.ref_dicom.SpacingBetweenSlices = np.round(self._spacing, 2)
             self.ref_dicom.ImageOrientationPatient = self._orientation
-            self.ref_dicom.AcquisitionMatrix = [self.shape[1], self.shape[0]]
+            self.ref_dicom.AcquisitionMatrix = [self.shape[2], self.shape[1]]
+            
+            # make sure SeriesInstanceUID is unique
+            self.ref_dicom.SeriesInstanceUID = pydicom.uid.generate_uid()
     
             try:
                 self.ref_dicom.ImagesInAcquisition = ""
@@ -189,9 +192,37 @@ class Header:
                 self.ref_dicom[0x0040, 0x9096][0][0x0040, 0x9225].value = 1.0
             except Exception:
                 pass
-    
-            self.ref_dicom[0x0018, 0x0086].value = "1"  # Echo Number
-
+            
+            # get constant contrast info and number of contrasts
+            contrasts = [self.FA, self.TE, self.TI, self.TR]
+            contrasts = [contrast for contrast in contrasts if contrast is not None]
+            if contrasts:
+                ncontrasts = len(contrasts[0])
+            else:
+                ncontrasts = 1
+            self.ref_dicom.EchoTrainLength = str(ncontrasts)
+            
+            if self.TI is None:
+                self.ref_dicom.InversionTime = '0'    
+            elif len(np.unique(self.TI)) == 1:
+                TI = float(np.unique(self.TI)[0])
+                self.ref_dicom.InversionTime = str(round(TI, 2))
+            if self.TE is None:
+                self.ref_dicom.EchoTime = '0'    
+            elif len(np.unique(self.TE)) == 1:
+                TE = float(np.unique(self.TE)[0])
+                self.ref_dicom.EchoTime = str(round(TE, 2))
+            if self.TR is None:
+                self.ref_dicom.RepetitionTime = '0'    
+            elif len(np.unique(self.TR)) == 1:
+                TR = float(np.unique(self.TR)[0])
+                self.ref_dicom.RepetitionTime = str(round(TR, 2))
+            if self.FA is None:
+                self.ref_dicom.FlipAngle = '0'    
+            elif len(np.unique(self.FA)) == 1:
+                FA = float(np.unique(self.FA)[0])
+                self.ref_dicom.FlipAngle = str(round(abs(FA), 2))
+            
     @classmethod
     def from_mrd(cls, header, acquisitions, firstVolumeIdx, external):
 
