@@ -46,7 +46,7 @@ def read_mrd(filepath, external=False):
                 
         # sort
         data, traj, dcf, ordering = _sort_data(data, trajdcf, acquisitions, mrdhead)
-    
+            
         # get constrats info
         TI = mrd._get_inversion_times(mrdhead)
         TE = mrd._get_echo_times(mrdhead)
@@ -196,12 +196,12 @@ def _sort_data(data, trajdcf, acquisitions, mrdhead):
     if data is not None:
         datatmp = np.zeros([ncoils] + list(shape), dtype=np.complex64)
         _data_sorting(datatmp, data, icontrast, iz, iview)
-        data = np.ascontiguousarray(datatmp.squeeze())
+        data = datatmp
         
     if trajdcf is not None:
         trajdcftmp = np.zeros(list(shape) + [ndims], dtype=np.float32)
         _trajdcf_sorting(trajdcftmp, trajdcf, icontrast, iz, iview)
-        trajdcf = np.ascontiguousarray(trajdcftmp.squeeze())           
+        trajdcf = trajdcftmp       
         traj, dcf = trajdcf[..., :-1], trajdcf[..., -1]
     else:
         # actual sorting

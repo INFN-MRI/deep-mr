@@ -61,7 +61,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             data, head = _gehc.read_gehc_rawdata(filepath, acqheader)
             done = True
         except Exception:
-            raise
+            pass
      
     # siemens
     # if not(done):
@@ -76,11 +76,11 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         raise RuntimeError(f"File (={filepath}) not recognized!")
     if verbose == 2:
         t1 = time.time()
-        print(f"done! Elapsed time: {round(t1-t0, 2)} s...")
+        print(f"done! Elapsed time: {round(t1-t0, 2)} s")
         
     # transpose
     data = data.transpose(2, 0, 1, 3, 4) # (slice, coil, contrast, view, sample)  
-
+    
     # select actual readout
     if verbose == 2:
         nsamples = data.shape[-1]
@@ -89,7 +89,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     data = _select_readout(data, head)
     if verbose == 2:
         t1 = time.time()
-        print(f"done! Selected {data.shape[-1]} out of {nsamples} samples. Elapsed time: {round(t1-t0, 2)} s...")
+        print(f"done! Selected {data.shape[-1]} out of {nsamples} samples. Elapsed time: {round(t1-t0, 2)} s")
 
     # center fov
     if verbose == 2:
@@ -98,14 +98,14 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             ndim = head.traj.shape[-1]
             shift = head._shift[:ndim]
             if ndim == 2:
-                print(f"Shifting FoV by (dx={shift[0]}, dy={shift[1]}) mm...", end="\t")
+                print(f"Shifting FoV by (dx={shift[0]}, dy={shift[1]}) mm", end="\t")
             if ndim == 3:
-                print(f"Shifting FoV by (dx={shift[0]}, dy={shift[1]}, dz={shift[2]}) mm...", end="\t")
+                print(f"Shifting FoV by (dx={shift[0]}, dy={shift[1]}, dz={shift[2]}) mm", end="\t")
     data = _fov_centering(data, head)
     if verbose == 2:
         if head.traj is not None:
             t1 = time.time()
-            print(f"done! Elapsed time: {round(t1-t0, 2)} s...")
+            print(f"done! Elapsed time: {round(t1-t0, 2)} s")
     
     # remove oversampling for Cartesian
     if "mode" in head.user:
@@ -114,10 +114,10 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
                 t0 = time.time()
                 ns1 = data.shape[0]
                 ns2 = head.shape[0]
-                print(f"Removing oversample along readout ({round(ns1/ns2, 2)})...", end="\t")
+                print(f"Removing oversampling along readout ({round(ns1/ns2, 2)})...", end="\t")
             data, head = _remove_oversampling(data, head)
             t1 = time.time()
-            print(f"done! Elapsed time: {round(t1-t0, 2)} s...")
+            print(f"done! Elapsed time: {round(t1-t0, 2)} s")
     
     # transpose readout in slice direction for 3D Cartesian
     if "mode" in head.user:
@@ -132,31 +132,35 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         data = _fft(data, 0)
         if verbose == 2:
             t1 = time.time()
-            print(f"done! Elapsed time: {round(t1-t0, 4)} s...")
+            print(f"done! Elapsed time: {round(t1-t0, 4)} s")
         
     # set-up transposition
     if "mode" in head.user:
         if head.user["mode"] == "2Dcart":
             head.transpose = [1, 0, 2, 3]
             if verbose == 2:
+                print("Acquisition mode: 2D Cartesian")
                 print(f"K-space shape: (nslices={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, ny={data.shape[3]}, nx={data.shape[4]})")
                 print(f"Expected image shape: (nslices={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, ny={head.shape[1]}, nx={head.shape[2]})")
         elif head.user["mode"] == "2Dnoncart":
             head.transpose = [1, 0, 2, 3]
             if verbose == 2:
+                print("Acquisition mode: 2D Non-Cartesian")
                 print(f"K-space shape: (nslices={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, nviews={data.shape[3]}, nsamples={data.shape[4]})")
                 print(f"Expected image shape: (nslices={data.shape[0]}, nchannels={data.shape[0]}, ncontrasts={data.shape[1]}, ny={head.shape[1]}, nx={head.shape[2]})")
         elif head.user["mode"] == "3Dnoncart":
             data = data[0]
             head.transpose = [1, 0, 2, 3]
             if verbose == 2:
+                print("Acquisition mode: 3D Non-Cartesian")
                 print(f"K-space shape: (nchannels={data.shape[0]}, ncontrasts={data.shape[1]}, nviews={data.shape[2]}, nsamples={data.shape[3]})")
                 print(f"Expected image shape: (nchannels={data.shape[0]}, ncontrasts={data.shape[1]}, nz={head.shape[0]}, ny={head.shape[1]}, nx={head.shape[2]})")
         elif head.user["mode"] == "3Dcart":
             head.transpose = [1, 2, 3, 0]
             if verbose == 2:
+                print("Acquisition mode: 3D Cartesian")
                 print(f"K-space shape: (nx={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, nz={data.shape[3]}, ny={data.shape[4]})")
-                print(f"Expected image shape: (nx={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, nz={head.shape[3]}, ny={head.shape[4]})")
+                print(f"Expected image shape: (nx={head.shape[2]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, nz={head.shape[0]}, ny={head.shape[1]})")
         
         # remove unused trajectory for cartesian
         if head.user["mode"][2:] == "cart":
@@ -205,9 +209,9 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     
     tend = time.time()
     if verbose == 1:
-        print(f"done! Elapsed time: {round(tend-tstart, 2)} s...")
+        print(f"done! Elapsed time: {round(tend-tstart, 2)} s")
     elif verbose == 2:
-        print(f"Total elapsed time: {round(tend-tstart, 2)} s...")
+        print(f"Total elapsed time: {round(tend-tstart, 2)} s")
 
     return data, head
 
@@ -222,7 +226,7 @@ def _select_readout(data, head):
     
 def _fov_centering(data, head):
     
-    if head.traj is not None:
+    if head.traj is not None and np.allclose(head._shift, 0.0) is False:
         
         # ndimensions
         ndim = head.traj.shape[-1]
@@ -251,4 +255,6 @@ def _remove_oversampling(data, head):
     return data, head
 
 def _fft(data, axis):
-    return np.fft.fftshift(np.fft.fft(np.fft.fftshift(data, axes=axis), axis=axis), axes=axis)
+    tmp = torch.as_tensor(data)
+    tmp = torch.fft.fftshift(torch.fft.fft(torch.fft.fftshift(tmp, dim=axis), dim=axis), dim=axis)
+    return tmp.numpy()

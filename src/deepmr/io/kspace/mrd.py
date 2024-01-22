@@ -20,7 +20,7 @@ def read_mrd_rawdata(filepath):
     head : deepmr.Header
         Metadata for image reconstruction.
     """
-    data, head = mrd.read_mrd(filepath, external=True)
+    data, head = mrd.read_mrd(filepath)
     
     return data, head
         
