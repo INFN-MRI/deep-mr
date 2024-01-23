@@ -35,19 +35,6 @@ def _get_spacing(header):
     """
     return header["pixdim"][3]
 
-def _get_origin(shape, affine):
-    """
-    Return image origin.
-    """
-    N = shape[0]
-    if N > 1:
-        T1 = affine[:-1, -1]
-        TN = affine[:-1, 2] * (N - 1) + T1
-        origin = (T1 + TN) / 2
-    else:
-        origin = affine[:-1, -1]
-    return affine
-
 def _get_image_orientation(resolution, affine):
     """
     Return image orientation matrix.
@@ -236,6 +223,8 @@ def _initialize_series_tag(json):
         dicomDset.PatientID = json["PatientID"]
     if "PatientBirthDate" in json:
         dicomDset.PatientBirthDate = json["PatientBirthDate"]
+    if "PatientAge" in json:
+        dicomDset.PatientAge = json["PatientAge"]
     if "PatientSex" in json:
         dicomDset.PatientSex = json["PatientSex"]
 
@@ -292,6 +281,8 @@ def _initialize_json_dict(dicomDset):
         json["PatientID"] = str(dicomDset.PatientID)
     if "PatientBirthDate" in dicomDset:
         json["PatientBirthDate"] = str(dicomDset.PatientBirthDate)
+    if "PatientAge" in dicomDset:
+        json["PatientAge"] = str(dicomDset.PatientAge)
     if "PatientSex" in dicomDset:
         json["PatientSex"] = str(dicomDset.PatientSex)
 

@@ -73,20 +73,20 @@ def read_dicom(filepath):
             
     # unpack sequence
     TI, TE, EC, TR, FA = uContrasts.transpose()
-    
+
     # squeeze
     if sorted_image.shape[0] == 1:
         sorted_image = sorted_image[0]
         
     # initialize header
     header = Header.from_dicom(dsets, firstVolumeIdx)
-        
+            
     # update header
     header.FA = FA
     header.TI = TI
     header.TE = TE
     header.TR = TR
-    
+            
     return sorted_image, header
 
 def write_dicom(filename, image, filepath="./", head=None, series_description="", series_number_offset=0, series_number_scale=1000, rescale=False, anonymize=False, verbose=False):
@@ -162,6 +162,9 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
     if head is not None:
         transpose = head.transpose
         flip = head.flip
+    else:
+        transpose = None
+        flip = None
     
     # cast image to numpy
     image, windowRange = _prepare_image(image, transpose, flip, rescale)
@@ -198,17 +201,47 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
     
     # remove constant parameters from header
     if head.FA is not None:
-        if len(np.unique(head.FA)) == 1:
+        if head.FA.size == 1:
+            head.ref_dicom.FlipAngle = float(abs(head.FA))
             head.FA = None
-    if head.TR is not None:
-        if len(np.unique(head.TR)) == 1:
-            head.TR = None
-    if head.TE is not None:
-        if len(np.unique(head.TE)) == 1:
+        elif len(np.unique(head.FA)) == 1:
+            head.ref_dicom.FlipAngle = float(abs(head.FA[0]))
+            head.FA = None
+        else:
+            head.FA = list(abs(head.FA).astype(float))
+    if head.TE is not None and not(np.isinf(np.sum(head.TE))):
+        if head.TE.size == 1:
+            head.ref_dicom.EchoTime = float(head.TE)
             head.TE = None
-    if head.TI is not None:
-        if len(np.unique(head.TI)) == 1:
+        elif len(np.unique(head.TE)) == 1:
+            head.ref_dicom.EchoTime = float(head.TE[0])
+            head.TE = None
+        else:
+            head.TE = list(head.TE.astype(float))
+    else:
+        head.TE = None
+    if head.TR is not None and not(np.isinf(np.sum(head.TR))):
+        if head.TR.size == 1:
+            head.ref_dicom.RepetitionTime = float(head.TR)
+            head.TR = None
+        elif len(np.unique(head.TR)) == 1: 
+            head.ref_dicom.RepetitionTime = float(head.TR[0])
+            head.TR = None
+        else:
+            head.TR= list(head.TR.astype(float))
+    else:
+        head.TR = None
+    if head.TI is not None and not(np.isinf(np.sum(head.TI))):
+        if head.TI.size == 1:
+            head.ref_dicom.InversionTime = float(head.TI)
             head.TI = None
+        elif len(np.unique(head.TI)) == 1:
+            head.ref_dicom.InversionTime = float(head.TI[0])
+            head.TI = None
+        else:
+            head.TI = list(head.TI.astype(float))
+    else:
+        head.TI = None
             
     # generate position and slice location
     pos, zloc = dicom._make_geometry_tags(affine, shape, resolution)
@@ -402,19 +435,24 @@ def _cast_to_complex(dsets_in):
 
     if vendor == "Siemens":
         return _cast_to_complex_siemens(dsets_in)
+    
+    if vendor == "DeepMR":
+        return _cast_to_complex_deepmr(dsets_in)
 
 def _get_vendor(dset):
     """
     Get vendor from DICOM header.
     """
-    if dset.Manufacturer == "GE MEDICAL SYSTEMS":
-        return "GE"
+    if "GE MEDICAL SYSTEMS" in dset.Manufacturer.upper():
+        return "GEHC"
 
-    if dset.Manufacturer == "Philips Medical Systems":
+    if "PHILIPS" in dset.Manufacturer.upper():
         return "Philips"
 
-    if dset.Manufacturer == "SIEMENS":
+    if "SIEMENS" in dset.Manufacturer.upper():
         return "Siemens"
+    
+    return "DeepMR"
 
 def _cast_to_complex_ge(dsets_in):
     """
@@ -553,6 +591,32 @@ def _cast_to_complex_siemens(dsets_in):
         )
     else:
         img = np.stack(magnitude, axis=0).astype(np.float32)
+
+    # count number of instances
+    ninstances = img.shape[0]
+
+    # assign to pixel array
+    for n in range(ninstances):
+        dsets_out[n].pixel_array[:] = 0.0
+
+    return img, dsets_out
+
+def _cast_to_complex_deepmr(dsets_in):
+    """
+    Attempt to get magnitude from DeepMR and cast to complex.
+    """
+    # initialize
+    magnitude = []
+
+    # allocate template out
+    dsets_out = []
+
+    # loop over dataset
+    for dset in dsets_in:
+        magnitude.append(dset.pixel_array)
+        dsets_out.append(dset)
+
+    img = np.stack(magnitude, axis=0).astype(np.complex64)
 
     # count number of instances
     ninstances = img.shape[0]

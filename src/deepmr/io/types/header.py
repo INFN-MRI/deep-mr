@@ -70,10 +70,16 @@ class Header:
         if self.dcf is not None:
             self.dcf = torch.as_tensor(np.ascontiguousarray(self.dcf), dtype=torch.float32, device=device)
         if self.FA is not None:
-            if np.isreal(self.FA).all():
-                self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+            if np.isscalar(self.FA):
+                if np.isreal(self.FA):
+                    self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+                else:
+                    self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
             else:
-                self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
+                if np.isreal(self.FA).all():
+                    self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+                else:
+                    self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
         if self.TR is not None:
             self.TR = torch.as_tensor(self.TR, dtype=torch.float32, device=device)
         if self.TE is not None:
@@ -127,7 +133,7 @@ class Header:
         
         # fix spacing
         if self._spacing is None:
-            self._spacing = self._spacing[0]
+            self._spacing = self._resolution[0]
             
         # convert orientation to tuple
         if isinstance(self._orientation, np.ndarray):
@@ -212,7 +218,7 @@ class Header:
             self.ref_dicom.EchoTrainLength = str(ncontrasts)
             
             if self.TI is None:
-                self.ref_dicom.InversionTime = '0'    
+                self.ref_dicom.InversionTime = ''    
             elif len(np.unique(self.TI)) == 1:
                 TI = float(np.unique(self.TI)[0])
                 self.ref_dicom.InversionTime = str(round(TI, 2))
@@ -222,12 +228,12 @@ class Header:
                 TE = float(np.unique(self.TE)[0])
                 self.ref_dicom.EchoTime = str(round(TE, 2))
             if self.TR is None:
-                self.ref_dicom.RepetitionTime = '0'    
+                self.ref_dicom.RepetitionTime = '1000'    
             elif len(np.unique(self.TR)) == 1:
                 TR = float(np.unique(self.TR)[0])
                 self.ref_dicom.RepetitionTime = str(round(TR, 2))
             if self.FA is None:
-                self.ref_dicom.FlipAngle = '0'    
+                self.ref_dicom.FlipAngle = '90'    
             elif len(np.unique(self.FA)) == 1:
                 FA = float(np.unique(self.FA)[0])
                 self.ref_dicom.FlipAngle = str(round(abs(FA), 2))

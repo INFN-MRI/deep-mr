@@ -98,12 +98,6 @@ def _get_resolution(dsets):
         float(dsets[0].PixelSpacing[1]),
     )
 
-def _get_origin(position):
-    """
-    Return image origin.
-    """
-    return tuple(position.mean(axis=-1))
-
 def _get_shape(dsets, position):
     """
     Return image shape.
@@ -207,6 +201,7 @@ def _initialize_series_tag(ref_dicom):
     dicomDset.PatientWeight = ref_dicom.PatientWeight
     dicomDset.PatientID = ref_dicom.PatientID
     dicomDset.PatientBirthDate = ref_dicom.PatientBirthDate
+    dicomDset.PatientAge = ref_dicom.PatientAge
     dicomDset.PatientSex = ref_dicom.PatientSex
 
     dicomDset.StudyDate = ref_dicom.StudyDate
@@ -230,6 +225,9 @@ def _initialize_series_tag(ref_dicom):
     dicomDset.ManufacturerModelName = ref_dicom.ManufacturerModelName
     dicomDset.MagneticFieldStrength = ref_dicom.MagneticFieldStrength
     dicomDset.InstitutionName = ref_dicom.InstitutionName
-    dicomDset.StationName = ref_dicom.StationName
+    try:
+        dicomDset.StationName = ref_dicom.StationName
+    except Exception:
+        pass
 
     return dicomDset

@@ -116,6 +116,7 @@ def write_nifti(filename, image, filepath="./", head=None, series_description=""
     if head is not None:
         head = copy.deepcopy(head)
         head.numpy()
+        # print(head)
     
     # anonymize
     if head is not None and anonymize:
@@ -147,6 +148,9 @@ def write_nifti(filename, image, filepath="./", head=None, series_description=""
     if head is not None:
         transpose = head.transpose
         flip = head.flip
+    else:
+        transpose = None
+        flip = None
     
     # cast image to numpy
     image, windowRange = _prepare_image(image, transpose, flip, rescale)
@@ -177,22 +181,30 @@ def write_nifti(filename, image, filepath="./", head=None, series_description=""
     json_dict["SliceThickness"] = str(head.ref_dicom.SliceThickness)
     json_dict["EchoNumber"] = [str(n) for n in range(ncontrasts)]
     if head.FA is not None:
-        if len(np.unique(head.FA)) == 1:
+        if head.FA.size == 1:
+            json_dict["FlipAngle"] = float(abs(head.FA))
+        elif len(np.unique(head.FA)) == 1:
             json_dict["FlipAngle"] = float(abs(head.FA[0]))
         else:
             json_dict["FlipAngle"] = list(abs(head.FA).astype(float))
-    if head.TE is not None and not(np.isinf(head.TE).any()):
-        if len(np.unique(head.TE)) == 1:
+    if head.TE is not None and not(np.isinf(np.sum(head.TE))):
+        if head.TE.size == 1:
+            json_dict["EchoTime"] = float(head.TE) * 1e-3
+        elif len(np.unique(head.TE)) == 1:
             json_dict["EchoTime"] = float(head.TE[0]) * 1e-3
         else:
             json_dict["EchoTime"] = list(head.TE.astype(float) * 1e-3)
-    if head.TR is not None and not(np.isinf(head.TR).any()):
-        if len(np.unique(head.TR)) == 1:
+    if head.TR is not None and not(np.isinf(np.sum(head.TR))):
+        if head.TR.size == 1:
+            json_dict["RepetitionTime"] = float(head.TR) * 1e-3
+        elif len(np.unique(head.TR)) == 1: 
             json_dict["RepetitionTime"] = float(head.TR[0]) * 1e-3
         else:
             json_dict["RepetitionTime"] = list(head.TR.astype(float) * 1e-3)
-    if head.TI is not None and not(np.isinf(head.TI).any()):
-        if len(np.unique(head.TI)) == 1:
+    if head.TI is not None and not(np.isinf(np.sum(head.TI))):
+        if head.TI.size == 1:
+            json_dict["InversionTime"] = float(head.TI) * 1e-3
+        elif len(np.unique(head.TI)) == 1:
             json_dict["InversionTime"] = float(head.TI[0]) * 1e-3
         else:
             json_dict["InversionTime"] = list(head.TI.astype(float) * 1e-3)

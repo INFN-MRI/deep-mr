@@ -179,29 +179,41 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             print(f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})")      
         if head.dcf is not None:
             print(f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})")
-        if head.FA is not None:
-            if len(np.unique(head.FA)) > 1:
+    if head.FA is not None:
+        if len(np.unique(head.FA)) > 1:
+            if verbose == 2:
                 print(f"Flip Angle train length: {len(head.FA)}")
-            else:
-                FA = float(np.unique(head.FA)[0])
+        else:
+            FA = float(np.unique(head.FA)[0])
+            head.FA = FA
+            if verbose == 2:
                 print(f"Constant FA: {round(abs(FA), 2)} deg")
-        if head.TR is not None:
-            if len(np.unique(head.TR)) > 1:
+    if head.TR is not None:
+        if len(np.unique(head.TR)) > 1:
+            if verbose == 2:
                 print(f"TR train length: {len(head.TR)}")
-            else:
-                TR = float(np.unique(head.TR)[0])
+        else:
+            TR = float(np.unique(head.TR)[0])
+            head.TR = TR
+            if verbose == 2:
                 print(f"Constant TR: {round(TR, 2)} ms")
-        if head.TE is not None:
-            if len(np.unique(head.TE)) > 1:
+    if head.TE is not None:
+        if len(np.unique(head.TE)) > 1:
+            if verbose == 2:
                 print(f"Echo train length: {len(head.TE)}")
-            else:
-                TE = float(np.unique(head.TE)[0])
+        else:
+            TE = float(np.unique(head.TE)[0])
+            head.TE = TE
+            if verbose == 2:
                 print(f"Constant TE: {round(TE, 2)} ms")
-        if head.TI is not None and np.allclose(head.TI, 0.0) is False:
-            if len(np.unique(head.TI)) > 1:
+    if head.TI is not None and np.allclose(head.TI, 0.0) is False:
+        if len(np.unique(head.TI)) > 1:
+            if verbose == 2:
                 print(f"Inversion train length: {len(head.TI)}")
-            else:
-                TI = float(np.unique(head.TI)[0])
+        else:
+            TI = float(np.unique(head.TI)[0])
+            head.TI = TI
+            if verbose == 2:
                 print(f"Constant TI: {round(TI, 2)} ms")
           
     # cast

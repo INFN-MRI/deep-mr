@@ -55,3 +55,4 @@ def _anonymize(head):
     head.ref_dicom.PatientBirthDate = ""            
     head.ref_dicom.PatientWeight = "" 
     head.ref_dicom.PatientID = "Anon" 
+    return head
