@@ -9,21 +9,19 @@ from ..module import Module
 
 
 class GeneralImage(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralImage'
+        self.module_type = "GeneralImage"
 
-        self.ds.InstanceNumber = ''
-        self.ds.PatientOrientation = ''
-        self.ds.ContentDate = ''
-        self.ds.ContentTime = ''
-        self.ds.ImageType = ['SECONDARY', 'DERIVED']
+        self.ds.InstanceNumber = ""
+        self.ds.PatientOrientation = ""
+        self.ds.ContentDate = ""
+        self.ds.ContentTime = ""
+        self.ds.ImageType = ["SECONDARY", "DERIVED"]
 
         # LossyImageCompression
         # Enumerated values either:
         # 00 = no lossy compression
         # 01 = lossy compression
-        self.ds.LossyImageCompression = '00'
-
+        self.ds.LossyImageCompression = "00"

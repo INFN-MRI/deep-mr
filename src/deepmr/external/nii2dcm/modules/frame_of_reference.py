@@ -9,11 +9,10 @@ from ..module import Module
 
 
 class FrameOfReference(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'FrameOfReference'
+        self.module_type = "FrameOfReference"
 
-        self.ds.FrameOfReferenceUID = ''
+        self.ds.FrameOfReferenceUID = ""
         # self.ds.PositionReferenceIndicator = ''  # TODO add robustly

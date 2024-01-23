@@ -11,6 +11,7 @@ gamma = 2 * torch.pi * gamma_bar
 # define helper
 bdiag = vmap(torch.diag)
 
+
 def matrix_exp(input: torch.Tensor):
     """
     Same as torch.matrix_exp - supports batching for vmap.

@@ -11,7 +11,10 @@ from .. import blocks
 from .. import ops
 from . import base
 
-def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, device="cpu", **kwargs):
+
+def t1t2shuffling(
+    flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, device="cpu", **kwargs
+):
     """
     Simulate a T1T2Shuffling Spin Echo sequence. Only single-pool for now.
 
@@ -47,7 +50,17 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
 
     """
     # constructor
-    init_params = {"flip": flip, "phases": phases, "ESP": ESP, "TR": TR, "T1": T1, "T2": T2, "diff": diff, "device": device, **kwargs}
+    init_params = {
+        "flip": flip,
+        "phases": phases,
+        "ESP": ESP,
+        "TR": TR,
+        "T1": T1,
+        "T2": T2,
+        "diff": diff,
+        "device": device,
+        **kwargs,
+    }
 
     # get verbosity
     if "verbose" in init_params:
@@ -60,13 +73,13 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
         asnumpy = init_params["asnumpy"]
     else:
         asnumpy = True
-        
+
     # get selectivity:
     if sliceprof:
         selective = True
     else:
         selective = False
-            
+
     # add moving pool if required
     if selective and "v" in init_params:
         init_params["moving"] = True
@@ -77,12 +90,12 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
         exc_props["flip"] = kwargs["exc_flip"]
     else:
         exc_props["flip"] = 90.0
-    
+
     # refocusing pulse properties
-    rf_props = {"slice_selective": selective}    
+    rf_props = {"slice_selective": selective}
     if np.isscalar(sliceprof) is False:
         rf_props["slice_profile"] = kwargs["sliceprof"]
-        
+
     # get nlocs
     if "nlocs" in init_params:
         nlocs = init_params["nlocs"]
@@ -97,23 +110,25 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
         nlocs = min(nlocs, len(rf_props["slice_profile"]))
     else:
         nlocs = 1
-        
+
     # assign nlocs
     init_params["nlocs"] = nlocs
-    
+
     # put all properties together
     props = {"exc_props": exc_props, "rf_props": rf_props}
 
     # initialize simulator
-    simulator = dacite.from_dict(T1T2Shuffling, init_params, config=Config(check_types=False))
-            
+    simulator = dacite.from_dict(
+        T1T2Shuffling, init_params, config=Config(check_types=False)
+    )
+
     # run simulator
     if diff:
         # actual simulation
         sig, dsig = simulator(flip=flip, phases=phases, ESP=ESP, TR=TR, props=props)
-        
+
         # flatten
-        sig, dsig = sig.swapaxes(-1, -2), dsig.swapaxes(-1, -2) 
+        sig, dsig = sig.swapaxes(-1, -2), dsig.swapaxes(-1, -2)
         sig = sig.reshape(-1, sig.shape[-1] * sig.shape[-2])
         dsig = dsig.reshape(-1, sig.shape[-1] * sig.shape[-2])
 
@@ -131,11 +146,11 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
     else:
         # actual simulation
         sig = simulator(flip=flip, phases=phases, ESP=ESP, TR=TR, props=props)
-        
+
         # flatten
         sig, dsig = sig.swapaxes(-1, -2)
         sig = sig.reshape(-1, sig.shape[-1] * sig.shape[-2])
-        
+
         # post processing
         if asnumpy:
             sig = sig.cpu().numpy()
@@ -147,20 +162,20 @@ def t1t2shuffling(flip, phases, ESP, TR, T1, T2, sliceprof=False, diff=None, dev
         else:
             return sig
 
-#%% utils
+
+# %% utils
 class T1T2Shuffling(base.BaseSimulator):
     """Class to simulate T1-T2 Shuffling."""
 
     @staticmethod
     def sequence(flip, phases, ESP, TR, props, T1, T2, B1, states, signal):
-        
         # parsing pulses and grad parameters
         exc_props = props["exc_props"]
         rf_props = props["rf_props"]
-        
+
         # get number of frames and echoes
         npulses = flip.shape[0]
-        
+
         # define preparation
         Exc = blocks.ExcPulse(states, B1, exc_props)
 
@@ -169,28 +184,25 @@ class T1T2Shuffling(base.BaseSimulator):
 
         # prepare free precession period
         Xpre, Xpost = blocks.FSEStep(states, ESP, T1, T2)
-        
+
         # magnetization prep
         states = Exc(states, exc_props["flip"])
-        
+
         # get recovery times
-        rectime = TR - (npulses + 1) * ESP # T + 1 to account for fast recovery
+        rectime = TR - (npulses + 1) * ESP  # T + 1 to account for fast recovery
 
         # actual sequence loop
         for n in range(npulses):
-            
             # relax, recover and shift for half echo spacing
             states = Xpre(states)
-                        
+
             # apply refocusing
             states = RF(states, flip[n], phases[n])
 
             # relax, recover and spoil for half echo spacing
             states = Xpost(states)
-            
+
             # observe magnetization
             signal[n] = ops.observe(states, RF.phi)
 
-        return ops.t1sat(signal  * 1j, rectime, T1)
-
-
+        return ops.t1sat(signal * 1j, rectime, T1)

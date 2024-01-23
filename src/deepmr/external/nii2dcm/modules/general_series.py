@@ -9,15 +9,18 @@ from ..module import Module
 
 
 class GeneralSeries(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralSeries'
+        self.module_type = "GeneralSeries"
 
-        self.ds.Modality = ''  # initiated, should be defined by Dicom subclass
-        self.ds.SeriesInstanceUID = ''  # initiated, but value set by Dicom.init_series_tags()
-        self.ds.SeriesNumber = ''  # initiated, but value set by Dicom.init_series_tags()
+        self.ds.Modality = ""  # initiated, should be defined by Dicom subclass
+        self.ds.SeriesInstanceUID = (
+            ""  # initiated, but value set by Dicom.init_series_tags()
+        )
+        self.ds.SeriesNumber = (
+            ""  # initiated, but value set by Dicom.init_series_tags()
+        )
         self.ds.ProtocolName = "nii2dcm_DICOM"
 
         # PatientPosition
@@ -29,6 +32,6 @@ class GeneralSeries(Module):
         # Enhanced MR Image ("1.2.840.10008.5.1.4.1.1.4.1") or
         # Enhanced Color MR Image ("1.2.840.10008.5.1.4.1.1.4.3") or
         # MR Spectroscopy ("1.2.840.10008.5.1.4.1.1.4.2")
-        self.ds.PatientPosition = ''
+        self.ds.PatientPosition = ""
 
         self.ds.AccessionNumber = "ABCXYZ"

@@ -28,12 +28,24 @@ def ExcPulse(states, B1, rf_props):
 
     return ops.RFPulse(device, nlocs=nlocs, B1=B1, name="Excitation Pulse", **rf_props)
 
-def FSEStep(states, ESP, T1, T2, weight=None, k=None, chemshift=None, D=None, v=None, grad_props=None):
+
+def FSEStep(
+    states,
+    ESP,
+    T1,
+    T2,
+    weight=None,
+    k=None,
+    chemshift=None,
+    D=None,
+    v=None,
+    grad_props=None,
+):
     """
     (Unbalanced) SSFP propagator.
-    
+
     Consists of rfpulse (omitted) - free precession - spoiling gradient.
-    
+
     Args:
         states (tensor): EPG states matrix.
         ESP (float): Echo Spacing in ms.
@@ -51,20 +63,23 @@ def FSEStep(states, ESP, T1, T2, weight=None, k=None, chemshift=None, D=None, v=
         TETRop (epgtorch.Operator): Propagator until next TR.
 
     """
-    X, S = _free_precess(states, 0.5 * ESP, T1, T2, weight, k, chemshift, D, v, grad_props) 
-    
+    X, S = _free_precess(
+        states, 0.5 * ESP, T1, T2, weight, k, chemshift, D, v, grad_props
+    )
+
     # build Xpre and Xpost
     Xpre = ops.CompositeOperator(S, X, name="FSEpre")
     Xpost = ops.CompositeOperator(X, S, name="FSEpost")
 
     return Xpre, Xpost
 
+
 def bSSFPStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None):
     """
     (Balanced) SSFP propagator.
-    
+
     Consists of rfpulse (omitted) - free precession.
-    
+
     Args:
         states (tensor): EPG states matrix.
         TE (float): Echo Time in ms.
@@ -84,15 +99,30 @@ def bSSFPStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None):
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, None, None, None)
-    XTETR, _ = _free_precess(states, TR-TE, T1, T2, weight, k, chemshift, None, None, None)
+    XTETR, _ = _free_precess(
+        states, TR - TE, T1, T2, weight, k, chemshift, None, None, None
+    )
     return XTE, XTETR
 
-def SSFPFidStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None, D=None, v=None, grad_props=None):
+
+def SSFPFidStep(
+    states,
+    TE,
+    TR,
+    T1,
+    T2,
+    weight=None,
+    k=None,
+    chemshift=None,
+    D=None,
+    v=None,
+    grad_props=None,
+):
     """
     (Unbalanced) SSFP propagator.
-    
+
     Consists of rfpulse (omitted) - free precession - spoiling gradient.
-    
+
     Args:
         states (tensor): EPG states matrix.
         TE (float): Echo Time in ms.
@@ -112,15 +142,30 @@ def SSFPFidStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None, D=N
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, D, v, grad_props)
-    XTETR, S = _free_precess(states, TR-TE, T1, T2, weight, k, chemshift, D, v, grad_props)
+    XTETR, S = _free_precess(
+        states, TR - TE, T1, T2, weight, k, chemshift, D, v, grad_props
+    )
     return XTE, ops.CompositeOperator(S, XTETR, name="SSFPFid TE-TR Propagator")
 
-def SSFPEchoStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None, D=None, v=None, grad_props=None):
+
+def SSFPEchoStep(
+    states,
+    TE,
+    TR,
+    T1,
+    T2,
+    weight=None,
+    k=None,
+    chemshift=None,
+    D=None,
+    v=None,
+    grad_props=None,
+):
     """
     (Reverse) SSFP propagator.
-    
+
     Consists of rfpulse (omitted) - spoiling gradient - free precession.
-    
+
     Args:
         states (tensor): EPG states matrix.
         TE (float): Echo Time in ms.
@@ -140,7 +185,9 @@ def SSFPEchoStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None, D=
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, D, v, grad_props)
-    XTETR, S = _free_precess(states, TR-TE, T1, T2, weight, k, chemshift, D, v, grad_props)
+    XTETR, S = _free_precess(
+        states, TR - TE, T1, T2, weight, k, chemshift, D, v, grad_props
+    )
     return ops.CompositeOperator(S, XTE, name="SSFPFid TE-TR Propagator"), XTETR
 
 
@@ -155,7 +202,7 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
         grad_props.pop("duration")
     else:
         tau = 0.0
-        
+
     # parse
     device = states["F"].device
     nstates = states["F"].shape[-4]
@@ -179,10 +226,8 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
                 name="Relaxation-MT",
             )
         else:
-            E = ops.Relaxation(
-                device, t, T1, T2, name="Relaxation"
-            )
-    
+            E = ops.Relaxation(device, t, T1, T2, name="Relaxation")
+
         # setup washout
         if hasV and "moving" in states:
             W = ops.FlowWash(
@@ -194,7 +239,7 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
             )
         else:
             W = ops.Identity(name="Inflow+Washout")
-    
+
         # set up diffusion
         if hasD:
             D = ops.DiffusionDamping(
@@ -202,7 +247,7 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
             )
         else:
             D = ops.Identity(name="Diffusion until TE")
-    
+
         # set up flow
         if hasV:
             J = ops.FlowDephasing(
@@ -215,7 +260,6 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
         D = ops.Identity(name="Diffusion Damping")
         J = ops.Identity(name="Flow Dephasing")
         W = ops.Identity(name="Inflow-Washout")
-        
 
     # set up gradient spoiling
     S = ops.Shift(name="Gradient Spoiling")
@@ -224,7 +268,3 @@ def _free_precess(states, t, T1, T2, weight, k, chemshift, D, v, grad_props):
     X = ops.CompositeOperator(W, J, D, E, name="Free Precession")
 
     return X, S
-
-
-
-

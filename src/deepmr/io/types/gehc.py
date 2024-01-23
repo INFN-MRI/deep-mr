@@ -4,6 +4,7 @@ import warnings
 
 from ...external.nii2dcm.dcm import DicomMRI
 
+
 def _initialize_series_tag(head):
     """
     Initialize common DICOM series tags.
@@ -63,4 +64,3 @@ def _initialize_series_tag(head):
         dicomDset.StationName = head["StationName"]
 
     return dicomDset
-

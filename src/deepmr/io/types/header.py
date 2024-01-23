@@ -21,39 +21,40 @@ from . import gehc
 from . import mrd
 from . import nifti
 
+
 @dataclass
 class Header:
     """ """
-    
+
     ## public attributes
     # recon
     shape: tuple
     t: np.ndarray = None  # sampling time in ms
     traj: np.ndarray = None
     dcf: np.ndarray = None
-    
+
     # image post processing
     flip: list = None
     transpose: list = None
-    
+
     # image export
     affine: np.ndarray = field(default_factory=lambda: np.eye(4, dtype=np.float32))
     ref_dicom: pydicom.Dataset = None
-    
+
     # contrast parameters
     FA: np.ndarray = None
     TR: np.ndarray = None
     TE: np.ndarray = None
     TI: np.ndarray = None
-    user: dict = field(default_factory=lambda: {}) # mainly (slice_profile , basis)
-    
+    user: dict = field(default_factory=lambda: {})  # mainly (slice_profile , basis)
+
     ## private attributes
     _adc: np.ndarray = None
-    _shift: tuple = (0.0, 0.0, 0.0)   
+    _shift: tuple = (0.0, 0.0, 0.0)
     _resolution: tuple = (1.0, 1.0, 1.0)
     _spacing: float = None
     _orientation: tuple = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
-    
+
     def torch(self, device="cpu"):
         """
         Cast internal attributes to Pytorch.
@@ -66,20 +67,32 @@ class Header:
         """
         self.shape = torch.as_tensor(self.shape, dtype=int, device=device)
         if self.traj is not None:
-            self.traj = torch.as_tensor(np.ascontiguousarray(self.traj), dtype=torch.float32, device=device)
+            self.traj = torch.as_tensor(
+                np.ascontiguousarray(self.traj), dtype=torch.float32, device=device
+            )
         if self.dcf is not None:
-            self.dcf = torch.as_tensor(np.ascontiguousarray(self.dcf), dtype=torch.float32, device=device)
+            self.dcf = torch.as_tensor(
+                np.ascontiguousarray(self.dcf), dtype=torch.float32, device=device
+            )
         if self.FA is not None:
             if np.isscalar(self.FA):
                 if np.isreal(self.FA):
-                    self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+                    self.FA = torch.as_tensor(
+                        self.FA, dtype=torch.float32, device=device
+                    )
                 else:
-                    self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
+                    self.FA = torch.as_tensor(
+                        self.FA, dtype=torch.complex64, device=device
+                    )
             else:
                 if np.isreal(self.FA).all():
-                    self.FA = torch.as_tensor(self.FA, dtype=torch.float32, device=device)
+                    self.FA = torch.as_tensor(
+                        self.FA, dtype=torch.float32, device=device
+                    )
                 else:
-                    self.FA = torch.as_tensor(self.FA, dtype=torch.complex64, device=device)
+                    self.FA = torch.as_tensor(
+                        self.FA, dtype=torch.complex64, device=device
+                    )
         if self.TR is not None:
             self.TR = torch.as_tensor(self.TR, dtype=torch.float32, device=device)
         if self.TE is not None:
@@ -87,13 +100,19 @@ class Header:
         if self.TI is not None:
             self.TI = torch.as_tensor(self.TI, dtype=torch.float32, device=device)
         if "slice_profile" in self.user:
-            self.user["slice_profile"] = torch.as_tensor(self.user["slice_profile"], dtype=torch.float32, device=device)
+            self.user["slice_profile"] = torch.as_tensor(
+                self.user["slice_profile"], dtype=torch.float32, device=device
+            )
         if "basis" in self.user:
             if np.isreal(self.user["basis"]).all():
-                self.user["basis"] = torch.as_tensor(self.user["basis"], dtype=torch.float32, device=device)
+                self.user["basis"] = torch.as_tensor(
+                    self.user["basis"], dtype=torch.float32, device=device
+                )
             else:
-                self.user["basis"] = torch.as_tensor(self.user["basis"], dtype=torch.complex64, device=device)
-    
+                self.user["basis"] = torch.as_tensor(
+                    self.user["basis"], dtype=torch.complex64, device=device
+                )
+
     def numpy(self):
         """Cast internal attributes to Numpy."""
         if isinstance(self.shape, torch.Tensor):
@@ -110,14 +129,14 @@ class Header:
             self.TE = self.TE.numpy()
         if self.TI is not None and isinstance(self.TI, torch.Tensor):
             self.TI = self.TI.numpy()
-        if "slice_profile" in self.user and isinstance(self.user["slice_profile"], torch.Tensor):
+        if "slice_profile" in self.user and isinstance(
+            self.user["slice_profile"], torch.Tensor
+        ):
             self.user["slice_profile"] = self.user["slice_profile"].numpy()
         if "basis" in self.user and isinstance(self.user["basis"], torch.Tensor):
             self.user["basis"] = self.user["basis"].numpy()
-            
 
-    def __post_init__(self): # noqa
-        
+    def __post_init__(self):  # noqa
         # cast
         if self.TI is not None:
             self.TI = np.asarray(self.TI, dtype=np.float32)
@@ -130,11 +149,11 @@ class Header:
                 self.FA = np.asarray(self.FA, dtype=np.complex64)
             else:
                 self.FA = np.asarray(self.FA, dtype=np.float32)
-        
+
         # fix spacing
         if self._spacing is None:
             self._spacing = self._resolution[0]
-            
+
         # convert orientation to tuple
         if isinstance(self._orientation, np.ndarray):
             self._orientation = self._orientation.ravel()
@@ -146,10 +165,10 @@ class Header:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # change the hook
                 self.ref_dicom = DicomMRI("nii2dcm_dicom_mri.dcm").ds
-        
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            
+
             # support saving of real data only for now
             self.ref_dicom.ImageType.append("M")
             self.ref_dicom.Rows = self.shape[2]
@@ -162,15 +181,20 @@ class Header:
             self.ref_dicom.SpacingBetweenSlices = np.round(self._spacing, 2)
             self.ref_dicom.ImageOrientationPatient = self._orientation
             self.ref_dicom.AcquisitionMatrix = [self.shape[2], self.shape[1]]
-            
+
             # make sure SeriesInstanceUID is unique
             self.ref_dicom.SeriesInstanceUID = pydicom.uid.generate_uid()
-            
+
             # fill Patient Age
             if self.ref_dicom.PatientAge == "":
-                if self.ref_dicom.PatientBirthDate != "" and self.ref_dicom.StudyDate != "":
-                    self.ref_dicom.PatientAge = _calculate_age(self.ref_dicom.PatientBirthDate, self.ref_dicom.StudyDate)
-    
+                if (
+                    self.ref_dicom.PatientBirthDate != ""
+                    and self.ref_dicom.StudyDate != ""
+                ):
+                    self.ref_dicom.PatientAge = _calculate_age(
+                        self.ref_dicom.PatientBirthDate, self.ref_dicom.StudyDate
+                    )
+
             try:
                 self.ref_dicom.ImagesInAcquisition = ""
             except Exception:
@@ -207,40 +231,42 @@ class Header:
                 self.ref_dicom[0x0040, 0x9096][0][0x0040, 0x9225].value = 1.0
             except Exception:
                 pass
-            
+
             # get constant contrast info and number of contrasts
             contrasts = [self.FA, self.TE, self.TI, self.TR]
             contrasts = [contrast for contrast in contrasts if contrast is not None]
             if contrasts:
-                ncontrasts = len(contrasts[0])
+                try:
+                    ncontrasts = len(contrasts[0])
+                except Exception:
+                    ncontrasts = 1
             else:
                 ncontrasts = 1
             self.ref_dicom.EchoTrainLength = str(ncontrasts)
-            
+
             if self.TI is None:
-                self.ref_dicom.InversionTime = ''    
+                self.ref_dicom.InversionTime = ""
             elif len(np.unique(self.TI)) == 1:
                 TI = float(np.unique(self.TI)[0])
                 self.ref_dicom.InversionTime = str(round(TI, 2))
             if self.TE is None:
-                self.ref_dicom.EchoTime = '0'    
+                self.ref_dicom.EchoTime = "0"
             elif len(np.unique(self.TE)) == 1:
                 TE = float(np.unique(self.TE)[0])
                 self.ref_dicom.EchoTime = str(round(TE, 2))
             if self.TR is None:
-                self.ref_dicom.RepetitionTime = '1000'    
+                self.ref_dicom.RepetitionTime = "1000"
             elif len(np.unique(self.TR)) == 1:
                 TR = float(np.unique(self.TR)[0])
                 self.ref_dicom.RepetitionTime = str(round(TR, 2))
             if self.FA is None:
-                self.ref_dicom.FlipAngle = '90'    
+                self.ref_dicom.FlipAngle = "90"
             elif len(np.unique(self.FA)) == 1:
                 FA = float(np.unique(self.FA)[0])
                 self.ref_dicom.FlipAngle = str(round(abs(FA), 2))
-            
+
     @classmethod
     def from_mrd(cls, header, acquisitions, firstVolumeIdx, external):
-
         # get other relevant info from header
         geom = header.encoding[0].encodedSpace
         user = header.userParameters
@@ -249,37 +275,46 @@ class Header:
         shape = mrd._get_shape(geom)
         spacing, dz = mrd._get_spacing(user, geom, shape)
         resolution = mrd._get_resolution(geom, shape, dz)
-    
+
         # get reference dicom
         ref_dicom = mrd._initialize_series_tag(header)
 
         # get dwell time
         dt = float(acquisitions[0]["head"]["sample_time_us"]) * 1e-3  # ms
         t = np.arange(acquisitions[0]["head"]["number_of_samples"]) * dt
-        
+
         if external:
-            return cls(shape, t, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing)
+            return cls(
+                shape, t, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing
+            )
         else:
             acquisitions = mrd._get_first_volume(acquisitions, firstVolumeIdx)
             orientation = mrd._get_image_orientation(acquisitions)
             position = mrd._get_position(acquisitions)
             affine = nifti._make_nifti_affine(shape, position, orientation, resolution)
 
-            return cls(shape, t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
+            return cls(
+                shape,
+                t,
+                affine=affine,
+                ref_dicom=ref_dicom,
+                _resolution=resolution,
+                _spacing=spacing,
+                _orientation=orientation,
+            )
 
     @classmethod
     def from_gehc(cls, header):
-        
         # image reconstruction
         shape = header["shape"]
         t = header["t"]
         traj = header["traj"]
         dcf = header["dcf"]
-        
+
         # image post processing
         flip = header["flip"]
         transpose = header["transpose"]
-        
+
         # affine
         spacing = header["spacing"]
         resolution = header["resolution"]
@@ -296,12 +331,31 @@ class Header:
         TE = header["TE"]
         TI = header["TI"]
         user = header["user"]
-        
+
         # reconstruction options
         adc = header["adc"]
         shift = header["shift"]
-        
-        return cls(shape, t, traj, dcf, flip, transpose, affine, ref_dicom, FA, TR, TE, TI, user, adc, shift, resolution, spacing, orientation)
+
+        return cls(
+            shape,
+            t,
+            traj,
+            dcf,
+            flip,
+            transpose,
+            affine,
+            ref_dicom,
+            FA,
+            TR,
+            TE,
+            TI,
+            user,
+            adc,
+            shift,
+            resolution,
+            spacing,
+            orientation,
+        )
 
     @classmethod
     def from_siemens(cls):
@@ -334,7 +388,15 @@ class Header:
         except Exception:
             t = None
 
-        return cls(shape, t=t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation.ravel())
+        return cls(
+            shape,
+            t=t,
+            affine=affine,
+            ref_dicom=ref_dicom,
+            _resolution=resolution,
+            _spacing=spacing,
+            _orientation=orientation.ravel(),
+        )
 
     @classmethod
     def from_nifti(cls, img, header, affine, json):
@@ -359,31 +421,39 @@ class Header:
         except Exception:
             t = None
 
-        return cls(shape, t=t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
+        return cls(
+            shape,
+            t=t,
+            affine=affine,
+            ref_dicom=ref_dicom,
+            _resolution=resolution,
+            _spacing=spacing,
+            _orientation=orientation,
+        )
 
     def to_dicom(self):
         pass
 
     def to_nifti(self):
         pass
-    
-#%% subroutines
+
+
+# %% subroutines
 def _calculate_age(start_date, stop_date):
-    
     start_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:]))
     stop_date = date(int(stop_date[:4]), int(stop_date[4:6]), int(stop_date[6:]))
-    
+
     # get years
     years = stop_date.year - start_date.year
-    months = stop_date.month - start_date.month 
+    months = stop_date.month - start_date.month
     days = stop_date.day - start_date.day
-    
+
     if years < 1 and months < 2:
-        age = str(days).zfill(3) + 'D'
+        age = str(days).zfill(3) + "D"
     elif years < 3:
-        age = str(months).zfill(3) + 'M'
+        age = str(months).zfill(3) + "M"
     else:
         delta = months >= 6
-        age = str(years + delta).zfill(3) + 'Y'
+        age = str(years + delta).zfill(3) + "Y"
 
     return age

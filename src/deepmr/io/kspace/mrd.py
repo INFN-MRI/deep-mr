@@ -4,6 +4,7 @@ __all__ = ["read_mrd_rawdata"]
 
 from ..generic import mrd
 
+
 def read_mrd_rawdata(filepath):
     """
     Read kspace data from MRD file.
@@ -12,7 +13,7 @@ def read_mrd_rawdata(filepath):
     ----------
     filepath : str
         Path to MRD file.
-    
+
     Returns
     -------
     data : np.ndarray
@@ -21,7 +22,5 @@ def read_mrd_rawdata(filepath):
         Metadata for image reconstruction.
     """
     data, head = mrd.read_mrd(filepath)
-    
-    return data, head
-        
 
+    return data, head

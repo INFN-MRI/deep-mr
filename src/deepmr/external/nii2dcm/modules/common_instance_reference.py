@@ -9,11 +9,10 @@ from ..module import Module
 
 
 class CommonInstanceReference(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'CommonInstanceReference'
+        self.module_type = "CommonInstanceReference"
 
         # ReferencedSeriesSequence
         # omit for now, but can be important for references Instances/Series with other Series

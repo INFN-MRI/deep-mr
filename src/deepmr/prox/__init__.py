@@ -21,4 +21,3 @@ __all__ = ["BM3D", "TV", "TGV"]
 
 # __all__.extend(_llr.__all__)
 __all__.extend(_wavelet.__all__)
-

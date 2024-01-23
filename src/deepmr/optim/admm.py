@@ -10,7 +10,17 @@ with warnings.catch_warnings():
     from deepinv.optim.optimizers import optim_builder
     from deepinv.optim.prior import PnP
 
-def admm(input, encoding, denoiser, lamda=0.01, stepsize=1.0, beta=1, max_iter=20, verbose=False):
+
+def admm(
+    input,
+    encoding,
+    denoiser,
+    lamda=0.01,
+    stepsize=1.0,
+    beta=1,
+    max_iter=20,
+    verbose=False,
+):
     r"""
     Alternating direction method of multipliers.
 
@@ -64,7 +74,7 @@ def admm(input, encoding, denoiser, lamda=0.01, stepsize=1.0, beta=1, max_iter=2
     """
     # Select the data fidelity term
     data_fidelity = L2()
-    
+
     # Instantiate the algorithm class to solve the problem.
     optimalgo = optim_builder(
         iteration="ADMM",
@@ -74,6 +84,6 @@ def admm(input, encoding, denoiser, lamda=0.01, stepsize=1.0, beta=1, max_iter=2
         verbose=verbose,
         params_algo={"stepsize": stepsize, "lambda": lamda, "beta": beta},
     ).to(input.device)
-    
+
     # Run the algorithm
     return optimalgo(input, encoding)

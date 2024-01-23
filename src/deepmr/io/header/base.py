@@ -12,6 +12,7 @@ from ..generic.pathlib import get_filepath
 
 from ..types.header import Header
 
+
 def read_base_acqheader(filepath):
     """
     Read acquistion header from hdf5 file.
@@ -29,15 +30,15 @@ def read_base_acqheader(filepath):
     """
     # get full path
     filepath = get_filepath(filepath, True, "h5")
-    
+
     # load dictionary
     hdict = hdf5.read_hdf5(filepath)
-    
+
     # initialize header
     head = dacite.from_dict(Header, hdict, config=Config(check_types=False))
-    
+
     return head
-    
+
 
 def write_base_acqheader(head, filepath):
     """
@@ -48,11 +49,9 @@ def write_base_acqheader(head, filepath):
     head: deepmr.Header
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc).
-    filepath : str 
+    filepath : str
         Path to mrd file.
-        
-    """ 
+
+    """
     hdict = asdict(head)
     hdf5.write_hdf5(hdict, filepath)
-
-

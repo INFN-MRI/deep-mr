@@ -8,6 +8,7 @@ import torch.nn as nn
 import ptwt
 import pywt
 
+
 class WaveletPrior(nn.Module):
     r"""
     Wavelet denoising with the :math:`\ell_1` norm.
@@ -32,8 +33,8 @@ class WaveletPrior(nn.Module):
         Number of spatial dimensions.
     level : int, optional
         Decomposition level of the wavelet transform. The default is 3.
-    wv : str, optional wv: 
-        Mother wavelet (follows the `PyWavelets convention <https://pywavelets.readthedocs.io/en/latest/ref/wavelets.html>`_) 
+    wv : str, optional wv:
+        Mother wavelet (follows the `PyWavelets convention <https://pywavelets.readthedocs.io/en/latest/ref/wavelets.html>`_)
         The default is "db8".
     device : str, optional
         ``"cpu"`` or ``"gpu"``. The default is ``"cpu"``.
@@ -41,12 +42,12 @@ class WaveletPrior(nn.Module):
         ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         If ``"topk"``, only the top-k wavelet coefficients are kept.
         The default is ``"soft"``.
-        
+
     """
 
     def __init__(self, dim, level=3, wv="db8", device="cpu", non_linearity="soft"):
         super().__init__()
-        
+
         # select correct wavelet transform
         wavelet = pywt.Wavelet(wv)
         if dim == 1:
@@ -58,11 +59,15 @@ class WaveletPrior(nn.Module):
         if dim == 3:
             dwt = ptwt.wavedec3
             iwt = ptwt.waverec3
-            
+
         self.level = level
         self.device = device
-        self.dwt = lambda x : dwt(x.to(self.device), wavelet, mode="zero", level=self.level)
-        self.iwt = lambda x : iwt(x.to(self.device), wavelet, mode="zero", level=self.level)
+        self.dwt = lambda x: dwt(
+            x.to(self.device), wavelet, mode="zero", level=self.level
+        )
+        self.iwt = lambda x: iwt(
+            x.to(self.device), wavelet, mode="zero", level=self.level
+        )
         self.non_linearity = non_linearity
 
     def _get_ths_map(self, ths):
@@ -123,7 +128,7 @@ class WaveletPrior(nn.Module):
     def hard_threshold_topk(self, x, ths=0.1):
         r"""
         Hard thresholding of the wavelet coefficients.
-        
+
         Keeps only the top-k coefficients and setting the others to 0.
 
         Parameters
@@ -168,7 +173,7 @@ class WaveletPrior(nn.Module):
         x : torch.Tensor
             Noisy image.
         ths : int, float, torch.Tensor, optional
-            Thresholding parameter. 
+            Thresholding parameter.
             If ``non_linearity`` equals ``"soft"`` or ``"hard"``, ``ths`` serves as a (soft or hard)
             thresholding parameter for the wavelet coefficients. If ``non_linearity`` equals ``"topk"``,
             ``ths`` can indicate the number of wavelet coefficients
@@ -194,16 +199,17 @@ class WaveletPrior(nn.Module):
 
         # y = y[..., :h, :w]
         return y
-    
+
+
 def _get_threshold(ths, l):
     ths_cur = (
-            ths
-            if (
-                isinstance(ths, int)
-                or isinstance(ths, float)
-                or len(ths.shape) == 0
-                or ths.shape[0] == 1
-            )
-            else ths[l]
+        ths
+        if (
+            isinstance(ths, int)
+            or isinstance(ths, float)
+            or len(ths.shape) == 0
+            or ths.shape[0] == 1
         )
+        else ths[l]
+    )
     return ths_cur

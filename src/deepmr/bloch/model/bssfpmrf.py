@@ -12,7 +12,19 @@ from .. import blocks
 from .. import ops
 from . import base
 
-def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu", TI=None, **kwargs):
+
+def bssfpmrf(
+    flip,
+    TR,
+    T1,
+    T2,
+    sliceprof=False,
+    DE=False,
+    diff=None,
+    device="cpu",
+    TI=None,
+    **kwargs
+):
     """
     Simulate an inversion-prepared bSSFP sequence with variable flip angles.
 
@@ -43,10 +55,10 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
     Kwargs (sequence):
         TE (optional, float): Echo time in [ms]. Defaults to 0.0.
         B1sqrdTau (float): pulse energies in [uT**2 * ms] when flip = 1 [deg].
-        
+
         global_inversion (bool): assume nonselective (True) or selective (False) inversion. Defaults to True.
         inv_B1sqrdTau (float): inversion pulse energy in [uT**2 * ms] when flip = 1 [deg].
-        
+
      Kwargs (System):
          B1 (optional, float, array-like): flip angle scaling factor (1.0 := nominal flip angle).
              Defaults to None (nominal flip angle).
@@ -72,7 +84,16 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
 
     """
     # constructor
-    init_params = {"flip": flip, "TR": TR, "T1": T1, "T2": T2, "diff": diff, "device": device, "TI": TI, **kwargs}
+    init_params = {
+        "flip": flip,
+        "TR": TR,
+        "T1": T1,
+        "T2": T2,
+        "diff": diff,
+        "device": device,
+        "TI": TI,
+        **kwargs,
+    }
 
     # get TE
     if "TE" not in init_params:
@@ -91,24 +112,24 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
         asnumpy = init_params["asnumpy"]
     else:
         asnumpy = True
-        
+
     # get selectivity:
     if sliceprof:
         selective_exc = True
     else:
         selective_exc = False
-            
+
     # check for global inversion
     if "global_inversion" in init_params:
-        selective_inv = not(init_params["global_inversion"])
+        selective_inv = not (init_params["global_inversion"])
     else:
         selective_inv = False
 
     # check for conflicts in inversion selectivity
     if selective_exc is False and selective_inv is True:
-        warnings.warn('3D acquisition - forcing inversion pulse to global.')
+        warnings.warn("3D acquisition - forcing inversion pulse to global.")
         selective_inv = False
-    
+
     # inversion pulse properties
     if TI is None:
         inv_props = {}
@@ -122,7 +143,9 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
     # check conflicts in inversion settings
     if TI is None:
         if inv_props:
-            warnings.warn('Inversion not enabled - ignoring inversion pulse properties.')
+            warnings.warn(
+                "Inversion not enabled - ignoring inversion pulse properties."
+            )
             inv_props = {}
 
     # excitation pulse properties
@@ -130,10 +153,10 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
     if "B1sqrdTau" in kwargs:
         inv_props["b1rms"] = kwargs["B1sqrdTau"] ** 0.5
         inv_props["duration"] = 1.0
-        
+
     if np.isscalar(sliceprof) is False:
         rf_props["slice_profile"] = kwargs["sliceprof"]
-        
+
     # get nlocs
     if "nlocs" in init_params:
         nlocs = init_params["nlocs"]
@@ -148,7 +171,7 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
         nlocs = min(nlocs, len(rf_props["slice_profile"]))
     else:
         nlocs = 1
-        
+
     # assign nlocs
     init_params["nlocs"] = nlocs
 
@@ -156,8 +179,10 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
     props = {"inv_props": inv_props, "rf_props": rf_props, "DE": DE}
 
     # initialize simulator
-    simulator = dacite.from_dict(bSSFPMRF, init_params, config=Config(check_types=False))
-            
+    simulator = dacite.from_dict(
+        bSSFPMRF, init_params, config=Config(check_types=False)
+    )
+
     # run simulator
     if diff:
         # actual simulation
@@ -177,7 +202,7 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
     else:
         # actual simulation
         sig = simulator(flip=flip, TR=TR, TI=TI, TE=TE, props=props)
-        
+
         # post processing
         if asnumpy:
             sig = sig.cpu().numpy()
@@ -190,7 +215,7 @@ def bssfpmrf(flip, TR, T1, T2, sliceprof=False, DE=False, diff=None, device="cpu
             return sig
 
 
-#%% utils
+# %% utils
 class bSSFPMRF(base.BaseSimulator):
     """Class to simulate inversion-prepared (variable flip angle) bSSFP."""
 
@@ -215,7 +240,7 @@ class bSSFPMRF(base.BaseSimulator):
         inv_props = props["inv_props"]
         rf_props = props["rf_props"]
         driven_equilibrium = props["DE"]
-        
+
         # get number of repetitions
         if driven_equilibrium:
             nreps = 2
@@ -237,16 +262,16 @@ class bSSFPMRF(base.BaseSimulator):
         for r in range(nreps):
             # magnetization prep
             states = Prep(states)
-    
+
             # actual sequence loop
             for n in range(npulses):
                 # apply pulse
                 states = RF(states, flip[n])
-    
+
                 # relax, recover and record signal for each TE
                 states = Xpre(states)
                 signal[n] = ops.observe(states, RF.phi)
-    
+
                 # relax, recover and spoil
                 states = Xpost(states)
 

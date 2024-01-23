@@ -10,14 +10,13 @@ from ..module import Module
 
 
 class GeneralStudy(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralStudy'
+        self.module_type = "GeneralStudy"
 
-        self.ds.StudyInstanceUID = ''  # attribute initialised but value initialised in Dicom class
-        self.ds.StudyDescription = ''
-        self.ds.ReferringPhysicianName = ''
-
-
+        self.ds.StudyInstanceUID = (
+            ""  # attribute initialised but value initialised in Dicom class
+        )
+        self.ds.StudyDescription = ""
+        self.ds.ReferringPhysicianName = ""

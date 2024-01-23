@@ -21,6 +21,7 @@ from ..types.header import Header
 
 from .common import _prepare_image, _anonymize
 
+
 def read_dicom(filepath):
     """
     Read image from dicom files.
@@ -44,61 +45,75 @@ def read_dicom(filepath):
 
     # load dicom
     image, dsets = _read_dcm(filepath)
-        
+
     # get slice locations
     uSliceLocs, firstVolumeIdx, sliceIdx = dicom._get_slice_locations(dsets)
-        
+
     # get constrats info
     inversionTimes = dicom._get_inversion_times(dsets)
     echoTimes = dicom._get_echo_times(dsets)
-    echoNumbers = dicom._get_echo_numbers(dsets)        
-    repetitionTimes = dicom._get_repetition_times(dsets)        
+    echoNumbers = dicom._get_echo_numbers(dsets)
+    repetitionTimes = dicom._get_repetition_times(dsets)
     flipAngles = dicom._get_flip_angles(dsets)
-    
+
     # get sequence matrix
-    contrasts = np.stack((inversionTimes, echoTimes, echoNumbers, repetitionTimes, flipAngles), axis=1)
-    
+    contrasts = np.stack(
+        (inversionTimes, echoTimes, echoNumbers, repetitionTimes, flipAngles), axis=1
+    )
+
     # get unique contrast and indexes
     uContrasts, contrastIdx = dicom._get_unique_contrasts(contrasts)
-            
+
     # get size
     n_slices = len(uSliceLocs)
     n_contrasts = uContrasts.shape[0]
     ninstances, ny, nx = image.shape
-    
+
     # fill sorted image tensor
     sorted_image = np.zeros((n_contrasts, n_slices, ny, nx), dtype=image.dtype)
     for n in range(ninstances):
         sorted_image[contrastIdx[n], sliceIdx[n], :, :] = image[n]
-            
+
     # unpack sequence
     TI, TE, EC, TR, FA = uContrasts.transpose()
 
     # squeeze
     if sorted_image.shape[0] == 1:
         sorted_image = sorted_image[0]
-        
+
     # initialize header
     header = Header.from_dicom(dsets, firstVolumeIdx)
-            
+
     # update header
     header.FA = FA
     header.TI = TI
     header.TE = TE
     header.TR = TR
-            
+
     return sorted_image, header
 
-def write_dicom(filename, image, filepath="./", head=None, series_description="", series_number_offset=0, series_number_scale=1000, rescale=False, anonymize=False, verbose=False):
+
+def write_dicom(
+    filename,
+    image,
+    filepath="./",
+    head=None,
+    series_description="",
+    series_number_offset=0,
+    series_number_scale=1000,
+    rescale=False,
+    anonymize=False,
+    verbose=False,
+):
     """
     Write image to DICOM.
 
     Parameters
     ----------
-    filename : str 
+    filename : str
         Name of the folder containing all the DICOM files.
     image : np.ndarray
-        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).    
+        Complex image data of shape (ncoils, ncontrasts, nslices, ny, nx).
     filepath : str, optional
         Path to filaname. The default is "./".
     head : deepmr.Header, optional
@@ -113,7 +128,7 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
         Final series number is series_number_scale * acquired_series_number + series_number_offset.
         he default is 0.
     series_number_scale : int, optional
-        Series number multiplicative scaling with respect to the acquired one. 
+        Series number multiplicative scaling with respect to the acquired one.
         Final series number is series_number_scale * acquired_series_number + series_number_offset.
         The default is 1000.
     rescale : bool, optional
@@ -124,40 +139,42 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
         If True, remove sensible info from header. The default is "False".
     verbose : bool, optional
         Verbosity flag. The default is "False".
-        
+
     """
     # convert image to nupy
     if isinstance(image, torch.Tensor):
         image = image.numpy()
-        
+
     # cast header to numpy
     if head is not None:
         head = copy.deepcopy(head)
         head.numpy()
-     
+
     # anonymize
     if head is not None and anonymize:
         head = _anonymize(head)
-        
+
     # expand images if needed
     if len(image.shape) == 3:
         raise UserWarning("Number of dimensions = 3; assuming single contrast.")
         image = image[None, ...]
     if len(image.shape) == 2:
-        raise UserWarning("Number of dimensions = 2; assuming single contrast and slice.")
+        raise UserWarning(
+            "Number of dimensions = 2; assuming single contrast and slice."
+        )
         image = image[None, None, ...]
-        
+
     # get number of instances
     ncontrasts, nslices = image.shape[:2]
     ninstances = ncontrasts * nslices
-    
+
     # generate output path
     filepath = os.path.realpath(os.path.join(filepath, filename))
-    
+
     # create output folder
     if not os.path.exists(filepath):
         os.makedirs(filepath)
-        
+
     # get permutations and flips
     if head is not None:
         transpose = head.transpose
@@ -165,27 +182,29 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
     else:
         transpose = None
         flip = None
-    
+
     # cast image to numpy
     image, windowRange = _prepare_image(image, transpose, flip, rescale)
     windowWidth = windowRange[1] - windowRange[0]
-    
+
     # initialize header if not provided
     if head is None:
         head = Header(image.shape[-3:])
-    
+
     # unpack header
     affine = head.affine
     shape = head.shape
-    
+
     # resolution
     dz = float(head.ref_dicom.SliceThickness)
     dx, dy = head.ref_dicom.PixelSpacing
     resolution = np.asarray((dz, dy, dx))
-    
+
     # prepare header
     head.ref_dicom.SeriesDescription = series_description
-    head.ref_dicom.SeriesNumber = series_number_scale * head.ref_dicom.SeriesNumber + series_number_offset
+    head.ref_dicom.SeriesNumber = (
+        series_number_scale * head.ref_dicom.SeriesNumber + series_number_offset
+    )
     head.ref_dicom.WindowWidth = str(windowWidth)
     head.ref_dicom.WindowCenter = str(0.5 * windowWidth)
     head.ref_dicom.ImagesInAcquisition = ninstances
@@ -197,8 +216,8 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
     try:
         head.ref_dicom[0x0025, 0x1019].value = ninstances
     except Exception:
-        pass 
-    
+        pass
+
     # remove constant parameters from header
     if head.FA is not None:
         if head.FA.size == 1:
@@ -209,7 +228,7 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
             head.FA = None
         else:
             head.FA = list(abs(head.FA).astype(float))
-    if head.TE is not None and not(np.isinf(np.sum(head.TE))):
+    if head.TE is not None and not (np.isinf(np.sum(head.TE))):
         if head.TE.size == 1:
             head.ref_dicom.EchoTime = float(head.TE)
             head.TE = None
@@ -220,18 +239,18 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
             head.TE = list(head.TE.astype(float))
     else:
         head.TE = None
-    if head.TR is not None and not(np.isinf(np.sum(head.TR))):
+    if head.TR is not None and not (np.isinf(np.sum(head.TR))):
         if head.TR.size == 1:
             head.ref_dicom.RepetitionTime = float(head.TR)
             head.TR = None
-        elif len(np.unique(head.TR)) == 1: 
+        elif len(np.unique(head.TR)) == 1:
             head.ref_dicom.RepetitionTime = float(head.TR[0])
             head.TR = None
         else:
-            head.TR= list(head.TR.astype(float))
+            head.TR = list(head.TR.astype(float))
     else:
         head.TR = None
-    if head.TI is not None and not(np.isinf(np.sum(head.TI))):
+    if head.TI is not None and not (np.isinf(np.sum(head.TI))):
         if head.TI.size == 1:
             head.ref_dicom.InversionTime = float(head.TI)
             head.TI = None
@@ -242,22 +261,26 @@ def write_dicom(filename, image, filepath="./", head=None, series_description=""
             head.TI = list(head.TI.astype(float))
     else:
         head.TI = None
-            
+
     # generate position and slice location
     pos, zloc = dicom._make_geometry_tags(affine, shape, resolution)
-    
+
     # generate dicom series
     dsetnames, dsets = _generate_dcm_series(image, head, windowWidth, pos, zloc)
-            
+
     # actual writing
     if verbose:
         t0 = time.time()
-        print(f"Writing output DICOM image (n={ninstances} images) to {filepath}...", end="\t")
+        print(
+            f"Writing output DICOM image (n={ninstances} images) to {filepath}...",
+            end="\t",
+        )
     _write_dcm(filepath, dsetnames, dsets)
     if verbose:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s.")
-    
+
+
 # %% subroutines
 def _read_dcm(dicomdir):
     """
@@ -284,29 +307,30 @@ def _read_dcm(dicomdir):
 
     # cast image to complex
     image, dsets = _cast_to_complex(dsets)
-    
+
     return image, dsets
 
+
 def _write_dcm(filepath, dsetnames, dsets):
-    
     # get ninstances
     ninstances = len(dsets)
-    
+
     # get dicompath
     dcm_paths = [os.path.join(filepath, file) for file in dsetnames]
-    
+
     # generate path / data pair
     path_data = [[dcm_paths[n], dsets[n]] for n in range(ninstances)]
-    
+
     # make pool of workers
     pool = ThreadPool(multiprocessing.cpu_count())
 
     # each thread write a dicom
     dsets = pool.map(_dcmwrite, path_data)
-    
-    # cloose pool and wait finish   
+
+    # cloose pool and wait finish
     pool.close()
     pool.join()
+
 
 def _dcmread(dcm_path):
     """
@@ -317,17 +341,19 @@ def _dcmread(dcm_path):
     except:
         return None
 
+
 def _dcmwrite(input):
     """
     Wrapper to pydicom dcmread to automatically handle path / file tuple.
     """
     filename, dataset = input
     pydicom.dcmwrite(filename, dataset)
-    
+
+
 def _generate_dcm_series(input, head, windowWidth, pos, loc):
     """
     Generate dcm from template.
-    """    
+    """
     # get image size
     ncontrasts, nslices = input.shape[:2]
     ninstances = ncontrasts * nslices
@@ -338,19 +364,19 @@ def _generate_dcm_series(input, head, windowWidth, pos, loc):
     for z in range(nslices):
         for c in range(ncontrasts):
             dsets.append(copy.deepcopy(head.ref_dicom))
-            
+
             # image data
             dsets[n].PixelData = input[c, z].tobytes()
             # dsets[n].pixel_array[:] = input[c, z]
-            
-            # instance properties            
+
+            # instance properties
             dsets[n].SOPInstanceUID = pydicom.uid.generate_uid()
             dsets[n].InstanceNumber = str(n + 1)
-            
+
             # geometrical properties
             dsets[n].ImagePositionPatient = list(pos[z])
             dsets[n].SliceLocation = str(loc[z])
-            
+
             # contrast properties
             if head.FA is not None:
                 dsets[n].FlipAngle = str(abs(head.FA[c]))
@@ -362,17 +388,18 @@ def _generate_dcm_series(input, head, windowWidth, pos, loc):
                 dsets[n].InversionTime = str(head.TI[c])
 
             # echo number
-            dsets[n][0x0018, 0x0086].value = str(c) # Echo Number
-            dsets[n].EchoNumbers = str(c) # Echo Number
-            
+            dsets[n][0x0018, 0x0086].value = str(c)  # Echo Number
+            dsets[n].EchoNumbers = str(c)  # Echo Number
+
             # update n
             n += 1
-            
+
     # generate file names
-    filename = ['img-' + str(n).zfill(3) + '.dcm' for n in range(ninstances)]
-    
+    filename = ["img-" + str(n).zfill(3) + ".dcm" for n in range(ninstances)]
+
     return filename, dsets
-    
+
+
 # %% paths
 def _get_dicom_paths(dicomdir):
     """
@@ -389,6 +416,7 @@ def _get_dicom_paths(dicomdir):
 
     return dcm_paths
 
+
 def _get_full_path(root, file_list):
     """
     Create list of full file paths from file name and root folder path.
@@ -397,6 +425,7 @@ def _get_full_path(root, file_list):
         os.path.normpath(os.path.abspath(os.path.join(root, file)))
         for file in file_list
     ]
+
 
 def _probe_dicom_paths(dcm_paths_in):
     """
@@ -412,6 +441,7 @@ def _probe_dicom_paths(dcm_paths_in):
             dcm_paths_out.append(path)
 
     return dcm_paths_out
+
 
 # %% complex data handling
 def _cast_to_complex(dsets_in):
@@ -435,9 +465,10 @@ def _cast_to_complex(dsets_in):
 
     if vendor == "Siemens":
         return _cast_to_complex_siemens(dsets_in)
-    
+
     if vendor == "DeepMR":
         return _cast_to_complex_deepmr(dsets_in)
+
 
 def _get_vendor(dset):
     """
@@ -451,8 +482,9 @@ def _get_vendor(dset):
 
     if "SIEMENS" in dset.Manufacturer.upper():
         return "Siemens"
-    
+
     return "DeepMR"
+
 
 def _cast_to_complex_ge(dsets_in):
     """
@@ -523,6 +555,7 @@ def _cast_to_complex_ge(dsets_in):
 
     return img, dsets_out
 
+
 def _cast_to_complex_philips(dsets_in):
     """
     Attempt to retrive complex image for Philips DICOM:
@@ -562,6 +595,7 @@ def _cast_to_complex_philips(dsets_in):
 
     return img, dsets_out
 
+
 def _cast_to_complex_siemens(dsets_in):
     """
     Attempt to retrive complex image for Siemens DICOM:
@@ -600,6 +634,7 @@ def _cast_to_complex_siemens(dsets_in):
         dsets_out[n].pixel_array[:] = 0.0
 
     return img, dsets_out
+
 
 def _cast_to_complex_deepmr(dsets_in):
     """

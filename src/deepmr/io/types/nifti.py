@@ -8,11 +8,13 @@ from ...external.nii2dcm.dcm import DicomMRI
 
 from .common import _reorient, _get_plane_normal
 
+
 def _get_shape(img):
     """
     Return image shape.
     """
     return img.shape[-3:]
+
 
 def _get_resolution(header, json):
     """
@@ -29,11 +31,13 @@ def _get_resolution(header, json):
 
     return resolution
 
+
 def _get_spacing(header):
     """
     Return slice spacing.
     """
     return header["pixdim"][3]
+
 
 def _get_image_orientation(resolution, affine):
     """
@@ -56,6 +60,7 @@ def _get_image_orientation(resolution, affine):
 
     return np.around(orientation, 4)
 
+
 def _get_flip_angles(json_list):
     """
     Return array of flip angles for each for each volume.
@@ -70,6 +75,7 @@ def _get_flip_angles(json_list):
             flipAngles.append(90.0)
 
     return np.asarray(flipAngles)
+
 
 def _get_echo_times(json_list):
     """
@@ -86,6 +92,7 @@ def _get_echo_times(json_list):
 
     return np.asarray(echoTimes)
 
+
 def _get_echo_numbers(json_list):
     """
     Return array of echo numbers for each for each volume.
@@ -100,6 +107,7 @@ def _get_echo_numbers(json_list):
             echoNumbers.append(1)
 
     return np.asarray(echoNumbers)
+
 
 def _get_repetition_times(json_list):
     """
@@ -116,6 +124,7 @@ def _get_repetition_times(json_list):
 
     return np.asarray(repetitionTimes)
 
+
 def _get_inversion_times(json_list):
     """
     Return array of inversion times for each volume.
@@ -131,6 +140,7 @@ def _get_inversion_times(json_list):
 
     return np.asarray(inversionTimes)
 
+
 def _get_unique_contrasts(constrasts):
     """
     Return ndarray of unique contrasts and contrast index for each dataset in dsets.
@@ -139,6 +149,7 @@ def _get_unique_contrasts(constrasts):
     uContrasts = np.unique(constrasts, axis=0)
 
     return uContrasts
+
 
 def _make_nifti_affine(shape, position, orientation, resolution):
     """
@@ -203,6 +214,7 @@ def _make_nifti_affine(shape, position, orientation, resolution):
 
     return A.astype(np.float32)
 
+
 def _initialize_series_tag(json):
     """
     Initialize common DICOM series tags.
@@ -265,14 +277,15 @@ def _initialize_series_tag(json):
 
     return dicomDset
 
+
 def _initialize_json_dict(dicomDset):
     """
     Initialize Json dictionary.
 
     """
-    
+
     json = {}
-    
+
     if "PatientName" in dicomDset:
         json["PatientName"] = str(dicomDset.PatientName)
     if "PatientWeight" in dicomDset:
@@ -320,6 +333,5 @@ def _initialize_json_dict(dicomDset):
         json["InstitutionName"] = str(dicomDset.InstitutionName)
     if "StationName" in dicomDset:
         json["StationName"] = str(dicomDset.StationName)
-        
+
     return json
-    

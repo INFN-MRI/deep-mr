@@ -5,6 +5,7 @@ import nibabel as nib
 
 from nibabel.orientations import axcodes2ornt, ornt_transform
 
+
 def _reorient(shape, affine, orientation):
     """
     Reorient input image to desired orientation.
@@ -24,6 +25,7 @@ def _reorient(shape, affine, orientation):
     tmp = tmp.as_reoriented(transform)
 
     return tmp.affine
+
 
 def _get_plane_normal(orientation):
     """

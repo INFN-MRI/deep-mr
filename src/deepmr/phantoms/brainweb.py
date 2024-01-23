@@ -26,6 +26,7 @@ from scipy.ndimage import zoom
 
 from . import tissue_classes
 
+
 def create_brainweb(
     npix: int,
     nslices: int = 1,

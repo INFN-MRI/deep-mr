@@ -12,7 +12,22 @@ from .. import blocks
 from .. import ops
 from . import base
 
-def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None, device="cpu", TI=0.0, **kwargs):
+
+def memprage(
+    nshots,
+    nechoes,
+    flip,
+    ESP,
+    TR,
+    T1,
+    T2,
+    spoil_inc=117.0,
+    sliceprof=False,
+    diff=None,
+    device="cpu",
+    TI=0.0,
+    **kwargs
+):
     """
     Simulate a Multi-Echo Magnetization Prepared (MP) Rapid Gradient Echo sequence.
 
@@ -44,10 +59,10 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
 
     Kwargs (sequence):
         B1sqrdTau (float): pulse energy in [uT**2 * ms].
-        
+
         global_inversion (bool): assume nonselective (True) or selective (False) inversion. Defaults to True.
         inv_B1sqrdTau (float): inversion pulse energy in [uT**2 * ms].
-        
+
         grad_tau (float): gradient lobe duration in [ms].
         grad_amplitude (optional, float): gradient amplitude along unbalanced direction in [mT / m].
             If total_dephasing is not provided, this is used to compute diffusion and flow effects.
@@ -56,7 +71,7 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
 
         voxelsize (optional, str, array-like): voxel size (dx, dy, dz) in [mm]. If scalar, assume isotropic voxel.
             Defaults to "None".
-        
+
         grad_orient (optional, str, array-like): gradient orientation ("x", "y", "z" or versor). Defaults to "z".
         slice_orient (optionl, str, array-like): slice orientation ("x", "y", "z" or versor).
             Ignored if pulses are non-selective. Defaults to "z".
@@ -89,7 +104,17 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
 
     """
     # constructor
-    init_params = {"flip": flip, "ESP": ESP, "TR": TR, "T1": T1, "T2": T2, "diff": diff, "device": device, "TI": TI, **kwargs}
+    init_params = {
+        "flip": flip,
+        "ESP": ESP,
+        "TR": TR,
+        "T1": T1,
+        "T2": T2,
+        "diff": diff,
+        "device": device,
+        "TI": TI,
+        **kwargs,
+    }
 
     # get verbosity
     if "verbose" in init_params:
@@ -102,28 +127,28 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
         asnumpy = init_params["asnumpy"]
     else:
         asnumpy = True
-        
+
     # get selectivity:
     if sliceprof:
         selective_exc = True
     else:
         selective_exc = False
-            
+
     # add moving pool if required
     if selective_exc and "v" in init_params:
         init_params["moving"] = True
 
     # check for global inversion
     if "global_inversion" in init_params:
-        selective_inv = not(init_params["global_inversion"])
+        selective_inv = not (init_params["global_inversion"])
     else:
         selective_inv = False
 
     # check for conflicts in inversion selectivity
     if selective_exc is False and selective_inv is True:
-        warnings.warn('3D acquisition - forcing inversion pulse to global.')
+        warnings.warn("3D acquisition - forcing inversion pulse to global.")
         selective_inv = False
-    
+
     # inversion pulse properties
     if TI is None:
         inv_props = {}
@@ -137,7 +162,9 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
     # check conflicts in inversion settings
     if TI is None:
         if inv_props:
-            warnings.warn('Inversion not enabled - ignoring inversion pulse properties.')
+            warnings.warn(
+                "Inversion not enabled - ignoring inversion pulse properties."
+            )
             inv_props = {}
 
     # excitation pulse properties
@@ -145,10 +172,10 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
     if "B1sqrdTau" in kwargs:
         inv_props["b1rms"] = kwargs["B1sqrdTau"] ** 0.5
         inv_props["duration"] = 1.0
-        
+
     if np.isscalar(sliceprof) is False:
         rf_props["slice_profile"] = kwargs["sliceprof"]
-        
+
     # get nlocs
     if "nlocs" in init_params:
         nlocs = init_params["nlocs"]
@@ -163,10 +190,10 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
         nlocs = min(nlocs, len(rf_props["slice_profile"]))
     else:
         nlocs = 1
-        
+
     # assign nlocs
     init_params["nlocs"] = nlocs
-    
+
     # unbalanced gradient properties
     grad_props = {}
     if "grad_tau" in kwargs:
@@ -184,19 +211,30 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
 
     # check for possible inconsistencies:
     if "total_dephasing" in rf_props and "grad_amplitude" in rf_props:
-        warnings.warn("Both total_dephasing and grad_amplitude are provided - using the first")
+        warnings.warn(
+            "Both total_dephasing and grad_amplitude are provided - using the first"
+        )
 
     # put all properties together
-    props = {"inv_props": inv_props, "rf_props": rf_props, "grad_props": grad_props, "nechoes": nechoes, "nshots": nshots, "spoil_inc": spoil_inc}
+    props = {
+        "inv_props": inv_props,
+        "rf_props": rf_props,
+        "grad_props": grad_props,
+        "nechoes": nechoes,
+        "nshots": nshots,
+        "spoil_inc": spoil_inc,
+    }
 
     # initialize simulator
-    simulator = dacite.from_dict(MEMPRAGE, init_params, config=Config(check_types=False))
+    simulator = dacite.from_dict(
+        MEMPRAGE, init_params, config=Config(check_types=False)
+    )
 
     # run simulator
     if diff:
         # actual simulation
         sig, dsig = simulator(flip=flip, TR=TR, TI=TI, ESP=ESP, props=props)
-        
+
         # post processing
         if asnumpy:
             sig = sig.detach().cpu().numpy()
@@ -211,7 +249,7 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
     else:
         # actual simulation
         sig = simulator(flip=flip, TR=TR, TI=TI, ESP=ESP, props=props)
-        
+
         # post processing
         if asnumpy:
             sig = sig.cpu().numpy()
@@ -223,8 +261,10 @@ def memprage(nshots, nechoes, flip, ESP, TR, T1, T2, spoil_inc=117.0, sliceprof=
         else:
             return sig
 
-#%% utils
+
+# %% utils
 spin_defaults = {"T2star": None, "D": None, "v": None}
+
 
 class MEMPRAGE(base.BaseSimulator):
     """Class to simulate inversion-prepared Multi-Echo Rapid Gradient Echo."""
@@ -255,7 +295,7 @@ class MEMPRAGE(base.BaseSimulator):
         spoil_inc = props["spoil_inc"]
         npulses = props["nshots"]
         nechoes = props["nechoes"]
-                    
+
         # define preparation
         Prep = blocks.InversionPrep(TI, T1, T2, weight, k, inv_props)
 
@@ -266,7 +306,7 @@ class MEMPRAGE(base.BaseSimulator):
         X, XS = blocks.SSFPFidStep(
             states, ESP, TR, T1, T2, weight, k, chemshift, D, v, grad_props
         )
-        
+
         # initialize phase
         phi = 0
         dphi = 0
@@ -276,11 +316,10 @@ class MEMPRAGE(base.BaseSimulator):
 
         # actual sequence loop
         for n in range(npulses):
-            
             # update phase
-            dphi = (phi + spoil_inc) %  360.0
+            dphi = (phi + spoil_inc) % 360.0
             phi = (phi + dphi) % 360.0
-            
+
             # apply pulse
             states = RF(states, flip, phi)
 

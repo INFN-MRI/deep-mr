@@ -14,9 +14,10 @@ from nufftorch.src import _routines
 
 
 class _nufft(torch.autograd.Function):
-    """ Autograd.Function to be used inside nn.Module. """
+    """Autograd.Function to be used inside nn.Module."""
+
     @staticmethod
-    def forward(ctx, image, interpolator):  
+    def forward(ctx, image, interpolator):
         ctx.interpolator = interpolator
         return _routines.nufft(image, interpolator)
 
@@ -24,10 +25,11 @@ class _nufft(torch.autograd.Function):
     def backward(ctx, grad_kdata):
         interpolator = ctx.interpolator
         return _routines.nufft_adjoint(grad_kdata, interpolator), None
-   
-    
+
+
 class _nufft_adjoint(torch.autograd.Function):
-    """ Autograd.Function to be used inside nn.Module. """
+    """Autograd.Function to be used inside nn.Module."""
+
     @staticmethod
     def forward(ctx, kdata, interpolator):
         ctx.interpolator = interpolator
@@ -37,8 +39,8 @@ class _nufft_adjoint(torch.autograd.Function):
     def backward(ctx, grad_image):
         interpolator = ctx.interpolator
         return _routines.nufft(grad_image, interpolator), None
-    
-    
+
+
 class _nufft_selfadjoint(torch.autograd.Function):
     @staticmethod
     def forward(ctx, image, interpolator):
@@ -49,4 +51,3 @@ class _nufft_selfadjoint(torch.autograd.Function):
     def backward(ctx, grad_image):
         interpolator = ctx.interpolator
         return _routines.toeplitz_convolution(grad_image, interpolator), None
-

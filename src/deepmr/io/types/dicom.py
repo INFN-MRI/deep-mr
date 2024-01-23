@@ -9,6 +9,7 @@ from ...external.nii2dcm.dcm import DicomMRI
 
 from .common import _reorient, _get_plane_normal
 
+
 def _make_geometry_tags(affine, shape, resolution):
     """Creates DICOM geometry tags from nifti affine."""
     # reorient affine
@@ -47,6 +48,7 @@ def _make_geometry_tags(affine, shape, resolution):
 
     return position.transpose(), slice_loc.round(4)
 
+
 def _get_slice_locations(dsets):
     """
     Return array of unique slice locations and slice location index for each dataset in dsets.
@@ -67,6 +69,7 @@ def _get_slice_locations(dsets):
 
     return uSliceLocs, firstVolumeIdx, sliceIdx
 
+
 def _get_first_volume(dsets, index):
     """
     Get first volume in a multi-contrast series.
@@ -75,6 +78,7 @@ def _get_first_volume(dsets, index):
 
     return out
 
+
 def _get_relative_slice_position(orientation, position):
     """
     Return array of slice coordinates along the normal to imaging plane.
@@ -82,11 +86,13 @@ def _get_relative_slice_position(orientation, position):
     z = _get_plane_normal(orientation)
     return z @ position
 
+
 def _get_position(dsets):
     """
     Return matrix of image position of size (3, nslices).
     """
     return np.stack([dset.ImagePositionPatient for dset in dsets], axis=1)
+
 
 def _get_resolution(dsets):
     """
@@ -98,12 +104,14 @@ def _get_resolution(dsets):
         float(dsets[0].PixelSpacing[1]),
     )
 
+
 def _get_shape(dsets, position):
     """
     Return image shape.
     """
     nz = np.unique(position, axis=-1).shape[-1]
     return (nz, dsets[0].Columns, dsets[0].Rows)
+
 
 def _get_image_orientation(dsets, astuple=False):
     """
@@ -116,11 +124,13 @@ def _get_image_orientation(dsets, astuple=False):
 
     return np.around(F, 4)
 
+
 def _get_spacing(dsets):
     """
     Return slice spacing.
     """
     return float(dsets[0].SpacingBetweenSlices)
+
 
 def _get_flip_angles(dsets):
     """
@@ -131,6 +141,7 @@ def _get_flip_angles(dsets):
 
     return flipAngles
 
+
 def _get_echo_times(dsets):
     """
     Return array of echo times for each dataset in dsets.
@@ -139,6 +150,7 @@ def _get_echo_times(dsets):
     echoTimes = np.array([float(dset.EchoTime) for dset in dsets])
 
     return echoTimes
+
 
 def _get_echo_numbers(dsets):
     """
@@ -149,6 +161,7 @@ def _get_echo_numbers(dsets):
 
     return echoNumbers
 
+
 def _get_repetition_times(dsets):
     """
     Return array of repetition times for each dataset in dsets.
@@ -157,6 +170,7 @@ def _get_repetition_times(dsets):
     repetitionTimes = np.array([float(dset.RepetitionTime) for dset in dsets])
 
     return repetitionTimes
+
 
 def _get_inversion_times(dsets):
     """
@@ -169,6 +183,7 @@ def _get_inversion_times(dsets):
         inversionTimes = np.zeros(len(dsets)) + np.inf
 
     return inversionTimes
+
 
 def _get_unique_contrasts(constrasts):
     """
@@ -184,6 +199,7 @@ def _get_unique_contrasts(constrasts):
         contrastIdx[(constrasts == uContrasts[n]).all(axis=-1)] = n
 
     return uContrasts, contrastIdx
+
 
 def _initialize_series_tag(ref_dicom):
     """

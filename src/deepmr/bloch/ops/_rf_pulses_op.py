@@ -15,6 +15,7 @@ from ._abstract_op import Operator
 from ._stats import pulse_analysis
 from ._utils import gamma
 
+
 class BasePulse(Operator):
     """
     Operator implementing the transformation performed by application of an RF pulse.
@@ -65,9 +66,10 @@ class BasePulse(Operator):
         # calculate from envelope...
         if "rf_envelope" in props and "duration" in props:
             info, _, _, _, _ = pulse_analysis(
-                props["rf_envelope"], props["duration"],
+                props["rf_envelope"],
+                props["duration"],
             )
-            
+
             # b1rms
             self.b1rms = torch.as_tensor(
                 info["b1rms"], dtype=torch.float32, device=device
@@ -92,11 +94,11 @@ class BasePulse(Operator):
 
         # initialize saturation
         self.initialize_saturation()
-        
+
         # default slice profile
         slice_profile = torch.as_tensor(1.0, dtype=torch.float32, device=device)
         self.slice_profile = torch.atleast_1d(slice_profile)
-        
+
         # default B1 value
         B1 = torch.ones(1, dtype=torch.float32, device=device)
 
@@ -117,7 +119,7 @@ class BasePulse(Operator):
         """
         # get device
         device = self.device
-    
+
         # get B1
         B1abs = self.B1abs
         B1angle = self.B1angle
@@ -267,10 +269,9 @@ class BasePulse(Operator):
 
 class RFPulse(BasePulse):  # noqa
     def __init__(self, device, nlocs=None, alpha=0.0, phi=0.0, B1=1.0, **props):  # noqa
-        
-        # base initialization    
+        # base initialization
         super().__init__(device, alpha, phi, **props)
-        
+
         # slice selectivity
         if "slice_selective" in props:
             self.slice_selective = props["slice_selective"]
@@ -284,7 +285,7 @@ class RFPulse(BasePulse):  # noqa
             # slice profile
             if self.slice_selective:
                 _, slice_profile, _, _, _ = pulse_analysis(
-                    props["rf_envelope"], props["duration"], npts=2*nlocs
+                    props["rf_envelope"], props["duration"], npts=2 * nlocs
                 )
                 self.slice_profile = torch.as_tensor(
                     abs(slice_profile), dtype=torch.float32, device=device
@@ -299,7 +300,7 @@ class RFPulse(BasePulse):  # noqa
                 props["slice_profile"], dtype=torch.float32, device=device
             )
             self.slice_profile = torch.atleast_1d(slice_profile)
-        
+
         # number of locations
         if nlocs is not None:
             self.nlocs = nlocs
@@ -315,26 +316,24 @@ class RFPulse(BasePulse):  # noqa
             slice_profile = torch.as_tensor(yq, dtype=torch.float32, device=device)
             self.slice_profile = torch.atleast_1d(slice_profile)
             self.slice_profile = self.slice_profile / self.slice_profile[-1]
-                                       
+
         # default B1 value
         if B1 is not None:
-            B1 = torch.as_tensor(B1, device=device)     
+            B1 = torch.as_tensor(B1, device=device)
             B1abs = B1.abs()
             self.B1abs = torch.atleast_1d(B1abs)
             B1angle = B1.angle()
             self.B1angle = torch.atleast_1d(B1angle)
-        
+
         # actual preparation (if alpha is provided)
         self.prepare_rotation(alpha, phi)
         self.prepare_saturation(alpha)
 
 
 class AdiabaticPulse(BasePulse):  # noqa
-    def __init__(
-        self, device, alpha=0.0, phi=0.0, efficiency=1.0, **props
-    ):  # noqa
+    def __init__(self, device, alpha=0.0, phi=0.0, efficiency=1.0, **props):  # noqa
         super().__init__(device, alpha, phi, **props)
-        
+
         # actual preparation (if alpha is provided)
         self.prepare_rotation(alpha, phi)
         self.prepare_saturation(alpha)
@@ -342,7 +341,7 @@ class AdiabaticPulse(BasePulse):  # noqa
         # compute efficiency
         self.efficiency = efficiency
 
-    def apply(self, states, alpha=None, phi=0.0): # noqa
+    def apply(self, states, alpha=None, phi=0.0):  # noqa
         states = super().apply(states, alpha, phi)
         # states = states * self.efficiency
         return states
@@ -367,7 +366,7 @@ def _apply_rotation(states, rf_mat):
     # prepare out
     Fout = Fin.clone()
     Zout = Zin.clone()
-    
+
     # apply
     Fout[..., 0] = (
         rf_mat[0][0] * Fin[..., 0] + rf_mat[0][1] * Fin[..., 1] + rf_mat[0][2] * Zin
@@ -392,10 +391,10 @@ def _apply_saturation(states, sat_mat):
 
     Returns:
         (dict): output states matrix for bound pools.
-    """    
+    """
     # parse
     Zbound = states["Zbound"]
-    
+
     # prepare
     Zbound = sat_mat * Zbound.clone()
 

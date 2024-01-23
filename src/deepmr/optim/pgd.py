@@ -10,7 +10,17 @@ with warnings.catch_warnings():
     from deepinv.optim.optimizers import optim_builder
     from deepinv.optim.prior import PnP
 
-def pgd(input, encoding, denoiser, lamda=0.01, stepsize=1.0, accelerate=True, max_iter=20, verbose=False):
+
+def pgd(
+    input,
+    encoding,
+    denoiser,
+    lamda=0.01,
+    stepsize=1.0,
+    accelerate=True,
+    max_iter=20,
+    verbose=False,
+):
     r"""
     Proximal Gradient Descent.
     
@@ -69,7 +79,7 @@ def pgd(input, encoding, denoiser, lamda=0.01, stepsize=1.0, accelerate=True, ma
     """
     # Select the data fidelity term
     data_fidelity = L2()
-    
+
     # Instantiate the algorithm class to solve the problem.
     optimalgo = optim_builder(
         iteration="PGD",
@@ -80,7 +90,6 @@ def pgd(input, encoding, denoiser, lamda=0.01, stepsize=1.0, accelerate=True, ma
         anderson_acceleration=accelerate,
         params_algo={"stepsize": stepsize, "lambda": lamda},
     ).to(input.device)
-    
+
     # Run the algorithm
     return optimalgo(input, encoding)
-

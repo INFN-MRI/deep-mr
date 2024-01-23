@@ -9,11 +9,10 @@ from ..module import Module
 
 
 class PatientStudy(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'PatientStudy'
+        self.module_type = "PatientStudy"
 
         self.ds.PatientAge = ""
         self.ds.PatientWeight = ""

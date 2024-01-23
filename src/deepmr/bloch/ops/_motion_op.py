@@ -403,10 +403,20 @@ def _flow_washout_prep(time, v, voxelsize, slice_direction=None):
     # flow wash-in/out
     Win = R * time
     Wout = 1 - Win
-    
+
     # erase unphysical entries
-    Win = (1.0 - torch.heaviside(Win-1.0, torch.as_tensor(1.0, dtype=R.dtype, device=R.device))) * Win + torch.heaviside(Win-1.0, torch.as_tensor(1.0, dtype=R.dtype, device=R.device))
-    Wout = torch.heaviside(Wout, torch.as_tensor(1.0, dtype=R.dtype, device=R.device)) * Wout
+    Win = (
+        1.0
+        - torch.heaviside(
+            Win - 1.0, torch.as_tensor(1.0, dtype=R.dtype, device=R.device)
+        )
+    ) * Win + torch.heaviside(
+        Win - 1.0, torch.as_tensor(1.0, dtype=R.dtype, device=R.device)
+    )
+    Wout = (
+        torch.heaviside(Wout, torch.as_tensor(1.0, dtype=R.dtype, device=R.device))
+        * Wout
+    )
 
     return Win, Wout
 
@@ -430,7 +440,7 @@ def flow_washout_apply(states, Win, Wout):
     # apply
     F[..., 0] = Wout * F[..., 0].clone() + Win * Fmoving[..., 0]
     F[..., 1] = Wout * F[..., 1].clone() + Win * Fmoving[..., 1]
-    Z = Wout * Z.clone()+ Win * Zmoving
+    Z = Wout * Z.clone() + Win * Zmoving
 
     # prepare for output
     states["F"], states["Z"] = F, Z

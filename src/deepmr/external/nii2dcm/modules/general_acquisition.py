@@ -9,14 +9,13 @@ from ..module import Module
 
 
 class GeneralAcquisition(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralAcquisition'
+        self.module_type = "GeneralAcquisition"
 
         # TODO generate Acquisition values here - perhaps with date/time subfunction - or perform within Dicom class
         #  (as currently doing)?
-        self.ds.AcquisitionNumber = ''
-        self.ds.AcquisitionDate = ''
-        self.ds.AcquisitionTime = ''
+        self.ds.AcquisitionNumber = ""
+        self.ds.AcquisitionDate = ""
+        self.ds.AcquisitionTime = ""

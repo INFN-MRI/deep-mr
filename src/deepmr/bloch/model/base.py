@@ -160,6 +160,7 @@ class BaseSimulator:
         B1phase (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): B1 relative phase in [deg]. (0.0 := nominal rf phase). Defaults to None.
 
     """
+
     # main properties
     T1: Union[float, npt.NDArray[float], torch.FloatTensor]  # ms
     T2: Union[float, npt.NDArray[float], torch.FloatTensor]  # ms
@@ -318,7 +319,7 @@ class BaseSimulator:
         #     # single pool voxels do not exchange
         #     idx = (self.weight == 1).sum(axis=-1) == 1
         #     self.k[idx, :, :] = 0.0
-        
+
         # build exchange matrix
         if self.model == "bm":
             self.k = self.kbm
@@ -334,7 +335,7 @@ class BaseSimulator:
             # single pool voxels do not exchange
             idx = torch.isclose(self.weight, torch.tensor(1.0)).sum(axis=-1) == 1
             self.k[idx, :] = 0.0
-                    
+
         # chemical shift
         if self.model is not None and "bm" in self.model:
             if self.chemshift is not None and self.chemshift_bm is None:
@@ -435,13 +436,16 @@ class BaseSimulator:
 
         return output
 
-    def reformat(self, input): # noqa
+    def reformat(self, input):  # noqa
         # handle tuples
         if isinstance(input, (list, tuple)):
             output = [item[..., 0, :] + 1j * item[..., -1, :] for item in input]
             # output = [torch.diagonal(item, dim1=-2, dim2=-1) if len(item.shape) == 4 else item for item in output]
-            output = [item.reshape(*item.shape[:2], -1) if len(item.shape) == 4 else item for item in output]
-                      
+            output = [
+                item.reshape(*item.shape[:2], -1) if len(item.shape) == 4 else item
+                for item in output
+            ]
+
             # stack
             if len(output) == 1:
                 output = output[0]
@@ -491,9 +495,7 @@ class BaseSimulator:
 
         # get shapes
         seqlength = [
-            arg.shape[0]
-            for arg in seq_kwargs.values()
-            if isinstance(arg, torch.Tensor)
+            arg.shape[0] for arg in seq_kwargs.values() if isinstance(arg, torch.Tensor)
         ]
         seqlength = list(dict.fromkeys(seqlength))
         self.seqlength = [el for el in seqlength if el != 1]
@@ -573,8 +575,10 @@ class BaseSimulator:
 
 #     return k
 
+
 def inspect_signature(input):
     return list(inspect.signature(input).parameters)
+
 
 def jacadapt(func):
     @wraps(func)
@@ -592,6 +596,7 @@ def jacadapt(func):
 
     return wrapper
 
+
 def real2complex(input, what):
     if what == "signal":
         return input["real"] + 1j * input["imag"]
@@ -599,7 +604,7 @@ def real2complex(input, what):
         F = input["F"]["real"] + 1j * input["F"]["imag"]
         Z = input["Z"]["real"] + 1j * input["Z"]["imag"]
         out = {"F": F, "Z": Z}
-        
+
         if "moving" in input is not None:
             Fmoving = input["moving"]["F"]["real"] + 1j * input["moving"]["F"]["imag"]
             Zmoving = input["moving"]["Z"]["real"] + 1j * input["moving"]["Z"]["imag"]
@@ -613,8 +618,10 @@ def real2complex(input, what):
 
         return out
 
+
 def complex2real(input):
     return torch.stack((input.real, input.imag), dim=-1)
+
 
 def _sort_signature(input, reference):
     out = {k: input[k] for k in reference if k in input}

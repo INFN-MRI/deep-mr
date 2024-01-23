@@ -7,6 +7,7 @@ __all__ = ["observe", "susceptibility", "t1sat"]
 
 import torch
 
+
 def observe(states, phi=None):
     """
     Store observable magnetization.
@@ -34,6 +35,7 @@ def observe(states, phi=None):
 
     return mxy
 
+
 def susceptibility(signal, time, z):
     """
     Apply static susceptibility effects (bulk decay and dephasing).
@@ -56,6 +58,7 @@ def susceptibility(signal, time, z):
         signal = signal.clone() * torch.exp(-time * (z[..., 0] + 1j * z[..., 1]))
 
     return signal
+
 
 def t1sat(signal, time, t1):
     """

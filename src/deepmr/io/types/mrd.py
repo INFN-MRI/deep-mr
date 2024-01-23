@@ -146,9 +146,13 @@ def _get_position(acquisitions):
     nacq = len(acquisitions)
     return np.stack(
         [
-            np.asarray([acquisitions[n]["head"]["position"][0], 
-                        acquisitions[n]["head"]["position"][1], 
-                        acquisitions[n]["head"]["position"][2]])
+            np.asarray(
+                [
+                    acquisitions[n]["head"]["position"][0],
+                    acquisitions[n]["head"]["position"][1],
+                    acquisitions[n]["head"]["position"][2],
+                ]
+            )
             for n in range(nacq)
         ],
         axis=1,
@@ -174,7 +178,7 @@ def _get_flip_angles(header):
         flipAngles = header.sequenceParameters.flipAngle_deg
     except:
         flipAngles = None
-        
+
     tmp = _find_in_user_params(header.userParameters.userParameterString, "rf_phase")
     if tmp is not None and flipAngles is not None:
         rf_phase = _bytes_to_numpy(tmp["rf_phase"]).astype(np.float32)
@@ -325,7 +329,7 @@ def _initialize_series_tag(mrdHead):
 
     return dicomDset
 
-     
+
 def _numpy_to_bytes(arr):
     return arr.dumps().hex()
 

@@ -13,6 +13,7 @@ from . import nifti as _nifti
 
 __all__ = ["read_image", "write_image"]
 
+
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read image data from file.
@@ -29,7 +30,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         Computational device for internal attributes. The default is "cpu".
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
-    
+
     Returns
     -------
     image : torch.tensor
@@ -40,9 +41,9 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     tstart = time.time()
     if verbose >= 1:
         print(f"Reading image from file {filepath}...", end="\t")
-        
+
     done = False
-    
+
     # convert header to numpy
     if acqheader is not None:
         acqheader.numpy()
@@ -50,27 +51,27 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     # dicom
     if verbose == 2:
         t0 = time.time()
-    try:            
+    try:
         image, head = _dicom.read_dicom(filepath)
         done = True
     except Exception:
         pass
-    
+
     # nifti
     if verbose == 2:
         t0 = time.time()
-    try:            
+    try:
         image, head = _nifti.read_nifti(filepath)
         done = True
     except Exception:
         pass
-    
-    if not(done):
+
+    if not (done):
         raise RuntimeError(f"File (={filepath}) not recognized!")
     if verbose == 2:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
-        
+
     # load trajectory info from acqheader if present
     if acqheader is not None:
         if acqheader.traj is not None:
@@ -79,16 +80,22 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             head.dcf = acqheader.dcf
         if acqheader.t is not None:
             head.t = acqheader.t
-            
+
     # final report
     if verbose == 2:
-        print(f"Image shape: (ncontrasts={image.shape[0]}, nz={image.shape[-3]}, ny={image.shape[-2]},  nx={image.shape[-1]})")
+        print(
+            f"Image shape: (ncontrasts={image.shape[0]}, nz={image.shape[-3]}, ny={image.shape[-2]},  nx={image.shape[-1]})"
+        )
         if head.t is not None:
             print(f"Readout time: {round(float(head.t[-1]), 2)} ms")
         if head.traj is not None:
-            print(f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})")      
+            print(
+                f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})"
+            )
         if head.dcf is not None:
-            print(f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})")
+            print(
+                f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})"
+            )
     if head.FA is not None:
         if len(np.unique(head.FA)) > 1:
             if verbose == 2:
@@ -125,29 +132,44 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             head.TI = TI
             if verbose == 2:
                 print(f"Constant TI: {round(TI, 2)} ms")
-          
+
     # cast
-    image = torch.as_tensor(np.ascontiguousarray(image), dtype=torch.complex64, device=device)
+    image = torch.as_tensor(
+        np.ascontiguousarray(image), dtype=torch.complex64, device=device
+    )
     head.torch(device)
-    
+
     tend = time.time()
     if verbose == 1:
         print(f"done! Elapsed time: {round(tend-tstart, 2)} s")
     elif verbose == 2:
         print(f"Total elapsed time: {round(tend-tstart, 2)} s")
-        
+
     return image, head
 
-def write_image(filename, image, head=None, dataformat="nifti", filepath="./", series_description="", series_number_offset=0, series_number_scale=1000, rescale=False, anonymize=False, verbose=False):
+
+def write_image(
+    filename,
+    image,
+    head=None,
+    dataformat="nifti",
+    filepath="./",
+    series_description="",
+    series_number_offset=0,
+    series_number_scale=1000,
+    rescale=False,
+    anonymize=False,
+    verbose=False,
+):
     """
     Write image to disk.
 
     Parameters
     ----------
-    filename : str 
+    filename : str
         Name of the file.
     image : np.ndarray
-        Complex image data of shape (ncontrasts, nslices, ny, nx).    
+        Complex image data of shape (ncontrasts, nslices, ny, nx).
     filepath : str, optional
         Path to file. The default is "./".
     head : deepmr.Header, optional
@@ -164,7 +186,7 @@ def write_image(filename, image, head=None, dataformat="nifti", filepath="./", s
         Final series number is series_number_scale * acquired_series_number + series_number_offset.
         he default is 0.
     series_number_scale : int, optional
-        Series number multiplicative scaling with respect to the acquired one. 
+        Series number multiplicative scaling with respect to the acquired one.
         Final series number is series_number_scale * acquired_series_number + series_number_offset.
         The default is 1000.
     rescale : bool, optional
@@ -175,11 +197,35 @@ def write_image(filename, image, head=None, dataformat="nifti", filepath="./", s
         If True, remove sensible info from header. The default is "False".
     verbose : bool, optional
         Verbosity flag. The default is "False".
-        
+
     """
-    if dataformat == 'dicom':
-        _dicom.write_dicom(filename, image, filepath, head, series_description, series_number_offset, series_number_scale, rescale, anonymize, verbose)
-    elif dataformat == 'nifti':
-        _nifti.write_nifti(filename, image, filepath, head, series_description, series_number_offset, series_number_scale, rescale, anonymize, verbose)
+    if dataformat == "dicom":
+        _dicom.write_dicom(
+            filename,
+            image,
+            filepath,
+            head,
+            series_description,
+            series_number_offset,
+            series_number_scale,
+            rescale,
+            anonymize,
+            verbose,
+        )
+    elif dataformat == "nifti":
+        _nifti.write_nifti(
+            filename,
+            image,
+            filepath,
+            head,
+            series_description,
+            series_number_offset,
+            series_number_scale,
+            rescale,
+            anonymize,
+            verbose,
+        )
     else:
-        raise RuntimeError(f"Data format = {dataformat} not recognized! Please use 'dicom' or 'nifti'")
+        raise RuntimeError(
+            f"Data format = {dataformat} not recognized! Please use 'dicom' or 'nifti'"
+        )

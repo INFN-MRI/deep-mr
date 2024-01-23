@@ -34,27 +34,31 @@ from nufftorch.src import _routines
 
 
 class AbstractNUFFT(torch.nn.Module):  # pylint: disable=abstract-method
-    """ common class for forward and adjoint NUFFT. """
-    def __init__(self,
-                 coord: Union[None, Tensor] = None,
-                 shape: Union[None, int, List[int], Tuple[int]] = None,
-                 oversamp: Union[float, List[float], Tuple[float]] = 2.0,
-                 width: Union[int, List[int], Tuple[int]] = 4,
-                 basis: Union[None, Tensor] = None,
-                 device: str = 'cpu',
-                 interpolator: Union[None, Dict] = None):
+    """common class for forward and adjoint NUFFT."""
 
+    def __init__(
+        self,
+        coord: Union[None, Tensor] = None,
+        shape: Union[None, int, List[int], Tuple[int]] = None,
+        oversamp: Union[float, List[float], Tuple[float]] = 2.0,
+        width: Union[int, List[int], Tuple[int]] = 4,
+        basis: Union[None, Tensor] = None,
+        device: str = "cpu",
+        interpolator: Union[None, Dict] = None,
+    ):
         super().__init__()
 
         # if provided, re-use precomputed interpolator.
         if interpolator is None:
-            self.interpolator = _routines.prepare_nufft(coord, shape, oversamp, width, basis, device)
+            self.interpolator = _routines.prepare_nufft(
+                coord, shape, oversamp, width, basis, device
+            )
         else:
             self.interpolator = interpolator
-            
+
     def _adjoint_linop(self):
         raise NotImplementedError
-    
+
     @property
     def H(self):
         r"""Return adjoint linear operator.
@@ -71,9 +75,10 @@ class AbstractNUFFT(torch.nn.Module):  # pylint: disable=abstract-method
         """
         return self._adjoint_linop()
 
+
 class NUFFT(AbstractNUFFT):
-    """ Non-Uniform Fourier Transform operator with embedded low-rank projection.
-    
+    """Non-Uniform Fourier Transform operator with embedded low-rank projection.
+
     Args:
         coord (tensor): Coordinate array of shape [nframes, ..., ndim]
         oversamp (float): Grid oversampling factor.
@@ -94,15 +99,16 @@ class NUFFT(AbstractNUFFT):
         Rapid gridding reconstruction with a minimal oversampling ratio.
         IEEE transactions on medical imaging, 24(6), 799-808.
     """
+
     def forward(self, image):
-        """ Perform forward NUFFT operation.
-        
+        """Perform forward NUFFT operation.
+
         Args:
             image (tensor): Input data in image space of shape [n, ..., nz, ny, nx],
                             where n can be number of frames or low-rank subspace
                             coefficients and ... is a set of batches dimensions
                             (coil, te, ...).
-        
+
         Returns:
             kdata (tensor): Fourier domain data of shape [nframes, ..., coord_shape],
                             where  ... is a set f batches dimensions
@@ -110,14 +116,14 @@ class NUFFT(AbstractNUFFT):
                             coord.shape[:-1] used in prepare_nufft.
         """
         return _autograd._nufft.apply(image, self.interpolator)
-    
+
     def _adjoint_linop(self):
         return NUFFTAdjoint(interpolator=self.interpolator)
-    
+
 
 class NUFFTAdjoint(AbstractNUFFT):
-    """ Adjoint Non-Uniform Fourier Transform operator with embedded low-rank projection.
-    
+    """Adjoint Non-Uniform Fourier Transform operator with embedded low-rank projection.
+
     Args:
         coord (tensor): Coordinate array of shape [nframes, ..., ndim]
         shape (int or tuple of ints): Cartesian grid size.
@@ -133,15 +139,16 @@ class NUFFTAdjoint(AbstractNUFFT):
         Rapid gridding reconstruction with a minimal oversampling ratio.
         IEEE transactions on medical imaging, 24(6), 799-808.
     """
+
     def forward(self, kdata):
-        """ Perform adjoint NUFFT operation.
-        
+        """Perform adjoint NUFFT operation.
+
         Args:
             kdata (tensor): Fourier domain data of shape [nframes, ..., coord_shape],
                             where  ... is a set f batches dimensions
                             (coil, te, ...) and coord_shape must match
                             coord.shape[:-1] used in prepare_nufft.
-        
+
         Returns:
             image (tensor): Image domain data of shape [n, ..., nz, ny, nx],
                             where n can be number of frames or low-rank subspace
@@ -149,43 +156,54 @@ class NUFFTAdjoint(AbstractNUFFT):
                             (coil, te, ...).
         """
         return _autograd._nufft_adjoint.apply(kdata, self.interpolator)
-    
+
     def _adjoint_linop(self):
         return NUFFT(interpolator=self.interpolator)
 
 
 class NUFFTSelfadjoint(torch.nn.Module):
-    """ Self-adjoint Non-Uniform Fourier Transform operator."""
+    """Self-adjoint Non-Uniform Fourier Transform operator."""
 
-    def __init__(self,
-                 coord: Tensor,
-                 shape: Union[int, List[int], Tuple[int]],
-                 prep_oversamp: Union[float, List[float], Tuple[float]] = 2.0,
-                 comp_oversamp: Union[float, List[float], Tuple[float]] = 2.0,
-                 width: Union[int, List[int], Tuple[int]] = 4,
-                 basis: Union[Tensor, None] = None,
-                 device: Union[str, torch.device] = 'cpu',
-                 threadsperblock: int = 512,
-                 dcf: Union[Tensor, None] = None,
-                 toeplitz_kernel: Union[None, Dict] = None):
+    def __init__(
+        self,
+        coord: Tensor,
+        shape: Union[int, List[int], Tuple[int]],
+        prep_oversamp: Union[float, List[float], Tuple[float]] = 2.0,
+        comp_oversamp: Union[float, List[float], Tuple[float]] = 2.0,
+        width: Union[int, List[int], Tuple[int]] = 4,
+        basis: Union[Tensor, None] = None,
+        device: Union[str, torch.device] = "cpu",
+        threadsperblock: int = 512,
+        dcf: Union[Tensor, None] = None,
+        toeplitz_kernel: Union[None, Dict] = None,
+    ):
         super().__init__()
 
         # if provided, re-use precomputed interpolator.
         if toeplitz_kernel is None:
             self.toeplitz_kernel = _routines.prepare_noncartesian_toeplitz(
-                coord, shape, prep_oversamp, comp_oversamp, width, basis, device, threadsperblock, dcf)
+                coord,
+                shape,
+                prep_oversamp,
+                comp_oversamp,
+                width,
+                basis,
+                device,
+                threadsperblock,
+                dcf,
+            )
         else:
             self.toeplitz_kernel = toeplitz_kernel
 
     def forward(self, image):
-        """ Perform self-adjoint NUFFT operation.
-        
+        """Perform self-adjoint NUFFT operation.
+
         Args:
             image (tensor): Input data in image space of shape [n, ..., nz, ny, nx],
                             where n can be number of frames or low-rank subspace
                             coefficients and ... is a set of batches dimensions
                             (coil, te, ...).
-        
+
         Returns:
             image (tensor): Image domain data of shape [n, ..., nz, ny, nx],
                             where n can be number of frames or low-rank subspace
@@ -193,8 +211,6 @@ class NUFFTSelfadjoint(torch.nn.Module):
                             (coil, te, ...).
         """
         return _autograd._nufft_selfadjoint.apply(image, self.toeplitz_kernel)
-    
+
     def _adjoint_linop(self):
         return self
-
-

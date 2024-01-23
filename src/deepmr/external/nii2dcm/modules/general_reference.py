@@ -9,12 +9,10 @@ from ..module import Module
 
 
 class GeneralReference(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralReference'
+        self.module_type = "GeneralReference"
 
         # TODO update placeholder class
         pass
-

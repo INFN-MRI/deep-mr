@@ -12,7 +12,20 @@ from .. import blocks
 from .. import ops
 from . import base
 
-def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None, device="cpu", TI=0.0, **kwargs):
+
+def mprage(
+    nshots,
+    flip,
+    TR,
+    T1,
+    T2,
+    spoil_inc=117.0,
+    sliceprof=False,
+    diff=None,
+    device="cpu",
+    TI=0.0,
+    **kwargs
+):
     """
     Simulate a Magnetization Prepared (MP) Rapid Gradient Echo sequence.
 
@@ -43,10 +56,10 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
     Kwargs (sequence):
         TE (optional, float): Echo time in [ms]. Defaults to 0.0.
         B1sqrdTau (float): pulse energy in [uT**2 * ms].
-        
+
         global_inversion (bool): assume nonselective (True) or selective (False) inversion. Defaults to True.
         inv_B1sqrdTau (float): inversion pulse energy in [uT**2 * ms].
-        
+
         grad_tau (float): gradient lobe duration in [ms].
         grad_amplitude (optional, float): gradient amplitude along unbalanced direction in [mT / m].
             If total_dephasing is not provided, this is used to compute diffusion and flow effects.
@@ -55,7 +68,7 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
 
         voxelsize (optional, str, array-like): voxel size (dx, dy, dz) in [mm]. If scalar, assume isotropic voxel.
             Defaults to "None".
-        
+
         grad_orient (optional, str, array-like): gradient orientation ("x", "y", "z" or versor). Defaults to "z".
         slice_orient (optionl, str, array-like): slice orientation ("x", "y", "z" or versor).
             Ignored if pulses are non-selective. Defaults to "z".
@@ -88,7 +101,16 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
 
     """
     # constructor
-    init_params = {"flip": flip, "TR": TR, "T1": T1, "T2": T2, "diff": diff, "device": device, "TI": TI, **kwargs}
+    init_params = {
+        "flip": flip,
+        "TR": TR,
+        "T1": T1,
+        "T2": T2,
+        "diff": diff,
+        "device": device,
+        "TI": TI,
+        **kwargs,
+    }
 
     # get TE
     if "TE" not in init_params:
@@ -107,28 +129,28 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
         asnumpy = init_params["asnumpy"]
     else:
         asnumpy = True
-        
+
     # get selectivity:
     if sliceprof:
         selective_exc = True
     else:
         selective_exc = False
-            
+
     # add moving pool if required
     if selective_exc and "v" in init_params:
         init_params["moving"] = True
 
     # check for global inversion
     if "global_inversion" in init_params:
-        selective_inv = not(init_params["global_inversion"])
+        selective_inv = not (init_params["global_inversion"])
     else:
         selective_inv = False
 
     # check for conflicts in inversion selectivity
     if selective_exc is False and selective_inv is True:
-        warnings.warn('3D acquisition - forcing inversion pulse to global.')
+        warnings.warn("3D acquisition - forcing inversion pulse to global.")
         selective_inv = False
-    
+
     # inversion pulse properties
     if TI is None:
         inv_props = {}
@@ -144,10 +166,10 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
     if "B1sqrdTau" in kwargs:
         inv_props["b1rms"] = kwargs["B1sqrdTau"] ** 0.5
         inv_props["duration"] = 1.0
-        
+
     if np.isscalar(sliceprof) is False:
         rf_props["slice_profile"] = kwargs["sliceprof"]
-        
+
     # get nlocs
     if "nlocs" in init_params:
         nlocs = init_params["nlocs"]
@@ -162,10 +184,10 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
         nlocs = min(nlocs, len(rf_props["slice_profile"]))
     else:
         nlocs = 1
-        
+
     # assign nlocs
     init_params["nlocs"] = nlocs
-    
+
     # unbalanced gradient properties
     grad_props = {}
     if "grad_tau" in kwargs:
@@ -183,14 +205,22 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
 
     # check for possible inconsistencies:
     if "total_dephasing" in rf_props and "grad_amplitude" in rf_props:
-        warnings.warn("Both total_dephasing and grad_amplitude are provided - using the first")
+        warnings.warn(
+            "Both total_dephasing and grad_amplitude are provided - using the first"
+        )
 
     # put all properties together
-    props = {"inv_props": inv_props, "rf_props": rf_props, "grad_props": grad_props, "nshots": nshots, "spoil_inc": spoil_inc}
+    props = {
+        "inv_props": inv_props,
+        "rf_props": rf_props,
+        "grad_props": grad_props,
+        "nshots": nshots,
+        "spoil_inc": spoil_inc,
+    }
 
     # initialize simulator
     simulator = dacite.from_dict(MPRAGE, init_params, config=Config(check_types=False))
-            
+
     # run simulator
     if diff:
         # actual simulation
@@ -210,7 +240,7 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
     else:
         # actual simulation
         sig = simulator(flip=flip, TR=TR, TI=TI, TE=TE, props=props)
-        
+
         # post processing
         if asnumpy:
             sig = sig.cpu().numpy()
@@ -222,8 +252,10 @@ def mprage(nshots, flip, TR, T1, T2, spoil_inc=117.0, sliceprof=False, diff=None
         else:
             return sig
 
-#%% utils
+
+# %% utils
 spin_defaults = {"T2star": None, "D": None, "v": None}
+
 
 class MPRAGE(base.BaseSimulator):
     """Class to simulate inversion-prepared Rapid Gradient Echo."""
@@ -264,7 +296,7 @@ class MPRAGE(base.BaseSimulator):
         X, XS = blocks.SSFPFidStep(
             states, TE, TR, T1, T2, weight, k, chemshift, D, v, grad_props
         )
-        
+
         # initialize phase
         phi = 0
         dphi = 0
@@ -274,11 +306,10 @@ class MPRAGE(base.BaseSimulator):
 
         # actual sequence loop
         for n in range(npulses):
-            
             # update phase
-            dphi = (phi + spoil_inc) %  360.0
+            dphi = (phi + spoil_inc) % 360.0
             phi = (phi + dphi) % 360.0
-            
+
             # apply pulse
             states = RF(states, flip, phi)
 
@@ -290,4 +321,3 @@ class MPRAGE(base.BaseSimulator):
             states = XS(states)
 
         return ops.susceptibility(signal, TE, df)
-

@@ -12,6 +12,7 @@ import numpy as np
 
 from . import tissue_classes
 
+
 def mr_shepp_logan(npix: Union[int, Tuple[int]], nslices: int, B0=3.0, model="single"):
     """
     Generate a Shepp Logan phantom with a given shape and dtype.

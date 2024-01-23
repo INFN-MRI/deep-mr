@@ -9,6 +9,7 @@ import numpy as np
 import mmap
 import os
 
+
 def read_bart(filename: str) -> np.ndarray:
     """
     Read file in BART format. Used for BART interoperability.
@@ -26,6 +27,7 @@ def read_bart(filename: str) -> np.ndarray:
     """
     return np.ascontiguousarray(_readcfl(filename))
 
+
 def write_bart(input: np.ndarray, filename: str):
     """
     Write file in BART format. Used for BART interoperability.
@@ -39,6 +41,7 @@ def write_bart(input: np.ndarray, filename: str):
 
     """
     return _writecfl(input, filename)
+
 
 # Copyright 2013-2015. The Regents of the University of California.
 # Copyright 2021. Uecker Lab. University Center Göttingen.
@@ -55,33 +58,34 @@ def write_bart(input: np.ndarray, filename: str):
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # Authors:
 # 2013 Martin Uecker <uecker@eecs.berkeley.edu>
 # 2015 Jonathan Tamir <jtamir@eecs.berkeley.edu>
 def _readcfl(name):
     # get dims from .hdr
     with open(name + ".hdr", "rt") as h:
-        h.readline() # skip
+        h.readline()  # skip
         l = h.readline()
     dims = [int(i) for i in l.split()]
 
     # remove singleton dimensions from the end
     n = np.prod(dims)
     dims_prod = np.cumprod(dims)
-    dims = dims[:np.searchsorted(dims_prod, n)+1]
+    dims = dims[: np.searchsorted(dims_prod, n) + 1]
 
     # load data and reshape into dims
     with open(name + ".cfl", "rb") as d:
-        a = np.fromfile(d, dtype=np.complex64, count=n);
-    return a.reshape(dims, order='F') # column-major
+        a = np.fromfile(d, dtype=np.complex64, count=n)
+    return a.reshape(dims, order="F")  # column-major
+
 
 def _writecfl(name, array):
     with open(name + ".hdr", "wt") as h:
-        h.write('# Dimensions\n')
-        for i in (array.shape):
-                h.write("%d " % i)
-        h.write('\n')
+        h.write("# Dimensions\n")
+        for i in array.shape:
+            h.write("%d " % i)
+        h.write("\n")
 
     size = np.prod(array.shape) * np.dtype(np.complex64).itemsize
 

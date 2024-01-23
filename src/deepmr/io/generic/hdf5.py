@@ -24,6 +24,7 @@ dtypes = (
     np.float64,
 )
 
+
 def read_hdf5(filename: str) -> dict:
     """
     Read HDF5 file as a Python dictionary
@@ -37,7 +38,7 @@ def read_hdf5(filename: str) -> dict:
     -------
     dict
         Deserialized HDF5 file.
-        
+
     Example
     -------
     Define an exemplary dictionary and save to file:
@@ -48,13 +49,13 @@ def read_hdf5(filename: str) -> dict:
     >>> pydict = {'headerstr': 'someinfo', 'testdouble': np.ones(3, dtype=np.float32)}
     >>> filepath = os.path.realpath('.')
     >>> deepmr.io.write_hdf5(filepath)
-    
+
     Load from disk:
-    
+
     >>> loaded_dict = deepmr.io.read_hdf5(filepath)
-    
+
     Result is the same dictionary created before:
-        
+
     >>> loaded_dict.keys()
     ['headerstr', 'testdouble']
     >>> matfile['testdouble']
@@ -78,7 +79,7 @@ def write_hdf5(input: dict, filename: str):
         Input dictionary.
     filename : str
         Path to file on disk.
-        
+
     Example
     -------
     Define an exemplary dictionary:

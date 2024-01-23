@@ -9,13 +9,12 @@ from ..module import Module
 
 
 class Patient(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'PatientModule'
+        self.module_type = "PatientModule"
 
-        self.ds.PatientName = 'Lastname^Firstname'
-        self.ds.PatientID = '12345678'
-        self.ds.PatientSex = ''
-        self.ds.PatientBirthDate = ''
+        self.ds.PatientName = "Lastname^Firstname"
+        self.ds.PatientID = "12345678"
+        self.ds.PatientSex = ""
+        self.ds.PatientBirthDate = ""

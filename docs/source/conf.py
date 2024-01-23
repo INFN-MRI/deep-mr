@@ -6,9 +6,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = u"deepmr"
-copyright = u"2023, Matteo Cencini"
-author = u"Matteo Cencini"
+project = "deepmr"
+copyright = "2023, Matteo Cencini"
+author = "Matteo Cencini"
 
 # -- General configuration ---------------------------------------------------
 
@@ -17,27 +17,30 @@ author = u"Matteo Cencini"
 # ones.
 extensions = [
     "myst_nb",
-#    "autoapi.extension",
-	"sphinx.ext.autodoc",
-	"sphinx.ext.autosummary",
+    #    "autoapi.extension",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
 
-autodoc_mock_imports = ["deepinv",
-						"h5py",
-						"ismrmrd",
-						"mat73",
-						"matplotlib",
-						"nibabel",
-						"numpy",
-						"numba",
-						"pydicom",
-						"pywt",
-						"ptwt",
-						"scipy",
-						"torch",
-						"tqdm"]
+autodoc_mock_imports = [
+    "dacite",
+    "deepinv",
+    "h5py",
+    "ismrmrd",
+    "mat73",
+    "matplotlib",
+    "nibabel",
+    "numpy",
+    "numba",
+    "pydicom",
+    "pywt",
+    "ptwt",
+    "scipy",
+    "torch",
+    "tqdm",
+]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -62,5 +65,4 @@ html_theme_options = {
         "image_dark": "https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo_dark.png?raw=true",
         "scale": "10%",
     },
-
 }

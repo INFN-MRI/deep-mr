@@ -31,8 +31,9 @@ mu0 = 4.0e-7 * np.pi
 eps0 = 1.0 / mu0 / c0**2
 
 # gyromagnetic factors
-gamma_bar = 42.575 * 1e6 # MHz / T -> Hz / T
-gamma = 2 * np.pi * gamma_bar # rad / T / s
+gamma_bar = 42.575 * 1e6  # MHz / T -> Hz / T
+gamma = 2 * np.pi * gamma_bar  # rad / T / s
+
 
 def _default_bm(n_atoms, model):
     if "bm" in model:
@@ -47,12 +48,14 @@ def _default_bm(n_atoms, model):
     else:
         return {}
 
+
 def _default_mt(n_atoms, model):
     if "mt" in model:
         z = np.zeros((n_atoms, 1), dtype=np.float32)
         return {"k": z.copy(), "weight": z.copy()}
     else:
         return {}
+
 
 @dataclass
 class AbstractTissue:
@@ -100,7 +103,6 @@ class AbstractTissue:
             elif field.name == "mt" and "mt" in model and value is None:
                 setattr(self, field.name, _default_mt(n_atoms, model))
 
-
     # utils
     def _calculate_t1(self, B0, A):
         return A * B0 ** (1 / 3)
@@ -113,6 +115,7 @@ class AbstractTissue:
             return 1e3 / R2star  # s -> ms
 
         return None
+
 
 class Air(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
@@ -136,6 +139,7 @@ class Air(AbstractTissue):
         self.T2 = np.zeros(n_atoms, dtype=np.float32)
 
         super().__init__(n_atoms, model)
+
 
 class Fat(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
@@ -169,6 +173,7 @@ class Fat(AbstractTissue):
         self.chemshift = gamma_bar * B0 * chemshift  # Hz
 
         super().__init__(n_atoms, model)
+
 
 class WhiteMatter(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
@@ -243,7 +248,7 @@ class WhiteMatter(AbstractTissue):
             self.bm["weight"] = wmw * np.ones(
                 (n_atoms, 1), dtype=np.float32
             )  # myelin water
-            
+
         # set semisolid pool weight
         if "mt" in str(simulate_multipool).lower():
             self.mt = {}
@@ -262,6 +267,7 @@ class WhiteMatter(AbstractTissue):
             self.mt["k"] = np.atleast_1d(rand(kmw_ss, 0.5 * kmw_ss, n_atoms))[:, None]
 
         super().__init__(n_atoms, model)
+
 
 class GrayMatter(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
@@ -327,7 +333,7 @@ class GrayMatter(AbstractTissue):
             self.bm["chemshift"] = (
                 5.0 / 3.0 * B0 * np.ones((n_atoms, 1), dtype=np.float32)
             )
-       
+
         # set Bloch-McConnell pool weight
         if "bm" in str(simulate_multipool).lower():
             w0 = 0.03
@@ -335,7 +341,7 @@ class GrayMatter(AbstractTissue):
             self.bm["weight"] = wmw * np.ones(
                 (n_atoms, 1), dtype=np.float32
             )  # myelin water
-            
+
         # set semisolid pool weight
         if "mt" in str(simulate_multipool).lower():
             self.mt = {}
@@ -394,6 +400,7 @@ class CSF(AbstractTissue):
 
         super().__init__(n_atoms, model)
 
+
 class Muscle(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
         """
@@ -426,6 +433,7 @@ class Muscle(AbstractTissue):
 
         super().__init__(n_atoms, model)
 
+
 class Skin(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
         """
@@ -456,6 +464,7 @@ class Skin(AbstractTissue):
 
         super().__init__(n_atoms, model)
 
+
 class Bone(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
         """
@@ -484,6 +493,7 @@ class Bone(AbstractTissue):
         )
 
         super().__init__(n_atoms, model)
+
 
 class Blood(AbstractTissue):
     def __init__(self, n_atoms, B0, model="single"):
@@ -519,6 +529,7 @@ class Blood(AbstractTissue):
 
         super().__init__(n_atoms, model)
 
+
 # %% local utils
 def rand(mean, hwidth, n_atoms, seed=42):
     """
@@ -540,6 +551,7 @@ def rand(mean, hwidth, n_atoms, seed=42):
 
     # delta peak case
     return mean
+
 
 # 4th order Cole-Cole model parameters (N De Geeter et al 2012 Phys. Med. Biol. 57 2169)
 brain_params = {
@@ -567,6 +579,7 @@ brain_params = {
 }
 
 cole_cole_model_params = {"brain": brain_params}
+
 
 def _get_complex_dielectric_properties(field_strength, anatomic_region="brain"):
     """Calculate theoretical complex dielectric properties.

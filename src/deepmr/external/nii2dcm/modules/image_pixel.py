@@ -15,28 +15,27 @@ from ..module import Module
 
 
 class ImagePixel(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'ImagePixel'
+        self.module_type = "ImagePixel"
 
-        self.ds.Rows = ''
-        self.ds.Columns = ''
+        self.ds.Rows = ""
+        self.ds.Columns = ""
 
         # BitsAllocated, BitsStored, HighBit
         # Setting default = 1 for purposes of basic DICOM creation. Should be overwritten by Dicom subclass.
         self.ds.BitsAllocated = 1
-        self.ds.BitsStored = ''
-        self.ds.HighBit = ''
+        self.ds.BitsStored = ""
+        self.ds.HighBit = ""
 
         # PixelRepresentation
         # Enumerated values either: unsigned integer or two's complement
         # Setting = 0, as observed in real DICOM
         self.ds.PixelRepresentation = 0
 
-        self.ds.SmallestImagePixelValue = ''
-        self.ds.LargestImagePixelValue = ''
+        self.ds.SmallestImagePixelValue = ""
+        self.ds.LargestImagePixelValue = ""
 
         # PixelData written in dcm_writer via Pydicom
-        self.ds.PixelData = ''
+        self.ds.PixelData = ""

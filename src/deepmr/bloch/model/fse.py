@@ -12,6 +12,7 @@ from .. import blocks
 from .. import ops
 from . import base
 
+
 def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **kwargs):
     """
     Simulate a Fast Spin Echo sequence.
@@ -40,10 +41,10 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
 
     Kwargs (sequence):
         B1sqrdTau (float): refocusing pulse energy in [uT**2 * ms] when flip = 1 [deg].
-        
+
         exc_flip (float): excitation flip angle. Defaults to 90 [deg].
         exc_B1sqrdTau (float): excitation pulse energy in [uT**2 * ms].
-        
+
         grad_tau (float): gradient lobe duration in [ms].
         grad_amplitude (optional, float): gradient amplitude along unbalanced direction in [mT / m].
             If total_dephasing is not provided, this is used to compute diffusion and flow effects.
@@ -52,7 +53,7 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
 
         voxelsize (optional, str, array-like): voxel size (dx, dy, dz) in [mm]. If scalar, assume isotropic voxel.
             Defaults to "None".
-        
+
         grad_orient (optional, str, array-like): gradient orientation ("x", "y", "z" or versor). Defaults to "z".
         slice_orient (optionl, str, array-like): slice orientation ("x", "y", "z" or versor).
             Ignored if pulses are non-selective. Defaults to "z".
@@ -84,7 +85,16 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
 
     """
     # constructor
-    init_params = {"flip": flip, "phases": phases, "ESP": ESP, "T1": T1, "T2": T2, "diff": diff, "device": device, **kwargs}
+    init_params = {
+        "flip": flip,
+        "phases": phases,
+        "ESP": ESP,
+        "T1": T1,
+        "T2": T2,
+        "diff": diff,
+        "device": device,
+        **kwargs,
+    }
 
     # get verbosity
     if "verbose" in init_params:
@@ -97,13 +107,13 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
         asnumpy = init_params["asnumpy"]
     else:
         asnumpy = True
-        
+
     # get selectivity:
     if sliceprof:
         selective = True
     else:
         selective = False
-            
+
     # add moving pool if required
     if selective and "v" in init_params:
         init_params["moving"] = True
@@ -123,10 +133,10 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
     if "B1sqrdTau" in kwargs:
         rf_props["b1rms"] = kwargs["B1sqrdTau"] ** 0.5
         rf_props["duration"] = 1.0
-        
+
     if np.isscalar(sliceprof) is False:
         rf_props["slice_profile"] = kwargs["sliceprof"]
-        
+
     # get nlocs
     if "nlocs" in init_params:
         nlocs = init_params["nlocs"]
@@ -141,10 +151,10 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
         nlocs = min(nlocs, len(rf_props["slice_profile"]))
     else:
         nlocs = 1
-        
+
     # assign nlocs
     init_params["nlocs"] = nlocs
-    
+
     # unbalanced gradient properties
     grad_props = {}
     if "grad_tau" in kwargs:
@@ -162,14 +172,16 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
 
     # check for possible inconsistencies:
     if "total_dephasing" in rf_props and "grad_amplitude" in rf_props:
-        warnings.warn("Both total_dephasing and grad_amplitude are provided - using the first")
+        warnings.warn(
+            "Both total_dephasing and grad_amplitude are provided - using the first"
+        )
 
     # put all properties together
     props = {"exc_props": exc_props, "rf_props": rf_props, "grad_props": grad_props}
 
     # initialize simulator
     simulator = dacite.from_dict(FSE, init_params, config=Config(check_types=False))
-            
+
     # run simulator
     if diff:
         # actual simulation
@@ -189,7 +201,7 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
     else:
         # actual simulation
         sig = simulator(flip=flip, phases=phases, ESP=ESP, props=props)
-        
+
         # post processing
         if asnumpy:
             sig = sig.cpu().numpy()
@@ -201,8 +213,10 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
         else:
             return sig
 
-#%% utils
+
+# %% utils
 spin_defaults = {"D": None, "v": None}
+
 
 class FSE(base.BaseSimulator):
     """Class to simulate Fast Spin Echo."""
@@ -229,10 +243,10 @@ class FSE(base.BaseSimulator):
         exc_props = props["exc_props"]
         rf_props = props["rf_props"]
         grad_props = props["grad_props"]
-        
+
         # get number of frames and echoes
         npulses = flip.shape[0]
-        
+
         # define preparation
         Exc = blocks.ExcPulse(states, B1, exc_props)
 
@@ -243,22 +257,21 @@ class FSE(base.BaseSimulator):
         Xpre, Xpost = blocks.FSEStep(
             states, ESP, T1, T2, weight, k, chemshift, D, v, grad_props
         )
-        
+
         # magnetization prep
         states = Exc(states, exc_props["flip"])
 
         # actual sequence loop
         for n in range(npulses):
-            
             # relax, recover and shift for half echo spacing
             states = Xpre(states)
-                        
+
             # apply refocusing
             states = RF(states, flip[n], phases[n])
 
             # relax, recover and spoil for half echo spacing
             states = Xpost(states)
-                        
+
             # observe magnetization
             signal[n] = ops.observe(states, RF.phi)
 

@@ -9,13 +9,12 @@ from ..module import Module
 
 
 class GeneralEquipment(Module):
-
     def __init__(self):
         super().__init__()
 
-        self.module_type = 'GeneralEquipment'
+        self.module_type = "GeneralEquipment"
 
-        self.ds.Manufacturer = ''
-        self.ds.InstitutionName = 'INSTITUTION_NAME_UNDEFINED'
+        self.ds.Manufacturer = ""
+        self.ds.InstitutionName = "INSTITUTION_NAME_UNDEFINED"
         self.ds.ManufacturerModelName = ""
-        self.ds.SoftwareVersions = ''
+        self.ds.SoftwareVersions = ""

@@ -8,7 +8,6 @@ import numpy as np
 
 
 class Nifti:
-
     def get_nii2dcm_parameters(nib_nii):
         """
         Get general NIfTI header parameters relevant for DICOM tag transferal.
@@ -27,16 +26,25 @@ class Nifti:
         nii_img = nib_nii.get_fdata()
 
         # volume dimensions
-        if nib_nii.header['dim'][4] == 1:
-            nX, nY, nZ, nF = nib_nii.header['dim'][1], nib_nii.header['dim'][2], nib_nii.header['dim'][3], 1
-            dimX, dimY, dimZ = nib_nii.header['pixdim'][1], nib_nii.header['pixdim'][2], nib_nii.header['pixdim'][3]
+        if nib_nii.header["dim"][4] == 1:
+            nX, nY, nZ, nF = (
+                nib_nii.header["dim"][1],
+                nib_nii.header["dim"][2],
+                nib_nii.header["dim"][3],
+                1,
+            )
+            dimX, dimY, dimZ = (
+                nib_nii.header["pixdim"][1],
+                nib_nii.header["pixdim"][2],
+                nib_nii.header["pixdim"][3],
+            )
 
-        elif nib_nii.header['dim'][4] > 1:
+        elif nib_nii.header["dim"][4] > 1:
             print("Warning: Nifti is not 3-dimensional.")
 
         # Instances & Slice Spacing
-        nInstances = nZ*nF
-        sliceIndices = np.repeat(range(1, nZ+1), nF)
+        nInstances = nZ * nF
+        sliceIndices = np.repeat(range(1, nZ + 1), nF)
         voxelSpacing = dimZ
         zLocLast = (voxelSpacing * nZ) - voxelSpacing
         sliceLoca = np.repeat(np.linspace(0, zLocLast, num=nZ), nF)
@@ -67,35 +75,39 @@ class Nifti:
 
         # output dictionary
         nii2dcm_parameters = {
-
             # series parameters
-            'dimX': dimX,
-            'dimY': dimY,
-            'SliceThickness': str(dimZ),
-            'SpacingBetweenSlices': str(dimZ),
-            'AcquisitionMatrix': [0, nX, nY, 0],
-            'Rows': nX,
-            'Columns': nY,
-            'NumberOfSlices': nZ,
-            'NumberOfInstances': nZ*nF,
-            'PixelSpacing': [dimX, dimY],
-            'FOV': [fovX, fovY, fovZ],
-            'SmallestImagePixelValue': minI,
-            'LargestImagePixelValue': maxI,
-            'WindowCenter': str(windowCenter),
-            'WindowWidth': str(windowWidth),
-            'RescaleIntercept': str(rescaleIntercept),
-            'RescaleSlope': str(rescaleSlope),
-            'SpacingBetweenSlices': round(float(dimZ), 2),
-            'ImageOrientationPatient': [dircosY[0], dircosY[1], dircosY[2], dircosX[0], dircosX[1], dircosX[2]],
+            "dimX": dimX,
+            "dimY": dimY,
+            "SliceThickness": str(dimZ),
+            "SpacingBetweenSlices": str(dimZ),
+            "AcquisitionMatrix": [0, nX, nY, 0],
+            "Rows": nX,
+            "Columns": nY,
+            "NumberOfSlices": nZ,
+            "NumberOfInstances": nZ * nF,
+            "PixelSpacing": [dimX, dimY],
+            "FOV": [fovX, fovY, fovZ],
+            "SmallestImagePixelValue": minI,
+            "LargestImagePixelValue": maxI,
+            "WindowCenter": str(windowCenter),
+            "WindowWidth": str(windowWidth),
+            "RescaleIntercept": str(rescaleIntercept),
+            "RescaleSlope": str(rescaleSlope),
+            "SpacingBetweenSlices": round(float(dimZ), 2),
+            "ImageOrientationPatient": [
+                dircosY[0],
+                dircosY[1],
+                dircosY[2],
+                dircosX[0],
+                dircosX[1],
+                dircosX[2],
+            ],
             # alternative:
             # 'ImageOrientationPatient': [dircosX[0], dircosX[1], dircosX[2], dircosY[0], dircosY[1], dircosY[2]],
-
             # instance parameters
-            'InstanceNumber': sliceIndices,
-            'SliceLocation': sliceLoca,
-            'ImagePositionPatient': image_pos_patient_array
-
+            "InstanceNumber": sliceIndices,
+            "SliceLocation": sliceLoca,
+            "ImagePositionPatient": image_pos_patient_array,
         }
 
         return nii2dcm_parameters

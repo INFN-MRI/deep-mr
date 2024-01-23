@@ -7,6 +7,7 @@ References:
 
 import numpy as np
 
+
 def ct_shepp_logan(npix, nslices):
     """
     Generate a Shepp Logan phantom with a given shape and dtype.

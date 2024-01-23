@@ -72,7 +72,7 @@ def EPGstates(
         out["states"]["moving"] = {}
         out["states"]["moving"]["F"] = Fmoving
         out["states"]["moving"]["Z"] = Zmoving
-    
+
     # initialize bound pool
     if model is not None and "mt" in model:
         Zbound = torch.zeros(

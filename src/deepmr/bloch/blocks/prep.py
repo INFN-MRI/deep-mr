@@ -4,10 +4,11 @@ __all__ = ["InversionPrep", "T2Prep"]
 
 from .. import ops
 
+
 def InversionPrep(TI, T1, T2, weight, k, inv_props):
     """
     Adiabatic inversion operator.
-    
+
     Consists of a 180° pulse followed by a crusher gradient.
 
     Args:
@@ -39,12 +40,12 @@ def InversionPrep(TI, T1, T2, weight, k, inv_props):
         return ops.CompositeOperator(Sinv, Einv, Tinv, name="Inversion Propagator")
     else:
         return ops.Identity(name="Inversion Propagator")
-    
-    
+
+
 def T2Prep(Tprep, T1, T2, weight, k, prep_props):
     """
     T2 prep operator.
-    
+
     Consists of a 90°-180°--90° composite pulse followed by a crusher gradient.
 
     Args:
@@ -79,6 +80,8 @@ def T2Prep(Tprep, T1, T2, weight, k, prep_props):
         )
         Sprep = ops.Spoil(name="Prep Crusher")
 
-        return ops.CompositeOperator(Sprep, T90m, Eprep, T180, Eprep, T90p, name="Inversion Propagator")
+        return ops.CompositeOperator(
+            Sprep, T90m, Eprep, T180, Eprep, T90p, name="Inversion Propagator"
+        )
     else:
         return ops.Identity(name="Inversion Propagator")
