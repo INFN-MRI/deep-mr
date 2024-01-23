@@ -112,7 +112,7 @@ def _get_repetition_times(json_list):
                 json_dict["RepetitionTime"] = np.asarray(json_dict["RepetitionTime"])
             repetitionTimes.append(1e3 * json_dict["RepetitionTime"])
         else:
-            repetitionTimes.append(np.Inf)
+            repetitionTimes.append(1000.0)
 
     return np.asarray(repetitionTimes)
 
