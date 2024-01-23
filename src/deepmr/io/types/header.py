@@ -3,6 +3,8 @@
 __all__ = ["Header"]
 
 import copy
+from datetime import date
+
 from dataclasses import dataclass
 from dataclasses import field
 
@@ -141,7 +143,9 @@ class Header:
         
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-        
+            
+            # support saving of real data only for now
+            self.ref_dicom.ImageType.append("M")
             self.ref_dicom.Rows = self.shape[2]
             self.ref_dicom.Columns = self.shape[1]
             self.ref_dicom.PixelSpacing = [
@@ -155,6 +159,11 @@ class Header:
             
             # make sure SeriesInstanceUID is unique
             self.ref_dicom.SeriesInstanceUID = pydicom.uid.generate_uid()
+            
+            # fill Patient Age
+            if self.ref_dicom.PatientAge == "":
+                if self.ref_dicom.PatientBirthDate != "" and self.ref_dicom.StudyDate != "":
+                    self.ref_dicom.PatientAge = _calculate_age(self.ref_dicom.PatientBirthDate, self.ref_dicom.StudyDate)
     
             try:
                 self.ref_dicom.ImagesInAcquisition = ""
@@ -313,12 +322,13 @@ class Header:
         ref_dicom = dicom._initialize_series_tag(copy.deepcopy(dsets[0]))
 
         # get dwell time
-        # try:
-        #     dt = float(dsets[0][0x0019, 0x1018].value) * 1e-6  # ms
-        # except Exception:
-        #     dt = None
+        try:
+            dt = float(dsets[0][0x0019, 0x1018].value) * 1e-6  # ms
+            t = np.arange(shape[-1]) * dt
+        except Exception:
+            t = None
 
-        return cls(shape, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation.ravel())
+        return cls(shape, t=t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation.ravel())
 
     @classmethod
     def from_nifti(cls, img, header, affine, json):
@@ -330,7 +340,6 @@ class Header:
         shape = nifti._get_shape(img)
         resolution = nifti._get_resolution(header, json)
         spacing = nifti._get_spacing(header)
-        origin = nifti._get_origin(shape, A)
         orientation = nifti._get_image_orientation(resolution, A)
         affine = np.around(affine, 4).astype(np.float32)
 
@@ -338,15 +347,37 @@ class Header:
         ref_dicom = nifti._initialize_series_tag(json)
 
         # get dwell time
-        # try:
-        #     dt = float(json["DwellTime"]) * 1e3  # ms
-        # except Exception:
-        #     dt = None
+        try:
+            dt = float(json["DwellTime"]) * 1e3  # ms
+            t = np.arange(shape[-1]) * dt
+        except Exception:
+            t = None
 
-        return cls(shape, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
+        return cls(shape, t=t, affine=affine, ref_dicom=ref_dicom, _resolution=resolution, _spacing=spacing, _orientation=orientation)
 
     def to_dicom(self):
         pass
 
     def to_nifti(self):
         pass
+    
+#%% subroutines
+def _calculate_age(start_date, stop_date):
+    
+    start_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:]))
+    stop_date = date(int(stop_date[:4]), int(stop_date[4:6]), int(stop_date[6:]))
+    
+    # get years
+    years = stop_date.year - start_date.year
+    months = stop_date.month - start_date.month 
+    days = stop_date.day - start_date.day
+    
+    if years < 1 and months < 2:
+        age = str(days).zfill(3) + 'D'
+    elif years < 3:
+        age = str(months).zfill(3) + 'M'
+    else:
+        delta = months >= 6
+        age = str(years + delta).zfill(3) + 'Y'
+
+    return age

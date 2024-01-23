@@ -147,8 +147,8 @@ def write_acquisition_header(filename, head, filepath="./", dataformat="hdf5"):
         and meta information (shape, resolution, spacing, etc).
     filepath : str, optional
         Path to file. The default is "./".
-    dataformat: str, optional
-        Available formats ('mrd' or 'hdf5'). The default is 'hdf5.'
+    dataformat : str, optional
+        Available formats ('mrd' or 'hdf5'). The default is 'hdf5'.
         
     """
     head = copy.deepcopy(head)

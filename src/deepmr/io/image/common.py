@@ -50,11 +50,8 @@ def _prepare_image(image, transpose=None, flip=None, rescale=False):
         
     return image, (windowMin, windowMax)
            
-    # # get voxel size
-    # dx, dy = np.array(info['dcm_template'][0].PixelSpacing).round(4)
-    # dz = round(float(info['dcm_template'][0].SliceThickness), 4)
-    
-    # # get affine
-    # affine, _ = utils._get_nifti_affine(info['dcm_template'], image.shape[-3:])
-                
-    
+def _anonymize(head):
+    head.ref_dicom.PatientName = ""
+    head.ref_dicom.PatientBirthDate = ""            
+    head.ref_dicom.PatientWeight = "" 
+    head.ref_dicom.PatientID = "Anon" 

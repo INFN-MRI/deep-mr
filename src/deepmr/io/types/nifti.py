@@ -3,41 +3,16 @@
 import warnings
 
 import numpy as np
-import nibabel as nib
-
-from nibabel.orientations import axcodes2ornt, ornt_transform
-from .dicom import _get_plane_normal
 
 from ...external.nii2dcm.dcm import DicomMRI
 
-
-def _reorient(shape, affine, orientation):
-    """
-    Reorient input image to desired orientation.
-    """
-    # get input orientation
-    orig_ornt = nib.io_orientation(affine)
-
-    # get target orientation
-    targ_ornt = axcodes2ornt(orientation)
-
-    # estimate transform
-    transform = ornt_transform(orig_ornt, targ_ornt)
-
-    # reorient
-    tmp = np.ones(shape[-3:], dtype=np.float32)
-    tmp = nib.Nifti1Image(tmp, affine)
-    tmp = tmp.as_reoriented(transform)
-
-    return tmp.affine
-
+from .common import _reorient, _get_plane_normal
 
 def _get_shape(img):
     """
     Return image shape.
     """
     return img.shape[-3:]
-
 
 def _get_resolution(header, json):
     """
@@ -54,13 +29,11 @@ def _get_resolution(header, json):
 
     return resolution
 
-
 def _get_spacing(header):
     """
     Return slice spacing.
     """
     return header["pixdim"][3]
-
 
 def _get_origin(shape, affine):
     """
@@ -74,7 +47,6 @@ def _get_origin(shape, affine):
     else:
         origin = affine[:-1, -1]
     return affine
-
 
 def _get_image_orientation(resolution, affine):
     """
@@ -97,7 +69,6 @@ def _get_image_orientation(resolution, affine):
 
     return np.around(orientation, 4)
 
-
 def _get_flip_angles(json_list):
     """
     Return array of flip angles for each for each volume.
@@ -105,12 +76,13 @@ def _get_flip_angles(json_list):
     flipAngles = []
     for json_dict in json_list:
         if "FlipAngle" in json_dict:
+            if isinstance(json_dict["FlipAngle"], list):
+                json_dict["FlipAngle"] = np.asarray(json_dict["FlipAngle"])
             flipAngles.append(json_dict["FlipAngle"])
         else:
             flipAngles.append(90.0)
 
     return np.asarray(flipAngles)
-
 
 def _get_echo_times(json_list):
     """
@@ -119,12 +91,13 @@ def _get_echo_times(json_list):
     echoTimes = []
     for json_dict in json_list:
         if "EchoTime" in json_dict:
+            if isinstance(json_dict["EchoTime"], list):
+                json_dict["EchoTime"] = np.asarray(json_dict["EchoTime"])
             echoTimes.append(1e3 * json_dict["EchoTime"])
         else:
             echoTimes.append(0.0)
 
     return np.asarray(echoTimes)
-
 
 def _get_echo_numbers(json_list):
     """
@@ -133,12 +106,13 @@ def _get_echo_numbers(json_list):
     echoNumbers = []
     for json_dict in json_list:
         if "EchoNumber" in json_dict:
+            if isinstance(json_dict["EchoNumber"], list):
+                json_dict["EchoNumber"] = [int(e) for e in json_dict["EchoNumber"]]
             echoNumbers.append(json_dict["EchoNumber"])
         else:
             echoNumbers.append(1)
 
     return np.asarray(echoNumbers)
-
 
 def _get_repetition_times(json_list):
     """
@@ -147,12 +121,13 @@ def _get_repetition_times(json_list):
     repetitionTimes = []
     for json_dict in json_list:
         if "RepetitionTime" in json_dict:
+            if isinstance(json_dict["RepetitionTime"], list):
+                json_dict["RepetitionTime"] = np.asarray(json_dict["RepetitionTime"])
             repetitionTimes.append(1e3 * json_dict["RepetitionTime"])
         else:
             repetitionTimes.append(np.Inf)
 
     return np.asarray(repetitionTimes)
-
 
 def _get_inversion_times(json_list):
     """
@@ -161,12 +136,13 @@ def _get_inversion_times(json_list):
     inversionTimes = []
     for json_dict in json_list:
         if "InversionTime" in json_dict:
+            if isinstance(json_dict["InversionTime"], list):
+                json_dict["InversionTime"] = np.asarray(json_dict["InversionTime"])
             inversionTimes.append(1e3 * json_dict["InversionTime"])
         else:
             inversionTimes.append(np.Inf)
 
     return np.asarray(inversionTimes)
-
 
 def _get_unique_contrasts(constrasts):
     """
@@ -176,7 +152,6 @@ def _get_unique_contrasts(constrasts):
     uContrasts = np.unique(constrasts, axis=0)
 
     return uContrasts
-
 
 def _make_nifti_affine(shape, position, orientation, resolution):
     """
@@ -240,7 +215,6 @@ def _make_nifti_affine(shape, position, orientation, resolution):
     A = _reorient(shape, A0, "LAS")
 
     return A.astype(np.float32)
-
 
 def _initialize_series_tag(json):
     """
@@ -311,50 +285,50 @@ def _initialize_json_dict(dicomDset):
     json = {}
     
     if "PatientName" in dicomDset:
-        json["PatientName"] = dicomDset.PatientName
+        json["PatientName"] = str(dicomDset.PatientName)
     if "PatientWeight" in dicomDset:
-        json["PatientWeight"] = dicomDset.PatientWeight
+        json["PatientWeight"] = str(dicomDset.PatientWeight)
     if "PatientID" in dicomDset:
-        json["PatientID"] = dicomDset.PatientID
+        json["PatientID"] = str(dicomDset.PatientID)
     if "PatientBirthDate" in dicomDset:
-        json["PatientBirthDate"] = dicomDset.PatientBirthDate
+        json["PatientBirthDate"] = str(dicomDset.PatientBirthDate)
     if "PatientSex" in dicomDset:
-        json["PatientSex"] = dicomDset.PatientSex
+        json["PatientSex"] = str(dicomDset.PatientSex)
 
     if "StudyDate" in dicomDset:
-        json["StudyDate"] = dicomDset.StudyDate
+        json["StudyDate"] = str(dicomDset.StudyDate)
     if "StudyTime" in dicomDset:
-        json["StudyTime"] = dicomDset.StudyTime
+        json["StudyTime"] = str(dicomDset.StudyTime)
     if "AccessionNumber" in dicomDset:
-        json["AccessionNumber"] = dicomDset.AccessionNumber
+        json["AccessionNumber"] = str(dicomDset.AccessionNumber)
     if "ReferringPhysicianName" in dicomDset:
-        json["ReferringPhysicianName"] = dicomDset.ReferringPhysicianName
+        json["ReferringPhysicianName"] = str(dicomDset.ReferringPhysicianName)
     if "StudyDescription" in dicomDset:
-        json["StudyDescription"] = dicomDset.StudyDescription
+        json["StudyDescription"] = str(dicomDset.StudyDescription)
     if "StudyInstanceUID" in dicomDset:
-        json["StudyInstanceUID"] = dicomDset.StudyInstanceUID
+        json["StudyInstanceUID"] = str(dicomDset.StudyInstanceUID)
 
     if "SeriesDate" in dicomDset:
-        json["SeriesDate"] = dicomDset.SeriesDate
+        json["SeriesDate"] = str(dicomDset.SeriesDate)
     if "SeriesTime" in dicomDset:
-        json["SeriesTime"] = dicomDset.SeriesTime
+        json["SeriesTime"] = str(dicomDset.SeriesTime)
     if "PatientPosition" in dicomDset:
-        json["PatientPosition"] = dicomDset.PatientPosition
+        json["PatientPosition"] = str(dicomDset.PatientPosition)
     if "SequenceName" in dicomDset:
-        json["SequenceName"] = dicomDset.SequenceName
+        json["SequenceName"] = str(dicomDset.SequenceName)
     if "FrameOfReferenceUID" in dicomDset:
-        json["FrameOfReferenceUID"] = dicomDset.FrameOfReferenceUID
+        json["FrameOfReferenceUID"] = str(dicomDset.FrameOfReferenceUID)
 
     if "Manufacturer" in dicomDset:
-        json["Manufacturer"] = dicomDset.Manufacturer
+        json["Manufacturer"] = str(dicomDset.Manufacturer)
     if "ManufacturerModelName" in dicomDset:
-        json["ManufacturerModelName"] = dicomDset.ManufacturerModelName
+        json["ManufacturerModelName"] = str(dicomDset.ManufacturerModelName)
     if "MagneticFieldStrength" in dicomDset:
-        json["MagneticFieldStrength"] = dicomDset.MagneticFieldStrength
+        json["MagneticFieldStrength"] = str(dicomDset.MagneticFieldStrength)
     if "InstitutionName" in dicomDset:
-        json["InstitutionName"] = dicomDset.InstitutionName
+        json["InstitutionName"] = str(dicomDset.InstitutionName)
     if "StationName" in dicomDset:
-        json["StationName"] = dicomDset.StationName
+        json["StationName"] = str(dicomDset.StationName)
         
     return json
     

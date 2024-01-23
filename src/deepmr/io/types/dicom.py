@@ -7,53 +7,45 @@ import numpy as np
 
 from ...external.nii2dcm.dcm import DicomMRI
 
-# def _make_geometry_tags(affine, shape, resolution, spacing):
-#     """
-#     Creates DICOM geometry tags from nifti affine.
+from .common import _reorient, _get_plane_normal
 
-#     Args:
-#         ds: Existing Pydicom DataSet object
-#         nii: nifti containing affine
-#         sliceNumber: slice number (counting from 1)
+def _make_geometry_tags(affine, shape, resolution):
+    """Creates DICOM geometry tags from nifti affine."""
+    # reorient affine
+    A = _reorient(shape, affine, "LPS")
 
-#     Ref: https://gist.github.com/tomaroberts/8deebaa0ae204d7ae32fecd1e6efdb51
-#     """
-#     # reorient affine
-#     A = _reorient(shape, affine, "LPS")
+    # sign of affine matrix
+    A[:2, :] *= -1
 
-#     # sign of affine matrix
-#     A[:2, :] *= -1
+    # data parameters & pixel dimensions
+    nz, ny, nx = shape
+    dz, dy, dx = resolution
 
-#     # data parameters & pixel dimensions
-#     nz, ny, nx = shape
-#     dz, dy, dx = resolution
+    # direction cosines & position parameters
+    dircosX = A[:3, 0] / dx
+    dircosY = A[:3, 1] / dy
+    orientation = [
+        dircosX[0],
+        dircosX[1],
+        dircosX[2],
+        dircosY[0],
+        dircosY[1],
+        dircosY[2],
+    ]
+    orientation = np.asarray(orientation)
 
-#     # direction cosines & position parameters
-#     dircosX = A[:3, 0] / dx
-#     dircosY = A[:3, 1] / dy
-#     orientation = [
-#         dircosX[0],
-#         dircosX[1],
-#         dircosX[2],
-#         dircosY[0],
-#         dircosY[1],
-#         dircosY[2],
-#     ]
-#     orientation = np.asarray(orientation)
+    # calculate position
+    n = np.arange(nz)
+    zero = 0 * n
+    one = zero + 1
+    arr = np.stack((zero, zero, n, one), axis=0)
+    position = A @ arr
+    position = position[:3, :]
 
-#     # calculate position
-#     n = np.arange(nz)
-#     zero = 0 * n
-#     one = zero + 1
-#     arr = np.stack((zero, zero, n, one), axis=0)
-#     position = A @ arr
-#     position = position[:3, :]
+    # calculate slice location
+    slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
 
-#     # calculate slice location
-#     slice_loc = _get_relative_slice_position(orientation.reshape(2, 3), position)
-
-#     return spacing, orientation, position.transpose(), slice_loc.round(4)
-
+    return position.transpose(), slice_loc.round(4)
 
 def _get_slice_locations(dsets):
     """
@@ -75,7 +67,6 @@ def _get_slice_locations(dsets):
 
     return uSliceLocs, firstVolumeIdx, sliceIdx
 
-
 def _get_first_volume(dsets, index):
     """
     Get first volume in a multi-contrast series.
@@ -84,7 +75,6 @@ def _get_first_volume(dsets, index):
 
     return out
 
-
 def _get_relative_slice_position(orientation, position):
     """
     Return array of slice coordinates along the normal to imaging plane.
@@ -92,22 +82,11 @@ def _get_relative_slice_position(orientation, position):
     z = _get_plane_normal(orientation)
     return z @ position
 
-
-def _get_plane_normal(orientation):
-    """
-    Return array of normal to imaging plane, as the cross product
-    between x and y plane versors.
-    """
-    x, y = orientation
-    return np.cross(x, y)
-
-
 def _get_position(dsets):
     """
     Return matrix of image position of size (3, nslices).
     """
     return np.stack([dset.ImagePositionPatient for dset in dsets], axis=1)
-
 
 def _get_resolution(dsets):
     """
@@ -119,13 +98,11 @@ def _get_resolution(dsets):
         float(dsets[0].PixelSpacing[1]),
     )
 
-
 def _get_origin(position):
     """
     Return image origin.
     """
     return tuple(position.mean(axis=-1))
-
 
 def _get_shape(dsets, position):
     """
@@ -133,7 +110,6 @@ def _get_shape(dsets, position):
     """
     nz = np.unique(position, axis=-1).shape[-1]
     return (nz, dsets[0].Columns, dsets[0].Rows)
-
 
 def _get_image_orientation(dsets, astuple=False):
     """
@@ -146,13 +122,11 @@ def _get_image_orientation(dsets, astuple=False):
 
     return np.around(F, 4)
 
-
 def _get_spacing(dsets):
     """
     Return slice spacing.
     """
     return float(dsets[0].SpacingBetweenSlices)
-
 
 def _get_flip_angles(dsets):
     """
@@ -163,7 +137,6 @@ def _get_flip_angles(dsets):
 
     return flipAngles
 
-
 def _get_echo_times(dsets):
     """
     Return array of echo times for each dataset in dsets.
@@ -172,7 +145,6 @@ def _get_echo_times(dsets):
     echoTimes = np.array([float(dset.EchoTime) for dset in dsets])
 
     return echoTimes
-
 
 def _get_echo_numbers(dsets):
     """
@@ -183,7 +155,6 @@ def _get_echo_numbers(dsets):
 
     return echoNumbers
 
-
 def _get_repetition_times(dsets):
     """
     Return array of repetition times for each dataset in dsets.
@@ -192,7 +163,6 @@ def _get_repetition_times(dsets):
     repetitionTimes = np.array([float(dset.RepetitionTime) for dset in dsets])
 
     return repetitionTimes
-
 
 def _get_inversion_times(dsets):
     """
@@ -205,7 +175,6 @@ def _get_inversion_times(dsets):
         inversionTimes = np.zeros(len(dsets)) + np.inf
 
     return inversionTimes
-
 
 def _get_unique_contrasts(constrasts):
     """
@@ -221,7 +190,6 @@ def _get_unique_contrasts(constrasts):
         contrastIdx[(constrasts == uContrasts[n]).all(axis=-1)] = n
 
     return uContrasts, contrastIdx
-
 
 def _initialize_series_tag(ref_dicom):
     """
