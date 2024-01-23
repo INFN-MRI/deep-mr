@@ -272,7 +272,7 @@ def _nifti_write(filename, filepath, image, affine, resolution, TR, windowRange)
     dz, dy, dx = np.round(resolution, 2)
 
     # write nifti
-    out = nib.Nifti1Image(image, affine)
+    out = nib.Nifti1Image(image.transpose(), affine)
     out.header['pixdim'][1:5] = np.asarray([dx, dy, dz, TR])
     out.header['sform_code'] = 0
     out.header['qform_code'] = 2
