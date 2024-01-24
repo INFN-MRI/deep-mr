@@ -76,7 +76,8 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
                     'contrast_index', 'slice_index' and 'view_index', respectively.
-                * mode (str): Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
+                * mode (str): 
+                    Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
                 * separable (bool): 
                     Whether the acquisition can be decoupled by fft along slice / readout directions
                     (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
