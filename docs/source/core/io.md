@@ -13,7 +13,6 @@
     deepmr.io.read_mrd
 	deepmr.io.read_hdf5
 	deepmr.io.write_hdf5
-
 ```
 
 ## Image I/O routines
@@ -22,8 +21,8 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.io.read_dicom
-	deepmr.io.read_nifti
+	deepmr.io.read_image
+	deepmr.io.write_image
 ```
 
 ## K-Space I/O routines
@@ -32,6 +31,16 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.io.read_gehc
+	deepmr.io.read_rawdata
 ```
 
+## Header I/O routines
+
+```{eval-rst}
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.io.read_acquisition_header
+    deepmr.io.write_acquisition_header
+```

@@ -9,14 +9,17 @@ from . import generic as _generic
 from . import header as _header
 from . import image as _image
 from . import kspace as _kspace
+from . import types as _types
 
 from .generic import *  # noqa
 from .header import *  # noqa
 from .image import *  # noqa
 from .kspace import *  # noqa
+from .types import *  # noqa
 
 __all__ = []
 __all__.extend(_generic.__all__)
 __all__.extend(_header.__all__)
 __all__.extend(_image.__all__)
 __all__.extend(_kspace.__all__)
+__all__.extend(_types.__all__)
