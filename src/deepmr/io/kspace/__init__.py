@@ -81,13 +81,9 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         
     When possible, data are already pre-processed:
         
-        * For Cartesian data (2D and 3D) readout oversampling is removed
-        if the number of samples along readout is larger than the number of 
-        rows in the image space (shape[-1]).
-        * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and 
-        isocenter info from the header.
-        * Separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), 
-        k-space is decoupled via FFT (along slice and readout axes, respectively).
+        * For Cartesian data (2D and 3D) readout oversampling is removed if the number of samples along readout is larger than the number of rows in the image space (shape[-1]).
+        * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and isocenter info from the header.
+        * For separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), k-space is decoupled via FFT (along slice and readout axes, respectively).
             
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
     
