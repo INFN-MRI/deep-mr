@@ -13,7 +13,6 @@ from . import nifti as _nifti
 
 __all__ = ["read_image", "write_image"]
 
-
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read image data from file.

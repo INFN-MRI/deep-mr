@@ -13,7 +13,6 @@ from . import mrd as _mrd
 
 __all__ = ["read_rawdata"]
 
-
 def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read kspace data from file.
@@ -144,6 +143,14 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
                 * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
                 * **3Dnoncart:** reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0] 
             The default is an empty list (no transposition).
+            
+    References
+    ----------
+    [1]: Inati, S.J., Naegele, J.D., Zwart, N.R., Roopchansingh, V., Lizak, M.J., Hansen, D.C., Liu, C.-Y., Atkinson, D., 
+    Kellman, P., Kozerke, S., Xue, H., Campbell-Washburn, A.E., Sørensen, T.S. and Hansen, M.S. (2017), 
+    ISMRM Raw data format: A proposed standard for MRI raw datasets. Magn. Reson. Med., 77: 411-421. 
+    https://doi.org/10.1002/mrm.26089
+    
     """
     tstart = time.time()
     if verbose >= 1:
