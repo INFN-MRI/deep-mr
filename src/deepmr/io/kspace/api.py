@@ -23,7 +23,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     ----------
     filepath : str
         Path to kspace file.
-    acqheader : Header, deepmr.optional
+    acqheader : Header, optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
         The default is None.
@@ -36,7 +36,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     -------
     data : torch.tensor
         Complex k-space data.
-    head : deepmr.Header
+    head : Header
         Metadata for image reconstruction.
         
     Example

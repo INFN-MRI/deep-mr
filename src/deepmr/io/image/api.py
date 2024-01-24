@@ -21,7 +21,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     ----------
     filepath : str
         Path to image file.
-    acqheader : Header, deepmr.optional
+    acqheader : Header, optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
         The default is None.
@@ -34,7 +34,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     -------
     image : torch.tensor
         Complex image data.
-    head : deepmr.Header
+    head : Header
         Metadata for image reconstruction.
         
     Example
@@ -282,7 +282,7 @@ def write_image(
         See 'Notes' for additional information.
     filepath : str, optional
         Path to file. The default is "./".
-    head : deepmr.Header, optional
+    head : Header, optional
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc). If None,
         assume 1mm isotropic resolution, contiguous slices and axial orientation.

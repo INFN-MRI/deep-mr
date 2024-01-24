@@ -49,7 +49,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
         
     Returns
     -------
-    head : deepmr.Header
+    head : Header
         Deserialized acquisition header.
         
     Notes
@@ -228,7 +228,7 @@ def write_acqheader(filename, head, filepath="./", dataformat="hdf5"):
     ----------
     filename : str
         Name of the file.
-    head: deepmr.Header
+    head: Header
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc).
     filepath : str, optional
