@@ -17,6 +17,9 @@ __all__ = ["read_rawdata"]
 def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read kspace data from file.
+    
+    Currently, handles data written in ISMRMD format [1] (vendor agnostic)
+    and GEHC proprietary raw data (requires access to a private repository).
 
     Parameters
     ----------
@@ -111,7 +114,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             This is either the inversion time in ms or the list
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
-            User parameters. Common parameters are:
+            User parameters. Some examples are:
                 
                 * ordering (torch.Tensor): 
                     Indices for reordering (acquisition to reconstruction)

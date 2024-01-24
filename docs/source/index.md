@@ -28,7 +28,7 @@ tutorials/02-dl-mri-recon.ipynb
 
 ```{toctree}
 :hidden:
-:maxdepth: 2
+:maxdepth: 1
 :caption: Core Modules
 
 core/io.md

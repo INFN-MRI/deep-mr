@@ -81,7 +81,7 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
             This is either the inversion time in ms or the list
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
-            User parameters. Common parameters are:
+            User parameters. Some examples are:
                 
                 * ordering (torch.Tensor): 
                     Indices for reordering (acquisition to reconstruction)
