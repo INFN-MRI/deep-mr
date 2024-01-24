@@ -1,6 +1,6 @@
 """Acquisition Header API."""
 
-__all__ = ["read_acquisition_header", "write_acquisition_header"]
+__all__ = ["read_acqheader", "write_acquisition_header"]
 
 import copy
 import os
@@ -13,7 +13,7 @@ from . import base as _base
 from . import matlab as _matlab
 from . import mrd as _mrd
 
-def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwargs):
+def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
     """
     Read acquisition header from file.
     
