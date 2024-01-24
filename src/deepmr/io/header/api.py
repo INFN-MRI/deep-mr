@@ -1,5 +1,7 @@
 """Acquisition Header API."""
 
+__all__ = ["read_acquisition_header", "write_acquisition_header"]
+
 import copy
 import os
 import time
@@ -11,8 +13,6 @@ from . import base as _base
 # from . import bart as _bart
 from . import matlab as _matlab
 from . import mrd as _mrd
-
-__all__ = ["read_acquisition_header", "write_acquisition_header"]
 
 def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwargs):
     """

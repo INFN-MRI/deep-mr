@@ -3,17 +3,6 @@
 ```{eval-rst}
 .. automodule:: deepmr.io
 ```
-## Generic I/O routines
-```{eval-rst}
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	deepmr.io.read_matfile
-    deepmr.io.read_mrd
-	deepmr.io.read_hdf5
-	deepmr.io.write_hdf5
-```
 
 ## Image I/O routines
 ```{eval-rst}
@@ -43,4 +32,15 @@
 	
 	deepmr.io.read_acquisition_header
     deepmr.io.write_acquisition_header
+```
+
+## Generic I/O routines
+```{eval-rst}
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.io.read_matfile
+	deepmr.io.read_hdf5
+	deepmr.io.write_hdf5
 ```

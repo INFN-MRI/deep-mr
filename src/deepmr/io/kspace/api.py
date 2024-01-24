@@ -1,5 +1,7 @@
 """KSpace IO API."""
 
+__all__ = ["read_rawdata"]
+
 import math
 import time
 
@@ -10,8 +12,6 @@ from . import gehc as _gehc
 from . import mrd as _mrd
 
 # from . import siemens as _siemens
-
-__all__ = ["read_rawdata"]
 
 def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     """

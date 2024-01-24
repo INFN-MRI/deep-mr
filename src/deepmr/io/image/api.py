@@ -1,5 +1,7 @@
 """Image IO API."""
 
+__all__ = ["read_image", "write_image"]
+
 import time
 
 import numpy as np
@@ -10,8 +12,6 @@ from . import nifti as _nifti
 
 # from .dicom import *  # noqa
 # from .nifti import *  # noqa
-
-__all__ = ["read_image", "write_image"]
 
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
