@@ -82,6 +82,7 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
             User parameters. Common parameters are:
+                
                 * ordering (torch.Tensor): 
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
@@ -104,6 +105,7 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
             The default is an empty list (no flipping).
         * transpose (list): 
              Permutation of image dimensions after reconstruction, depending on acquisition mode:
+                 
                 * 2Dcart: reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
                 * 2Dnoncart: reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
                 * 3Dcart: reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
