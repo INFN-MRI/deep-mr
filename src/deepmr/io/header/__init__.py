@@ -17,6 +17,11 @@ __all__ = ["read_acquisition_header", "write_acquisition_header"]
 def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwargs):
     """
     Read acquisition header from file.
+    
+    The header info (e.g., k-space trajectory, shape) can be used to 
+    simulate acquisitions or to inform raw data loading (e.g., via ordering)
+    to reshape from acquisition to reconstruction ordering and image post-processing
+    (transposition, flipping) and exporting.
 
     Parameters
     ----------
