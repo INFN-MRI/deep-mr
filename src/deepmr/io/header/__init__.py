@@ -14,6 +14,11 @@ from . import mrd as _mrd
 
 __all__ = ["read_acquisition_header", "write_acquisition_header"]
 
+# **kwargs
+#     Keyword arguments passed to the specific subroutines 
+#     for the different datatypes (see 'Keyword Arguments'):
+        
+#     * deepmr.io.matlab.read_matlab_acqhead(filepath, dcfpath, methodpath, sliceprofpath)
 
 def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwargs):
     """
@@ -30,11 +35,7 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
         Computational device for internal attributes. The default is "cpu".
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
-    **kwargs
-        Keyword arguments passed to the specific subroutines 
-        for the different datatypes (see 'Keyword Arguments'):
-            
-        * deepmr.io.matlab.read_matlab_acqhead(filepath, dcfpath, methodpath, sliceprofpath)
+
     
     Keyword Arguments
     ----------------- 
