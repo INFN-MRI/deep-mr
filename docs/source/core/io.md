@@ -30,6 +30,7 @@
 	:nosignatures:
 	
 	deepmr.io.read_acqheader
+	deepmr.io.write_acqheader
 ```
 
 ## Generic I/O routines
