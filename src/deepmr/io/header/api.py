@@ -166,6 +166,7 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
     if verbose == 2:
         print(f"Readout time: {round(float(head.t[-1]), 2)} ms")
         if head.traj is not None:
+            print(f"Trajectory range: ({head.traj.min()},{head.traj.max()})")
             print(
                 f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})"
             )

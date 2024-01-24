@@ -174,7 +174,21 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             head.dcf = acqheader.dcf
         if acqheader.t is not None:
             head.t = acqheader.t
-
+        if acqheader.user is not None:
+            head.user = acqheader.user
+        if acqheader.FA is not None:
+            head.FA = acqheader.FA
+        if acqheader.TR is not None:
+            head.TR = acqheader.TR
+        if acqheader.TE is not None:
+            head.TE = acqheader.TE
+        if acqheader.TI is not None:
+            head.TI = acqheader.TI
+            
+    # remove flip and transpose
+    head.transpose = None
+    head.flip = None
+    
     # final report
     if verbose == 2:
         print(
@@ -183,6 +197,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         if head.t is not None:
             print(f"Readout time: {round(float(head.t[-1]), 2)} ms")
         if head.traj is not None:
+            print(f"Trajectory range: ({head.traj.min()},{head.traj.max()})")
             print(
                 f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})"
             )
