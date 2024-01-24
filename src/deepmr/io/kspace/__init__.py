@@ -74,20 +74,20 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     -----
     The returned 'data' tensor contains raw k-space data. Dimensions are defined as following:
         
-        * 2Dcart: (nslices, ncoils, ncontrasts, ny, nx).
-        * 2Dnoncart: (nslices, ncoils, ncontrasts, nviews, nsamples).
-        * 3Dcart: (nx, ncoils, ncontrasts, nz, ny).
-        * 3Dnoncart: (ncoils, ncontrasts, nviews, nsamples).
+        * **2Dcart:** (nslices, ncoils, ncontrasts, ny, nx).
+        * **2Dnoncart:** (nslices, ncoils, ncontrasts, nviews, nsamples).
+        * **3Dcart:** (nx, ncoils, ncontrasts, nz, ny).
+        * **3Dnoncart:** (ncoils, ncontrasts, nviews, nsamples).
         
     When possible, data are already pre-processed:
         
         * For Cartesian data (2D and 3D) readout oversampling is removed
-            if the number of samples along readout is larger than the number of
-            rows in the image space (shape[-1]).
+        if the number of samples along readout is larger than the number of 
+        rows in the image space (shape[-1]).
         * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and 
-            isocenter info from the header.
-        * Separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians),
-            k-space is decoupled via FFT (along slice and readout axes, respectively).
+        isocenter info from the header.
+        * Separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), 
+        k-space is decoupled via FFT (along slice and readout axes, respectively).
             
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
     
@@ -140,10 +140,10 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         * transpose (list): 
              Permutation of image dimensions after reconstruction, depending on acquisition mode:
                  
-                * 2Dcart: reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * 2Dnoncart: reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * 3Dcart: reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
-                * 3Dnoncart: reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0] 
+                * **2Dcart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
+                * **2Dnoncart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
+                * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
+                * **3Dnoncart:** reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0] 
             The default is an empty list (no transposition).
     """
     tstart = time.time()
