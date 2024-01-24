@@ -25,13 +25,13 @@ dtypes = (
 )
 
 
-def read_hdf5(filename: str) -> dict:
+def read_hdf5(filepath):
     """
     Read HDF5 file as a Python dictionary
 
     Parameters
     ----------
-    filename : str
+    filepath : str
         Path to file on disk.
 
     Returns
@@ -64,12 +64,12 @@ def read_hdf5(filename: str) -> dict:
     'someinfo'
 
     """
-    filename = get_filepath(filename, True, "h5")
-    with h5py.File(filename, "r") as h5file:
+    filepath = get_filepath(filepath, True, "h5")
+    with h5py.File(filepath, "r") as h5file:
         return _recursively_load_dict_contents_from_group(h5file, "/")
 
 
-def write_hdf5(input: dict, filename: str):
+def write_hdf5(input, filepath):
     """
     Write a given dictionary to HDF5 file.
 
@@ -77,7 +77,7 @@ def write_hdf5(input: dict, filename: str):
     ----------
     input : dict
         Input dictionary.
-    filename : str
+    filepath : str
         Path to file on disk.
 
     Example
@@ -96,7 +96,7 @@ def write_hdf5(input: dict, filename: str):
 
     """
     input = copy.deepcopy(input)
-    with h5py.File(filename, "w") as h5file:
+    with h5py.File(filepath, "w") as h5file:
         _recursively_save_dict_contents_to_group(h5file, "/", input)
 
 

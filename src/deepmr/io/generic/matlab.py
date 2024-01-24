@@ -8,7 +8,7 @@ import mat73
 from .pathlib import get_filepath
 
 
-def read_matfile(filename, return_fullpath=False):
+def read_matfile(filepath, return_fullpath=False):
     """
     Read matfile as a Python dictionary.
 
@@ -16,7 +16,7 @@ def read_matfile(filename, return_fullpath=False):
 
     Parameters
     ----------
-    filename : str
+    filepath : str
         Path of the file on disk.
     return_fullpath : bool, optional
         If True, also return expanded file path. The default is False.
@@ -58,15 +58,15 @@ def read_matfile(filename, return_fullpath=False):
     [1]: https://github.com/skjerns/mat7.3/tree/master
 
     """
-    filename = get_filepath(filename, True, "mat")
+    filepath = get_filepath(filepath, True, "mat")
     try:
-        matfile = scipy.io.loadmat(filename)
+        matfile = scipy.io.loadmat(filepath)
         matfile.pop("__globals__", None)
         matfile.pop("__header__", None)
         matfile.pop("__version__", None)
     except:
-        matfile = mat73.loadmat(filename)
+        matfile = mat73.loadmat(filepath)
 
     if return_fullpath:
-        return matfile, filename
+        return matfile, filepath
     return matfile
