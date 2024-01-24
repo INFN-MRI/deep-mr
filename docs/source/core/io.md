@@ -23,17 +23,6 @@
 	deepmr.io.read_rawdata
 ```
 
-## Header I/O routines
-
-```{eval-rst}
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	deepmr.io.read_acquisition_header
-    deepmr.io.write_acquisition_header
-```
-
 ## Generic I/O routines
 ```{eval-rst}
 .. autosummary::
