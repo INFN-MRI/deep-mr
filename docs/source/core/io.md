@@ -29,8 +29,7 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.io.read_acqheader
-    deepmr.io.write_acquisition_header
+	deepmr.io.read_rawdata
 ```
 
 ## Generic I/O routines
