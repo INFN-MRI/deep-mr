@@ -15,7 +15,7 @@ from . import mrd as _mrd
 __all__ = ["read_acquisition_header", "write_acquisition_header"]
 
 
-def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
+def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwargs):
     """
     Read acquisition header from file.
 
@@ -23,14 +23,22 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
     ----------
     filepath : str
         Path to acquisition header file.
+    *args
+        Variable length argument list passed to the specific subroutines 
+        for the different datatypes.
     device : str, optional
         Computational device for internal attributes. The default is "cpu".
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
+    **kwargs
+        Keyword arguments passed to the specific subroutines 
+        for the different datatypes:
+            
+        * deepmr.io.matlab.read_matlab_acqhead(filepath, dcfpath, methodpath, sliceprofpath)
 
-
-    Args (matfiles)
-    ---------------
+    
+    Notes
+    -----
     dcfpath : str, optional
         Path to the dcf file.
         The default is None.
@@ -65,7 +73,7 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
     # matfile
     if filepath.endswith(".mat") and not (done):
         try:
-            head = _matlab.read_matlab_acqhead(filepath, *args)
+            head = _matlab.read_matlab_acqhead(filepath, *args, **kwargs)
             done = True
         except Exception:
             pass

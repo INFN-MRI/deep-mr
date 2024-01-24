@@ -1,7 +1,7 @@
 """Sub-package containing reading/writing routines.
 
 DeepMR provides reading and writing routines for common k-space
-(ISMRMRD, GEHC, Siemens) and image space (DICOM, NIfTI) formats.
+(currently ISMRMRD, GEHC) and image space (DICOM, NIfTI) formats.
 
 """
 
