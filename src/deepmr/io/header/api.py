@@ -1,6 +1,6 @@
 """Acquisition Header API."""
 
-__all__ = ["read_acqheader", "write_acquisition_header"]
+__all__ = ["read_acqheader", "write_acqheader"]
 
 import copy
 import os
@@ -218,7 +218,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
     return head
 
 
-def write_acquisition_header(filename, head, filepath="./", dataformat="hdf5"):
+def write_acqheader(filename, head, filepath="./", dataformat="hdf5"):
     """
     Write acquisition header to file.
     
