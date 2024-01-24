@@ -38,7 +38,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     head : deepmr.Header
         Metadata for image reconstruction.
         
-     Example
+    Example
     -------
     >>> import deepmr
 
