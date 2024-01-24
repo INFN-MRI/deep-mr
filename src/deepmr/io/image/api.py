@@ -33,9 +33,105 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     Returns
     -------
     image : torch.tensor
-        Complex image data of shape (ncontrasts, nslices, ny, nx).
+        Complex image data.
     head : deepmr.Header
         Metadata for image reconstruction.
+        
+    Example
+    -------
+    >>> import deepmr
+
+    Get the filenames for exemplary DICOM and NIfTI files.
+
+    >>> dcmpath = deepmr.testdata("dicom")
+    >>> niftipath = deepmr.testdata("nifti")
+
+    Load the file contents.
+
+    >>> image_dcm, head_dcm = deepmr.io.read_matfile(dcmpath)
+    >>> image_niii, head_nii = deepmr.io.read_matfile(image_niii)
+
+    The result is a image/header pair. 'Image' contains image-space data.
+    Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
+    
+    >>> image_dcm.shape
+    torch.Size([3, 2, 192, 192])
+    >>> image_nii.shape
+    torch.Size([3, 2, 192, 192])
+    
+    'Head' contains the acquisition information. We can inspect the k-space trajectory and dcf size,
+    the expected image shape and resolution:
+    
+    >>> head_dcm.shape
+    tensor([  2, 192, 192])
+    >>> head_nii.shape
+    tensor([  2, 192, 192])
+    >>> head_dcm.ref_dicom.SpacingBetweenSlices
+    '10.5'
+    >>> head_nii.ref_dicom.SpacingBetweenSlices
+    '10.5'
+    >>> head_dcm.ref_dicom.SliceThickness
+    '7.0'
+    >>> head_nii.ref_dicom.SliceThickness
+    '7.0'
+    >>> head_dcm.ref_dicom.PixelSpacing
+    [0.67, 0.67]
+    >>> head_nii.ref_dicom.PixelSpacing
+    [0.67,0.67]
+
+    Notes
+    -----
+    The returned 'image' tensor contains image space data. Dimensions are defined as following:
+        
+        * **2D:** (ncontrasts, nslices, ny, nx).
+        * **3D:** (ncontrasts, nz, ny, nx).
+                 
+    The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
+    
+        * shape (torch.Tensor):
+            This is the expected image size of shape (nz, ny, nx).
+        * t (torch.Tensor): 
+            This is the readout sampling time (0, t_read) in ms.
+            with shape (nsamples,).
+        * traj (torch.Tensor): 
+            This is the k-space trajectory normalized as (-0.5, 0.5) 
+            with shape (ncontrasts, nviews, nsamples, ndims).
+        * dcf (torch.Tensor): 
+            This is the k-space sampling density compensation factor
+            with shape (ncontrasts, nviews, nsamples).
+        * FA (torch.Tensor, float): 
+            This is either the acquisition flip angle in degrees or the list
+            of flip angles of shape (ncontrasts,) for each image in the series.
+        * TR (torch.Tensor, float): 
+            This is either the repetition time in ms or the list
+            of repetition times of shape (ncontrasts,) for each image in the series.
+        * TE (torch.Tensor, float): 
+            This is either the echo time in ms or the list
+            of echo times of shape (ncontrasts,) for each image in the series.
+        * TI (torch.Tensor, float): 
+            This is either the inversion time in ms or the list
+            of inversion times of shape (ncontrasts,) for each image in the series.
+        * user (dict):
+            User parameters. Some examples are:
+                
+                * ordering (torch.Tensor): 
+                    Indices for reordering (acquisition to reconstruction)
+                    of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
+                    'contrast_index', 'slice_index' and 'view_index', respectively.
+                * mode (str): 
+                    Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
+                * separable (bool): 
+                    Whether the acquisition can be decoupled by fft along slice / readout directions
+                    (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
+                * slice_profile (torch.Tensor): 
+                    Flip angle scaling along slice profile of shape (nlocs,).
+                * basis (torch.Tensor): 
+                    Low rank subspace basis for subspace reconstruction of shape (ncoeff, ncontrasts).
+        * affine (np.ndarray): 
+            Affine matrix describing image spacing, orientation and origin of shape (4, 4).
+        * ref_dicom (pydicom.Dataset): 
+            Template dicom for image export.
+            
     """
     tstart = time.time()
     if verbose >= 1:
