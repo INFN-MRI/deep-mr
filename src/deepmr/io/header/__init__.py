@@ -28,6 +28,7 @@ def read_acquisition_header(filepath, device="cpu", verbose=False, *args):
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
 
+
     Args (matfiles)
     ---------------
     dcfpath : str, optional

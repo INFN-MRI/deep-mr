@@ -15,7 +15,7 @@ from .pathlib import get_filepath
 
 def read_mrd(filepath, external=False):
     """
-    Read kspace data from mrd file.
+    Read data from mrd file.
 
     Parameters
     ----------
