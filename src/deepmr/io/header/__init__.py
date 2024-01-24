@@ -43,6 +43,11 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
         Path to the slice profile file (deepmr.io.matlab.read_matlab_acqhead).
         The default is None.
         
+    Returns
+    -------
+    head : deepmr.Header
+        Deserialized acquisition header.
+        
     Notes
     -----
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
@@ -99,12 +104,6 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
                 * 3Dcart: reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
                 * 3Dnoncart: reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0] 
             The default is an empty list (no transposition).
-
-            
-    Returns
-    -------
-    head : deepmr.Header
-        Deserialized acquisition header.
 
     """
     tstart = time.time()
