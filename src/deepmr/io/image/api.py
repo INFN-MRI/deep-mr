@@ -48,8 +48,8 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
 
     Load the file contents.
 
-    >>> image_dcm, head_dcm = deepmr.io.read_matfile(dcmpath)
-    >>> image_niii, head_nii = deepmr.io.read_matfile(image_niii)
+    >>> image_dcm, head_dcm = deepmr.io.read_image(dcmpath)
+    >>> image_nii, head_nii = deepmr.io.read_image(niftipath)
 
     The result is a image/header pair. 'Image' contains image-space data.
     Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
@@ -59,9 +59,8 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     >>> image_nii.shape
     torch.Size([3, 2, 192, 192])
     
-    'Head' contains the acquisition information. We can inspect the k-space trajectory and dcf size,
-    the expected image shape and resolution:
-    
+    'Head' contains the acquisition information. We can inspect the image shape and resolution:
+
     >>> head_dcm.shape
     tensor([  2, 192, 192])
     >>> head_nii.shape
@@ -264,7 +263,8 @@ def write_image(
     filename : str
         Name of the file.
     image : np.ndarray
-        Complex image data of shape (ncontrasts, nslices, ny, nx).
+        Complex image data of shape (ncontrasts, nslices, ny, n). 
+        See 'Notes' for additional information.
     filepath : str, optional
         Path to file. The default is "./".
     head : deepmr.Header, optional
@@ -292,6 +292,75 @@ def write_image(
         If True, remove sensible info from header. The default is "False".
     verbose : bool, optional
         Verbosity flag. The default is "False".
+        
+    Example
+    -------
+    >>> import deepmr
+    >>> import tempfile
+
+    Get the filenames for an example DICOM file.
+
+    >>> filepath = deepmr.testdata("dicom")
+
+    Load the file contents.
+
+    >>> image_orig, head_orig = deepmr.io.read_image(filepath)
+    >>> with tempfile.TemporaryDirectory() as tempdir:
+    >>>     dcmpath = os.path.join(tempdir, "dicomtest")
+    >>>     niftipath = os.path.join(tempdir, "niftitest.nii")
+    >>>     deepmr.io.write_image(dcmpath, image_orig, head_orig, dataformat="dicom")
+    >>>     deepmr.io.write_image(niftipath, image_orig, head_orig, dataformat="nifti")
+    >>>     deepmr.io.write_image(dcmpath, image_orig, head_orig, dataformat="dicom")
+    >>>     deepmr.io.write_image(niftipath, image_orig, head_orig, dataformat="nifti")
+    >>>     image_dcm, head_dcm = deepmr.io.read_image(dcmpath)
+    >>>     image_nii, head_nii = deepmr.io.read_image(niftipath)
+
+    The result is a image/header pair. 'Image' contains image-space data.
+    Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
+    
+    >>> image_dcm.shape
+    torch.Size([3, 2, 192, 192])
+    >>> image_nii.shape
+    torch.Size([3, 2, 192, 192])
+    
+    'Head' contains the acquisition information. We can inspect the image shape and resolution:
+    
+    >>> head_dcm.shape
+    tensor([  2, 192, 192])
+    >>> head_nii.shape
+    tensor([  2, 192, 192])
+    >>> head_dcm.ref_dicom.SpacingBetweenSlices
+    '10.5'
+    >>> head_nii.ref_dicom.SpacingBetweenSlices
+    '10.5'
+    >>> head_dcm.ref_dicom.SliceThickness
+    '7.0'
+    >>> head_nii.ref_dicom.SliceThickness
+    '7.0'
+    >>> head_dcm.ref_dicom.PixelSpacing
+    [0.67, 0.67]
+    >>> head_nii.ref_dicom.PixelSpacing
+    [0.67,0.67]
+
+    Notes
+    -----
+    When the image to be written is the result of a reconstruction performed on k-space data loaded using deepmr.io.read_rawdata,
+    axis order depends on acquisition mode:
+                
+        * **2Dcart:** (nslices, ncontrasts, ny, nx)
+        * **2Dnoncart:** (nslices, ncontrasts, ny, nx)
+        * **3Dcart:** (ncontrasts, nz, ny, nx) 
+        * **3Dnoncart:** (nx, ncontrasts, nz, ny)
+    
+    In this case, image should be transposed to (ncontrasts, nslices, ny, nx) or (ncontrasts, nz, ny, nx) for 2D/3D acquisitions, respectively.
+    If provided, 'head' will contain the appropriate permutation order ('head.transpose'):
+        
+        * **2Dcart:** head.transpose = [1, 0, 2, 3] 
+        * **2Dnoncart:** head.transpose = [1, 0, 2, 3] 
+        * **3Dcart:** head.transpose = [0, 1, 2, 3] 
+        * **3Dnoncart:** head.transpose = [1, 2, 3, 0]
+        
+    If 'head' is not provided, the user shoudl manually transpose the image tensor to match the required shape.
 
     """
     if dataformat == "dicom":

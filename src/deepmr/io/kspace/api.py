@@ -49,7 +49,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
 
     Load the file contents.
 
-    >>> data, head = deepmr.io.read_matfile(filepath)
+    >>> data, head = deepmr.io.read_rawdata(filepath)
 
     The result is a data/header pair. 'Data' contains k-space data.
     Here, it represents a 2D spiral acquisition with 1 slice, 36 coils, 32 arms and 1284 samples per arm:

@@ -9,7 +9,6 @@ import time
 import numpy as np
 
 from . import base as _base
-
 # from . import bart as _bart
 from . import matlab as _matlab
 from . import mrd as _mrd
@@ -221,6 +220,8 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
 def write_acquisition_header(filename, head, filepath="./", dataformat="hdf5"):
     """
     Write acquisition header to file.
+    
+    Supported output format are 'hdf5' (faster i/o) and 'mrd'.
 
     Parameters
     ----------
