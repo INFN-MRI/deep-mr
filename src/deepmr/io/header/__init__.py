@@ -25,20 +25,19 @@ def read_acquisition_header(filepath, *args, device="cpu", verbose=False, **kwar
         Path to acquisition header file.
     *args
         Variable length argument list passed to the specific subroutines 
-        for the different datatypes (see 'Other Parameters').
+        for the different datatypes (see 'Keyword Arguments').
     device : str, optional
         Computational device for internal attributes. The default is "cpu".
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
-    
-    Other Parameters
-    ----------------
     **kwargs
         Keyword arguments passed to the specific subroutines 
-        for the different datatypes:
+        for the different datatypes (see 'Keyword Arguments'):
             
         * deepmr.io.matlab.read_matlab_acqhead(filepath, dcfpath, methodpath, sliceprofpath)
-        
+    
+    Keyword Arguments
+    ----------------- 
     dcfpath : str, optional
         Path to the dcf file.
         The default is None.
