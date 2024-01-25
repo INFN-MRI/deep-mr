@@ -179,7 +179,24 @@ class Header:
                 self.user["basis"] = torch.as_tensor(
                     self.user["basis"], dtype=torch.complex64, device=device
                 )
+    
+    def B0(self):
+        """
+        Get B0 intensity and direction.
 
+        Returns
+        -------
+        B0 : float
+            Field intensity in T.
+        B0vec : np.ndarray
+            Field direction (x, y, z).
+            
+        """
+        B0 = float(self.ref_dicom.MagneticFieldStrength)
+        orient = np.asarray(self._orientation).reshape(2, 3)
+        B0vec = np.cross(orient[0], orient[1])
+        return B0, B0vec
+        
     def numpy(self):
         """Cast internal attributes to Numpy."""
         if isinstance(self.shape, torch.Tensor):

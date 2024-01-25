@@ -148,8 +148,8 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     try:
         image, head = _dicom.read_dicom(filepath)
         done = True
-    except Exception:
-        pass
+    except Exception as e:
+        msg0 = e
 
     # nifti
     if verbose == 2:
@@ -157,11 +157,11 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     try:
         image, head = _nifti.read_nifti(filepath)
         done = True
-    except Exception:
-        pass
+    except Exception as e:
+        msg1 = e
 
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized!")
+        raise RuntimeError(f"File (={filepath}) not recognized! Error:\nDICOM {msg0}\nNIfTI {msg1}")
     if verbose == 2:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
@@ -191,9 +191,14 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     
     # final report
     if verbose == 2:
-        print(
-            f"Image shape: (ncontrasts={image.shape[0]}, nz={image.shape[-3]}, ny={image.shape[-2]},  nx={image.shape[-1]})"
-        )
+        if len(image.shape) == 3:
+            print(
+                f"Image shape: (nz={image.shape[-3]}, ny={image.shape[-2]},  nx={image.shape[-1]})"
+            )
+        else:
+            print(
+                f"Image shape: (ncontrasts={image.shape[0]}, nz={image.shape[-3]}, ny={image.shape[-2]},  nx={image.shape[-1]})"
+            )
         if head.t is not None:
             print(f"Readout time: {round(float(head.t[-1]), 2)} ms")
         if head.traj is not None:

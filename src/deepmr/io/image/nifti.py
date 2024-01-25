@@ -288,14 +288,14 @@ def _nifti_read(file_path, json_dict):
         file_path = np.array(file_path)
 
         # check for complex images
-        data_phase = _get_phase(file_path)
-        data_real = _get_real(file_path)
-        data_imag = _get_imag(file_path)
+        data_phase, file_path = _get_phase(file_path)
+        data_real, file_path = _get_real(file_path)
+        data_imag, file_path = _get_imag(file_path)
         data, head, affine = _get_magn(file_path)
 
         # cast to complex image
         if data_phase.size != 0:
-            scale = 2 * math.pi / 4095
+            scale = 2 * math.pi / 4096
             offset = -math.pi
             data = data * np.exp(1j * scale * data_phase + offset)
         if data_real.size != 0 and data_imag.size != 0:
@@ -309,24 +309,27 @@ def _nifti_read(file_path, json_dict):
         head = img.header
 
     # fix fftshift along z
-    if np.iscomplexobj(data) and json_dict["Manufacturer"] == "GE":
+    if np.iscomplexobj(data) and "GE" in json_dict[0]["Manufacturer"].upper():
         phase = np.angle(data)
-        phase[..., 1::2, :, :] = (
-            (1e5 * (phase[..., 1::2, :, :] + 2 * math.pi)) % (2 * math.pi * 1e5)
+        phase[:, :, 1::2, ...] = (
+            (1e5 * (phase[:, :, 1::2, ...] + 2 * math.pi)) % (2 * math.pi * 1e5)
         ) / 1e5 - math.pi
         data = np.abs(data) * np.exp(1j * phase)
 
-    return np.ascontiguousarray(data.transpose()), head, affine
+    return np.flip(data.transpose(), axis=-2), head, affine
 
 
 def _nifti_write(filename, filepath, image, affine, resolution, TR, windowRange):
     """Actual nifti writing routine."""
+    
+    # reformat image
+    image = np.flip(image.transpose(), axis=-2)
 
     # get voxel size
     dz, dy, dx = np.round(resolution, 2)
 
     # write nifti
-    out = nib.Nifti1Image(image.transpose(), affine)
+    out = nib.Nifti1Image(image, affine)
     out.header["pixdim"][1:5] = np.asarray([dx, dy, dz, TR])
     out.header["sform_code"] = 0
     out.header["qform_code"] = 2
@@ -412,13 +415,13 @@ def _get_real(file_path):
     else:
         files_real = np.array(files_real)
     if files_real.size > 0:
-        file_path.pop(idx)
+        file_path = np.delete(file_path, idx)
         img_real = [nib.load(file) for file in files_real]
         data_real = np.stack([d.get_fdata() for d in img_real], axis=-1).squeeze()
     else:
         data_real = np.asarray([])
 
-    return data_real
+    return data_real, file_path
 
 
 def _get_imag(file_path):
@@ -429,30 +432,31 @@ def _get_imag(file_path):
     else:
         files_imag = np.array(files_imag)
     if files_imag.size > 0:
-        file_path.pop(idx)
+        file_path = np.delete(file_path, idx)
         img_imag = [nib.load(file) for file in files_imag]
         data_imag = np.stack([d.get_fdata() for d in img_imag], axis=-1).squeeze()
     else:
         data_imag = np.asarray([])
 
-    return data_imag
+    return data_imag, file_path
 
 
 def _get_phase(file_path):
-    idx = np.argwhere(np.array(["phase" in name for name in file_path])).squeeze()
+    idx = np.argwhere(np.array(["ph" in name for name in file_path])).squeeze()
     files_phase = file_path[idx]
     if isinstance(files_phase, str):
         files_phase = np.array([files_phase])
     else:
         files_phase = np.array(files_phase)
     if files_phase.size > 0:
-        file_path.pop(idx)
+        file_path = np.delete(file_path, idx)
         img_phase = [nib.load(file) for file in files_phase]
         data_phase = np.stack([d.get_fdata() for d in img_phase], axis=-1).squeeze()
+        # data_phase = np.stack([(d.get_fdata() - d.dataobj.inter) / d.dataobj.slope for d in img_phase], axis=-1).squeeze()
     else:
         data_phase = np.asarray([])
 
-    return data_phase
+    return data_phase, file_path
 
 
 def _get_magn(file_path):

@@ -129,7 +129,10 @@ def _get_spacing(dsets):
     """
     Return slice spacing.
     """
-    return float(dsets[0].SpacingBetweenSlices)
+    try:
+        return float(dsets[0].SpacingBetweenSlices)
+    except:
+        return float(dsets[0].SliceThickness) # temporary fix for Siemens
 
 
 def _get_flip_angles(dsets):
@@ -213,10 +216,16 @@ def _initialize_series_tag(ref_dicom):
         dicomDset = DicomMRI("nii2dcm_dicom_mri.dcm").ds
 
     # ----- Update DICOM header from reference dicom -----
-    dicomDset.PatientName = ref_dicom.PatientName
+    try:
+        dicomDset.PatientName = ref_dicom.PatientName
+    except Exception:
+        print("PatientName not found - keep going")
     dicomDset.PatientWeight = ref_dicom.PatientWeight
     dicomDset.PatientID = ref_dicom.PatientID
-    dicomDset.PatientBirthDate = ref_dicom.PatientBirthDate
+    try:
+        dicomDset.PatientBirthDate = ref_dicom.PatientBirthDate
+    except Exception:
+        print("PatientBirthDate not found - keep going")
     dicomDset.PatientAge = ref_dicom.PatientAge
     dicomDset.PatientSex = ref_dicom.PatientSex
 
@@ -234,7 +243,10 @@ def _initialize_series_tag(ref_dicom):
         dicomDset.IsocenterPosition = ref_dicom.IsocenterPosition
     except Exception:
         pass
-    dicomDset.SequenceName = ref_dicom.SequenceName
+    try:
+        dicomDset.SequenceName = ref_dicom.SequenceName
+    except Exception:
+        pass
     dicomDset.FrameOfReferenceUID = ref_dicom.FrameOfReferenceUID
 
     dicomDset.Manufacturer = ref_dicom.Manufacturer

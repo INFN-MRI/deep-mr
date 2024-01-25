@@ -44,7 +44,7 @@ def read_dicom(filepath):
         filepath = sorted(glob.glob(filepath))
 
     # load dicom
-    image, dsets = _read_dcm(filepath)
+    image, dsets, vendor = _read_dcm(filepath)
 
     # get slice locations
     uSliceLocs, firstVolumeIdx, sliceIdx = dicom._get_slice_locations(dsets)
@@ -73,6 +73,14 @@ def read_dicom(filepath):
     sorted_image = np.zeros((n_contrasts, n_slices, ny, nx), dtype=image.dtype)
     for n in range(ninstances):
         sorted_image[contrastIdx[n], sliceIdx[n], :, :] = image[n]
+    
+    # fix phase shift along z
+    if "GE" in vendor.upper() and np.iscomplexobj(sorted_image):
+        phase = np.angle(sorted_image)
+        phase[..., 1::2, :, :] = (
+            (1e5 * (phase[..., 1::2, :, :] + 2 * math.pi)) % (2 * math.pi * 1e5)
+        ) / 1e5 - math.pi
+        sorted_image = np.abs(sorted_image) * np.exp(1j * phase)
 
     # unpack sequence
     TI, TE, EC, TR, FA = uContrasts.transpose()
@@ -306,9 +314,9 @@ def _read_dcm(dicomdir):
     dsets = [dset for dset in dsets if dset is not None]
 
     # cast image to complex
-    image, dsets = _cast_to_complex(dsets)
+    image, dsets, vendor = _cast_to_complex(dsets)
 
-    return image, dsets
+    return image, dsets, vendor
 
 
 def _write_dcm(filepath, dsetnames, dsets):
@@ -457,17 +465,23 @@ def _cast_to_complex(dsets_in):
     vendor = _get_vendor(dsets_in[0])
 
     # actual conversion
-    if vendor == "GE":
-        return _cast_to_complex_ge(dsets_in)
+    if "GE" in vendor.upper():
+        img, dsets_out = _cast_to_complex_ge(dsets_in)
+        return img, dsets_out, vendor
 
-    if vendor == "Philips":
-        return _cast_to_complex_philips(dsets_in)
+    if "PHILIPS" in vendor.upper():
+        img, dsets_out = _cast_to_complex_philips(dsets_in)
+        return img, dsets_out, vendor
 
-    if vendor == "Siemens":
-        return _cast_to_complex_siemens(dsets_in)
 
-    if vendor == "DeepMR":
-        return _cast_to_complex_deepmr(dsets_in)
+    if "SIEMENS" in vendor.upper():
+        img, dsets_out = _cast_to_complex_siemens(dsets_in)
+        return img, dsets_out, vendor
+
+
+    if "DEEPMR" in vendor.upper():
+        img, dsets_out = _cast_to_complex_deepmr(dsets_in)
+        return img, dsets_out, vendor
 
 
 def _get_vendor(dset):
@@ -535,14 +549,6 @@ def _cast_to_complex_ge(dsets_in):
         do_recon = False
     elif do_recon:
         img = np.stack(magnitude, axis=0).astype(np.float32)
-
-    # fix phase shift along z
-    if np.iscomplexobj(img):
-        phase = np.angle(img)
-        phase[..., 1::2, :, :] = (
-            (1e5 * (phase[..., 1::2, :, :] + 2 * math.pi)) % (2 * math.pi * 1e5)
-        ) / 1e5 - math.pi
-        img = np.abs(img) * np.exp(1j * phase)
 
     # count number of instances
     ninstances = img.shape[0]
