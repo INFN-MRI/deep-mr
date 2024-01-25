@@ -295,7 +295,7 @@ def _nifti_read(file_path, json_dict):
 
         # cast to complex image
         if data_phase.size != 0:
-            scale = 2 * math.pi / 4096
+            scale = 2 * math.pi / 4095
             offset = -math.pi
             data = data * np.exp(1j * scale * data_phase + offset)
         if data_real.size != 0 and data_imag.size != 0:
