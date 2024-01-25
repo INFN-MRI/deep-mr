@@ -286,7 +286,7 @@ def write_image(
         Structure containing trajectory of shape (ncontrasts, nviews, npts, ndim)
         and meta information (shape, resolution, spacing, etc). If None,
         assume 1mm isotropic resolution, contiguous slices and axial orientation.
-        The default is None
+        The default is None.
     dataformat : str, optional
         Available formats ('dicom' or 'nifti'). The default is 'nifti'.
     series_description : str, optional
