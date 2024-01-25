@@ -110,10 +110,11 @@ def _get_trajectory(matfile):
         sinphi = np.sin(np.deg2rad(phi))
         cosphi = np.cos(np.deg2rad(phi))
 
-        if "theta" in matfile:
+        if "theta" in matfile and matfile["theta"].size != 0:
             theta = matfile["theta"].T
             sintheta = np.sin(np.deg2rad(theta))
             costheta = np.cos(np.deg2rad(theta))
+            
             k = np.stack(
                 [
                     ks[..., 0] * costheta * cosphi
@@ -131,15 +132,16 @@ def _get_trajectory(matfile):
                 [
                     ks[..., 0] * cosphi + ks[..., 1] * sinphi,
                     -ks[..., 0] * sinphi + ks[..., 1] * cosphi,
-                ]
+                ],
+                axis=-1,
             )
-            if "kz" in matfile and matfile["kz"]:
-                kz = np.repeat(matfile["theta"].T, npts, -1)
-                nz = kz.shape[0]
+            if "kz" in matfile and matfile["kz"].size != 0:
+                kz = np.repeat(matfile["kz"].T, npts, -1)
+                nz = int(kz.shape[0] / k.shape[0])
                 k = np.concatenate(
                     [
                         np.apply_along_axis(np.tile, 0, k, nz),
-                        np.apply_along_axis(np.tile, 0, kz, nviews),
+                        kz[..., None],
                     ],
                     axis=-1,
                 )
@@ -215,6 +217,8 @@ def _get_shape(matfile, ndim):
     # expand scalar
     if np.isscalar(shape) or shape.size == 1:
         shape = [int(shape)] * ndim
+    else:
+        shape = shape.astype(int)
 
     return shape
 
@@ -224,9 +228,14 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
         resolution = matfile["resolution"]
     else:
         if "fov" in matfile:
-            fov = [float(matfile["fov"].squeeze()) * 1e3] * ndim  # mm
+            fov = matfile["fov"][::-1].squeeze() * 1e3
         else:
             raise RuntimeError("Field of View not found!")
+            
+        # expand scalar
+        if np.isscalar(fov) or fov.size == 1:
+            fov = [float(fov)] * ndim
+            
         resolution = (np.asarray(fov) / np.asarray(shape)).tolist()
 
     # get spacing
@@ -350,7 +359,7 @@ def _get_basis(head, matfile):
         elif np.isreal(basis.imag + 1j * basis.real).all():
             basis = basis.imag
 
-        head.user["basis"] = basis
+        head.user["basis"] = basis.T
 
     return head
 
@@ -383,7 +392,7 @@ def _reformat_trajectory(head, acq_type, reshape):
 
     if reshape:
         if acq_type == "hybrid" or acq_type == "cart":
-            nz = shape[-1]
+            nz = shape[0]
             kz = k[:, 0, -1].astype(float) * nz + nz // 2  # (nviews,)
 
             # check if it is fully sampled
@@ -395,23 +404,26 @@ def _reformat_trajectory(head, acq_type, reshape):
                 # test for interleaved
                 if np.all([np.allclose(kint[0], kint[n]) for n in range(nz)]):
                     separable = "interleaved"
+                    ndim -= 1
                     k = kint[0]
                 elif np.all([np.allclose(kseq[0], kseq[n]) for n in range(nz)]):
                     separable = "sequential"
                     k = kseq[0]
+                    ndim -= 1
 
         # now reshape
         ncontrasts = len(head.FA)
         nviews = int(k.shape[0] / ncontrasts)
-
         k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
-        k = np.ascontiguousarray(k).astype(np.float32)
-        if dcf is not None:
+        k = k.astype(np.float32)
+        
+        if dcf is not None and acq_type == "noncart":
             dcf = dcf.reshape(nviews, ncontrasts, -1).swapaxes(0, 1)
-            dcf = np.ascontiguousarray(dcf).astype(np.float32)
-    else:
-        if acq_type == "hybrid":
-            acq_type = "noncart"
+            dcf = dcf.astype(np.float32)
+            
+    # fix mode
+    if acq_type == "hybrid":
+        acq_type = "noncart"
 
     # assign
     head.traj = k

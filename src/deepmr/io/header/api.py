@@ -133,7 +133,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
             head = _matlab.read_matlab_acqhead(filepath, *args, **kwargs)
             done = True
         except Exception:
-            pass
+            raise
 
     # bart
     # if filepath.endswith(".cfl") and not(done):
