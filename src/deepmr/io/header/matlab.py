@@ -206,9 +206,11 @@ def _get_sampling_time(matfile):
 
 def _get_shape(matfile, ndim):
     if "mtx" in matfile:
-        shape = matfile["mtx"][::-1].squeeze()
+        shape = matfile["mtx"].squeeze()
+        shape = shape[::-1]
     elif "npix" in matfile:
-        shape = matfile["npix"][::-1].squeeze()
+        shape = matfile["npix"].squeeze()
+        shape = shape[::-1]
     elif "shape" in matfile:
         shape = matfile["shape"]
     else:
@@ -219,7 +221,7 @@ def _get_shape(matfile, ndim):
         shape = [int(shape)] * ndim
     else:
         shape = shape.astype(int)
-
+    
     return shape
 
 
@@ -228,7 +230,8 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
         resolution = matfile["resolution"]
     else:
         if "fov" in matfile:
-            fov = matfile["fov"][::-1].squeeze() * 1e3
+            fov = matfile["fov"].squeeze() * 1e3
+            fov = fov[::-1]
         else:
             raise RuntimeError("Field of View not found!")
             
@@ -243,7 +246,7 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
         spacing = matfile["spacing"]
     else:
         spacing = resolution[0]
-
+        
     return resolution, spacing
 
 
@@ -392,7 +395,7 @@ def _reformat_trajectory(head, acq_type, reshape):
 
     if reshape:
         if acq_type == "hybrid" or acq_type == "cart":
-            nz = shape[0]
+            nz = shape[-1]
             kz = k[:, 0, -1].astype(float) * nz + nz // 2  # (nviews,)
 
             # check if it is fully sampled

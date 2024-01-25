@@ -168,16 +168,16 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     try:
         data, head = _mrd.read_mrd_rawdata(filepath)
         done = True
-    except Exception:
-        pass
+    except Exception as e:
+        msg0 = e
 
     # gehc
     if not (done):
         try:
             data, head = _gehc.read_gehc_rawdata(filepath, acqheader)
             done = True
-        except Exception:
-            pass
+        except Exception as e:
+            msg1 = e
 
     # siemens
     # if not(done):
@@ -189,7 +189,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
 
     # check if we loaded data
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized!")
+        raise RuntimeError(f"File (={filepath}) not recognized! Errors:\nMRD: {msg0}\nGEHC: {msg1}")
     if verbose == 2:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
@@ -323,9 +323,14 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
                 f"Trajectory shape: (ncontrasts={head.traj.shape[0]}, nviews={head.traj.shape[1]}, nsamples={head.traj.shape[2]}, ndim={head.traj.shape[-1]})"
             )
         if head.dcf is not None:
-            print(
-                f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})"
-            )
+            if len(head.dcf.shape) == 1:
+                print(
+                    f"DCF shape: (nsamples={head.dcf.shape[-1]})"
+                )
+            else:
+                print(
+                    f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})"
+                )
     if head.FA is not None:
         if len(np.unique(head.FA)) > 1:
             if verbose == 2:

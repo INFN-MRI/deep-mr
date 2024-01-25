@@ -124,16 +124,20 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
         try:
             head = _mrd.read_mrd_acqhead(filepath)
             done = True
-        except Exception:
-            pass
+        except Exception as e:
+            msg0 = e
+    else:
+        msg0 = ""
 
     # matfile
     if filepath.endswith(".mat") and not (done):
         try:
             head = _matlab.read_matlab_acqhead(filepath, *args, **kwargs)
             done = True
-        except Exception:
-            raise
+        except Exception as e:
+            msg1 = e
+    else:
+        msg1 = ""
 
     # bart
     # if filepath.endswith(".cfl") and not(done):
@@ -148,12 +152,14 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
         try:
             done = True
             head = _base.read_base_acqheader(filepath)
-        except Exception:
-            raise RuntimeError(f"File (={filepath}) not recognized!")
+        except Exception as e:
+            msg2 = e
+    else:
+        msg2 = ""
 
     # check if we loaded data
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized!")
+        raise RuntimeError(f"File (={filepath}) not recognized! Error:\nMRD {msg0}\nMATLAB {msg1}\nBase {msg2}")
 
     # normalize trajectory
     if head.traj is not None:
