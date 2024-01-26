@@ -10,7 +10,7 @@ from . import header as _header
 from . import image as _image
 from . import kspace as _kspace
 from . import types as _types
-from .types import _docs
+from .types import docs
 
 from .generic import *  # noqa
 from .header import *  # noqa
