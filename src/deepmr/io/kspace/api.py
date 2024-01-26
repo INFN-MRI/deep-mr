@@ -10,19 +10,21 @@ import torch
 
 from . import gehc as _gehc
 from . import mrd as _mrd
+
 # from . import siemens as _siemens
+
 
 def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read kspace data from file.
-    
+
     Currently, handles data written in ISMRMD format [1] (vendor agnostic)
     and GEHC proprietary raw data (requires access to a private repository).
 
     Parameters
     ----------
     filepath : str
-        Path to kspace file.
+        Path to kspace file. Supports wildcard (e.g., /path-to-data-folder/*.h5).
     acqheader : Header, optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
@@ -38,7 +40,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         Complex k-space data.
     head : Header
         Metadata for image reconstruction.
-        
+
     Example
     -------
     >>> import deepmr
@@ -53,13 +55,13 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
 
     The result is a data/header pair. 'Data' contains k-space data.
     Here, it represents a 2D spiral acquisition with 1 slice, 36 coils, 32 arms and 1284 samples per arm:
-    
+
     >>> data.shape
     torch.Size([1, 36, 1, 32, 1284])
-    
+
     'Head' contains the acquisition information. We can inspect the k-space trajectory and dcf size,
     the expected image shape and resolution:
-    
+
     >>> head.traj.shape
     torch.Size([1, 32, 1284, 2])
     >>> head.dcf.shape
@@ -71,86 +73,97 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     >>> head.ref_dicom.PixelSpacing
     [1.56, 1.56]
 
+    'Head' also contains contrast information (for forward simulation and parameter inference):
+
+    >>> head.FA
+    10.0
+    >>> head.TE
+    0.86
+    >>> head.TR
+    4.96
+
     Notes
     -----
     The returned 'data' tensor contains raw k-space data. Dimensions are defined as following:
-        
+
         * **2Dcart:** (nslices, ncoils, ncontrasts, ny, nx).
         * **2Dnoncart:** (nslices, ncoils, ncontrasts, nviews, nsamples).
         * **3Dcart:** (nx, ncoils, ncontrasts, nz, ny).
         * **3Dnoncart:** (ncoils, ncontrasts, nviews, nsamples).
-        
+
     When possible, data are already pre-processed:
-        
+
         * For Cartesian data (2D and 3D) readout oversampling is removed if the number of samples along readout is larger than the number of rows in the image space (shape[-1]).
         * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and isocenter info from the header.
         * For separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), k-space is decoupled via FFT (along slice and readout axes, respectively).
-            
+
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
-    
+
         * shape (torch.Tensor):
             This is the expected image size of shape (nz, ny, nx).
-        * t (torch.Tensor): 
+        * resolution (torch.Tensor):
+            This is the expected image resolution in mm of shape (dz, dy, dx).
+        * t (torch.Tensor):
             This is the readout sampling time (0, t_read) in ms.
             with shape (nsamples,).
-        * traj (torch.Tensor): 
-            This is the k-space trajectory normalized as (-0.5, 0.5) 
+        * traj (torch.Tensor):
+            This is the k-space trajectory normalized as (-0.5, 0.5)
             with shape (ncontrasts, nviews, nsamples, ndims).
-        * dcf (torch.Tensor): 
+        * dcf (torch.Tensor):
             This is the k-space sampling density compensation factor
             with shape (ncontrasts, nviews, nsamples).
-        * FA (torch.Tensor, float): 
+        * FA (torch.Tensor, float):
             This is either the acquisition flip angle in degrees or the list
             of flip angles of shape (ncontrasts,) for each image in the series.
-        * TR (torch.Tensor, float): 
+        * TR (torch.Tensor, float):
             This is either the repetition time in ms or the list
             of repetition times of shape (ncontrasts,) for each image in the series.
-        * TE (torch.Tensor, float): 
+        * TE (torch.Tensor, float):
             This is either the echo time in ms or the list
             of echo times of shape (ncontrasts,) for each image in the series.
-        * TI (torch.Tensor, float): 
+        * TI (torch.Tensor, float):
             This is either the inversion time in ms or the list
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
             User parameters. Some examples are:
-                
-                * ordering (torch.Tensor): 
+
+                * ordering (torch.Tensor):
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
                     'contrast_index', 'slice_index' and 'view_index', respectively.
-                * mode (str): 
+                * mode (str):
                     Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
-                * separable (bool): 
+                * separable (bool):
                     Whether the acquisition can be decoupled by fft along slice / readout directions
                     (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
-                * slice_profile (torch.Tensor): 
+                * slice_profile (torch.Tensor):
                     Flip angle scaling along slice profile of shape (nlocs,).
-                * basis (torch.Tensor): 
+                * basis (torch.Tensor):
                     Low rank subspace basis for subspace reconstruction of shape (ncoeff, ncontrasts).
-        * affine (np.ndarray): 
+        * affine (np.ndarray):
             Affine matrix describing image spacing, orientation and origin of shape (4, 4).
-        * ref_dicom (pydicom.Dataset): 
+        * ref_dicom (pydicom.Dataset):
             Template dicom for image export.
-        * flip (list): 
+        * flip (list):
             List of spatial axis to be flipped after image reconstruction.
             The default is an empty list (no flipping).
-        * transpose (list): 
+        * transpose (list):
              Permutation of image dimensions after reconstruction, depending on acquisition mode:
-                 
-                * **2Dcart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * **2Dnoncart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
+
+                * **2Dcart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]
+                * **2Dnoncart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]
+                * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3]
                 * **3Dnoncart:** reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0]
-                
+
             The default is an empty list (no transposition).
-            
+
     References
     ----------
-    [1]: Inati, S.J., Naegele, J.D., Zwart, N.R., Roopchansingh, V., Lizak, M.J., Hansen, D.C., Liu, C.-Y., Atkinson, D., 
-    Kellman, P., Kozerke, S., Xue, H., Campbell-Washburn, A.E., Sørensen, T.S. and Hansen, M.S. (2017), 
-    ISMRM Raw data format: A proposed standard for MRI raw datasets. Magn. Reson. Med., 77: 411-421. 
+    [1]: Inati, S.J., Naegele, J.D., Zwart, N.R., Roopchansingh, V., Lizak, M.J., Hansen, D.C., Liu, C.-Y., Atkinson, D.,
+    Kellman, P., Kozerke, S., Xue, H., Campbell-Washburn, A.E., Sørensen, T.S. and Hansen, M.S. (2017),
+    ISMRM Raw data format: A proposed standard for MRI raw datasets. Magn. Reson. Med., 77: 411-421.
     https://doi.org/10.1002/mrm.26089
-    
+
     """
     tstart = time.time()
     if verbose >= 1:
@@ -189,7 +202,9 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
 
     # check if we loaded data
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized! Errors:\nMRD: {msg0}\nGEHC: {msg1}")
+        raise RuntimeError(
+            f"File (={filepath}) not recognized! Errors:\nMRD: {msg0}\nGEHC: {msg1}"
+        )
     if verbose == 2:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
@@ -324,9 +339,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             )
         if head.dcf is not None:
             if len(head.dcf.shape) == 1:
-                print(
-                    f"DCF shape: (nsamples={head.dcf.shape[-1]})"
-                )
+                print(f"DCF shape: (nsamples={head.dcf.shape[-1]})")
             else:
                 print(
                     f"DCF shape: (ncontrasts={head.dcf.shape[0]}, nviews={head.dcf.shape[1]}, nsamples={head.dcf.shape[2]})"
@@ -402,7 +415,7 @@ def _fov_centering(data, head):
         dr = np.asarray(head._shift)[:ndim]
 
         # convert in units of voxels
-        dr /= head._resolution[::-1][:ndim]
+        dr /= head.resolution[::-1][:ndim]
 
         # apply
         data *= np.exp(1j * 2 * math.pi * (head.traj * dr).sum(axis=-1))

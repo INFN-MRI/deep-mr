@@ -141,7 +141,7 @@ def _create_hdr(head):
 
     # set fov and matrix size
     fov = np.asarray(head.shape) * np.asarray(
-        [head._spacing] + list(head._resolution)[1:]
+        [head._spacing] + list(head.resolution)[1:]
     )
 
     efov = ismrmrd.xsd.fieldOfViewMm()
@@ -203,7 +203,7 @@ def _create_hdr(head):
     hdr.userParameters = ismrmrd.xsd.userParametersType()
     slice_thickness = ismrmrd.xsd.userParameterDoubleType()
     slice_thickness.name = "SliceThickness"
-    slice_thickness.value = head._resolution[0]
+    slice_thickness.value = head.resolution[0]
     hdr.userParameters.userParameterDouble.append(slice_thickness)
 
     spacing = ismrmrd.xsd.userParameterDoubleType()

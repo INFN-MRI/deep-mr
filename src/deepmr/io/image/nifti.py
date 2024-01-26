@@ -295,9 +295,12 @@ def _nifti_read(file_path, json_dict):
 
         # cast to complex image
         if data_phase.size != 0:
-            scale = 2 * math.pi / 4095
-            offset = -math.pi
-            data = data * np.exp(1j * scale * data_phase + offset)
+            min_phase = data_phase.min()
+            max_phase = data_phase.max()
+            data_phase = (data_phase - min_phase) / (
+                max_phase - min_phase
+            ) * 2 * math.pi - math.pi
+            data = data * np.exp(1j * data_phase)
         if data_real.size != 0 and data_imag.size != 0:
             data = data_real + 1j * data_imag
 
@@ -316,14 +319,14 @@ def _nifti_read(file_path, json_dict):
         ) / 1e5 - math.pi
         data = np.abs(data) * np.exp(1j * phase)
 
-    return np.flip(data.transpose(), axis=-2), head, affine
+    return np.flip(data.transpose(), axis=(-2, -1)), head, affine
 
 
 def _nifti_write(filename, filepath, image, affine, resolution, TR, windowRange):
     """Actual nifti writing routine."""
-    
+
     # reformat image
-    image = np.flip(image.transpose(), axis=-2)
+    image = np.flip(image.transpose(), axis=(-2, -1))
 
     # get voxel size
     dz, dy, dx = np.round(resolution, 2)

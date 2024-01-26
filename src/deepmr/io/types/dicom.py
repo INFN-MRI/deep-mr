@@ -132,7 +132,7 @@ def _get_spacing(dsets):
     try:
         return float(dsets[0].SpacingBetweenSlices)
     except:
-        return float(dsets[0].SliceThickness) # temporary fix for Siemens
+        return float(dsets[0].SliceThickness)  # temporary fix for Siemens
 
 
 def _get_flip_angles(dsets):

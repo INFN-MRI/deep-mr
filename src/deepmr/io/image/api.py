@@ -13,6 +13,7 @@ from . import nifti as _nifti
 # from .dicom import *  # noqa
 # from .nifti import *  # noqa
 
+
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read image data from file.
@@ -20,7 +21,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     Parameters
     ----------
     filepath : str
-        Path to image file.
+        Path to image file. Supports wildcard (e.g., /path-to-dicom-exam/*, /path-to-BIDS/*.nii).
     acqheader : Header, optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
@@ -36,7 +37,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         Complex image data.
     head : Header
         Metadata for image reconstruction.
-        
+
     Example
     -------
     >>> import deepmr
@@ -53,12 +54,12 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
 
     The result is a image/header pair. 'Image' contains image-space data.
     Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
-    
+
     >>> image_dcm.shape
     torch.Size([3, 2, 192, 192])
     >>> image_nii.shape
     torch.Size([3, 2, 192, 192])
-    
+
     'Head' contains the acquisition information. We can inspect the image shape and resolution:
 
     >>> head_dcm.shape
@@ -78,59 +79,76 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     >>> head_nii.ref_dicom.PixelSpacing
     [0.67,0.67]
 
+    'Head' also contains contrast information (for forward simulation and parameter inference):
+
+    >>> head_dcm.FA
+    180.0
+    >>> head_nii.FA
+    180.0
+    >>> head_dcm.TE
+    tensor([  20.0, 40.0, 60.0])
+    >>> head_nii.TE
+    tensor([  20.0, 40.0, 60.0])
+    >>> head_dcm.TR
+    3000.0
+    >>> head_nii.TR
+    3000.0
+
     Notes
     -----
     The returned 'image' tensor contains image space data. Dimensions are defined as following:
-        
+
         * **2D:** (ncontrasts, nslices, ny, nx).
         * **3D:** (ncontrasts, nz, ny, nx).
-                 
+
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
-    
+
         * shape (torch.Tensor):
             This is the expected image size of shape (nz, ny, nx).
-        * t (torch.Tensor): 
+        * resolution (torch.Tensor):
+            This is the expected image resolution in mm of shape (dz, dy, dx).
+        * t (torch.Tensor):
             This is the readout sampling time (0, t_read) in ms.
             with shape (nsamples,).
-        * traj (torch.Tensor): 
-            This is the k-space trajectory normalized as (-0.5, 0.5) 
+        * traj (torch.Tensor):
+            This is the k-space trajectory normalized as (-0.5, 0.5)
             with shape (ncontrasts, nviews, nsamples, ndims).
-        * dcf (torch.Tensor): 
+        * dcf (torch.Tensor):
             This is the k-space sampling density compensation factor
             with shape (ncontrasts, nviews, nsamples).
-        * FA (torch.Tensor, float): 
+        * FA (torch.Tensor, float):
             This is either the acquisition flip angle in degrees or the list
             of flip angles of shape (ncontrasts,) for each image in the series.
-        * TR (torch.Tensor, float): 
+        * TR (torch.Tensor, float):
             This is either the repetition time in ms or the list
             of repetition times of shape (ncontrasts,) for each image in the series.
-        * TE (torch.Tensor, float): 
+        * TE (torch.Tensor, float):
             This is either the echo time in ms or the list
             of echo times of shape (ncontrasts,) for each image in the series.
-        * TI (torch.Tensor, float): 
+        * TI (torch.Tensor, float):
             This is either the inversion time in ms or the list
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
             User parameters. Some examples are:
-                
-                * ordering (torch.Tensor): 
+
+                * ordering (torch.Tensor):
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
                     'contrast_index', 'slice_index' and 'view_index', respectively.
-                * mode (str): 
+                * mode (str):
                     Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
-                * separable (bool): 
+                * separable (bool):
                     Whether the acquisition can be decoupled by fft along slice / readout directions
                     (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
-                * slice_profile (torch.Tensor): 
+                * slice_profile (torch.Tensor):
                     Flip angle scaling along slice profile of shape (nlocs,).
-                * basis (torch.Tensor): 
+                * basis (torch.Tensor):
                     Low rank subspace basis for subspace reconstruction of shape (ncoeff, ncontrasts).
-        * affine (np.ndarray): 
+        * affine (np.ndarray):
             Affine matrix describing image spacing, orientation and origin of shape (4, 4).
-        * ref_dicom (pydicom.Dataset): 
+        * ref_dicom (pydicom.Dataset):
             Template dicom for image export.
-            
+
     """
     tstart = time.time()
     if verbose >= 1:
@@ -161,7 +179,9 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         msg1 = e
 
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized! Error:\nDICOM {msg0}\nNIfTI {msg1}")
+        raise RuntimeError(
+            f"File (={filepath}) not recognized! Error:\nDICOM {msg0}\nNIfTI {msg1}"
+        )
     if verbose == 2:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
@@ -184,11 +204,11 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             head.TE = acqheader.TE
         if acqheader.TI is not None:
             head.TI = acqheader.TI
-            
+
     # remove flip and transpose
     head.transpose = None
     head.flip = None
-    
+
     # final report
     if verbose == 2:
         if len(image.shape) == 3:
@@ -283,7 +303,7 @@ def write_image(
     filename : str
         Name of the file.
     image : np.ndarray
-        Complex image data of shape (ncontrasts, nslices, ny, n). 
+        Complex image data of shape (ncontrasts, nslices, ny, n).
         See 'Notes' for additional information.
     filepath : str, optional
         Path to file. The default is "./".
@@ -312,7 +332,7 @@ def write_image(
         If True, remove sensible info from header. The default is "False".
     verbose : bool, optional
         Verbosity flag. The default is "False".
-        
+
     Example
     -------
     >>> import deepmr
@@ -337,14 +357,14 @@ def write_image(
 
     The result is a image/header pair. 'Image' contains image-space data.
     Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
-    
+
     >>> image_dcm.shape
     torch.Size([3, 2, 192, 192])
     >>> image_nii.shape
     torch.Size([3, 2, 192, 192])
-    
+
     'Head' contains the acquisition information. We can inspect the image shape and resolution:
-    
+
     >>> head_dcm.shape
     tensor([  2, 192, 192])
     >>> head_nii.shape
@@ -362,24 +382,40 @@ def write_image(
     >>> head_nii.ref_dicom.PixelSpacing
     [0.67,0.67]
 
+    'Head' also contains contrast information (for forward simulation and parameter inference):
+
+    >>> head_dcm.FA
+    180.0
+    >>> head_nii.FA
+    180.0
+    >>> head_dcm.TE
+    tensor([  20.0, 40.0, 60.0])
+    >>> head_nii.TE
+    tensor([  20.0, 40.0, 60.0])
+    >>> head_dcm.TR
+    3000.0
+    >>> head_nii.TR
+    3000.0
+
+
     Notes
     -----
     When the image to be written is the result of a reconstruction performed on k-space data loaded using deepmr.io.read_rawdata,
     axis order depends on acquisition mode:
-                
+
         * **2Dcart:** (nslices, ncontrasts, ny, nx)
         * **2Dnoncart:** (nslices, ncontrasts, ny, nx)
-        * **3Dcart:** (ncontrasts, nz, ny, nx) 
+        * **3Dcart:** (ncontrasts, nz, ny, nx)
         * **3Dnoncart:** (nx, ncontrasts, nz, ny)
-    
+
     In this case, image should be transposed to (ncontrasts, nslices, ny, nx) or (ncontrasts, nz, ny, nx) for 2D/3D acquisitions, respectively.
     If provided, 'head' will contain the appropriate permutation order ('head.transpose'):
-        
-        * **2Dcart:** head.transpose = [1, 0, 2, 3] 
-        * **2Dnoncart:** head.transpose = [1, 0, 2, 3] 
-        * **3Dcart:** head.transpose = [0, 1, 2, 3] 
+
+        * **2Dcart:** head.transpose = [1, 0, 2, 3]
+        * **2Dnoncart:** head.transpose = [1, 0, 2, 3]
+        * **3Dcart:** head.transpose = [0, 1, 2, 3]
         * **3Dnoncart:** head.transpose = [1, 2, 3, 0]
-        
+
     If 'head' is not provided, the user shoudl manually transpose the image tensor to match the required shape.
 
     """

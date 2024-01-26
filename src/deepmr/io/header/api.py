@@ -9,15 +9,17 @@ import time
 import numpy as np
 
 from . import base as _base
+
 # from . import bart as _bart
 from . import matlab as _matlab
 from . import mrd as _mrd
 
+
 def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
     """
     Read acquisition header from file.
-    
-    The header info (e.g., k-space trajectory, shape) can be used to 
+
+    The header info (e.g., k-space trajectory, shape) can be used to
     simulate acquisitions or to inform raw data loading (e.g., via ordering)
     to reshape from acquisition to reconstruction ordering and image post-processing
     (transposition, flipping) and exporting.
@@ -25,18 +27,18 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
     Parameters
     ----------
     filepath : str
-        Path to acquisition header file.
+        Path to acquisition header file. Supports wildcard (e.g., /path-to-data-folder/*.h5).
     *args
-        Variable length argument list passed to the specific subroutines 
+        Variable length argument list passed to the specific subroutines
         for the different datatypes (see 'Keyword Arguments').
     device : str, optional
         Computational device for internal attributes. The default is "cpu".
     verbose : int, optional
         Verbosity level (0=Silent, 1=Less, 2=More). The default is 0.
 
-    
+
     Keyword Arguments
-    ----------------- 
+    -----------------
     dcfpath : str, optional
         Path to the dcf file (deepmr.io.matlab.read_matlab_acqhead).
         The default is None.
@@ -46,70 +48,72 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
     sliceprofpath : str, optional
         Path to the slice profile file (deepmr.io.matlab.read_matlab_acqhead).
         The default is None.
-        
+
     Returns
     -------
     head : Header
         Deserialized acquisition header.
-        
+
     Notes
     -----
     The returned 'head' (deepmr.io.types.Header) is a structure with the following fields:
-    
+
         * shape (torch.Tensor):
             This is the expected image size of shape (nz, ny, nx).
-        * t (torch.Tensor): 
+        * resolution (torch.Tensor):
+            This is the expected image resolution in mm of shape (dz, dy, dx).
+        * t (torch.Tensor):
             This is the readout sampling time (0, t_read) in ms.
             with shape (nsamples,).
-        * traj (torch.Tensor): 
-            This is the k-space trajectory normalized as (-0.5, 0.5) 
+        * traj (torch.Tensor):
+            This is the k-space trajectory normalized as (-0.5, 0.5)
             with shape (ncontrasts, nviews, nsamples, ndims).
-        * dcf (torch.Tensor): 
+        * dcf (torch.Tensor):
             This is the k-space sampling density compensation factor
             with shape (ncontrasts, nviews, nsamples).
-        * FA (torch.Tensor, float): 
+        * FA (torch.Tensor, float):
             This is either the acquisition flip angle in degrees or the list
             of flip angles of shape (ncontrasts,) for each image in the series.
-        * TR (torch.Tensor, float): 
+        * TR (torch.Tensor, float):
             This is either the repetition time in ms or the list
             of repetition times of shape (ncontrasts,) for each image in the series.
-        * TE (torch.Tensor, float): 
+        * TE (torch.Tensor, float):
             This is either the echo time in ms or the list
             of echo times of shape (ncontrasts,) for each image in the series.
-        * TI (torch.Tensor, float): 
+        * TI (torch.Tensor, float):
             This is either the inversion time in ms or the list
             of inversion times of shape (ncontrasts,) for each image in the series.
         * user (dict):
             User parameters. Some examples are:
-                
-                * ordering (torch.Tensor): 
+
+                * ordering (torch.Tensor):
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped (3, nslices * ncontrasts * nview), whose rows are
                     'contrast_index', 'slice_index' and 'view_index', respectively.
-                * mode (str): 
+                * mode (str):
                     Acquisition mode ('2Dcart', '3Dcart', '2Dnoncart', '3Dnoncart').
-                * separable (bool): 
+                * separable (bool):
                     Whether the acquisition can be decoupled by fft along slice / readout directions
                     (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
-                * slice_profile (torch.Tensor): 
+                * slice_profile (torch.Tensor):
                     Flip angle scaling along slice profile of shape (nlocs,).
-                * basis (torch.Tensor): 
+                * basis (torch.Tensor):
                     Low rank subspace basis for subspace reconstruction of shape (ncoeff, ncontrasts).
-        * affine (np.ndarray): 
+        * affine (np.ndarray):
             Affine matrix describing image spacing, orientation and origin of shape (4, 4).
-        * ref_dicom (pydicom.Dataset): 
+        * ref_dicom (pydicom.Dataset):
             Template dicom for image export.
-        * flip (list): 
+        * flip (list):
             List of spatial axis to be flipped after image reconstruction.
             The default is an empty list (no flipping).
-        * transpose (list): 
+        * transpose (list):
              Permutation of image dimensions after reconstruction, depending on acquisition mode:
-                 
-                * **2Dcart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * **2Dnoncart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3] 
-                * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3] 
+
+                * **2Dcart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]
+                * **2Dnoncart:** reconstructed image has (nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]
+                * **3Dcart:** reconstructed image has (ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3]
                 * **3Dnoncart:** reconstructed image has (nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0]
-                
+
             The default is an empty list (no transposition).
 
     """
@@ -159,7 +163,9 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
 
     # check if we loaded data
     if not (done):
-        raise RuntimeError(f"File (={filepath}) not recognized! Error:\nMRD {msg0}\nMATLAB {msg1}\nBase {msg2}")
+        raise RuntimeError(
+            f"File (={filepath}) not recognized! Error:\nMRD {msg0}\nMATLAB {msg1}\nBase {msg2}"
+        )
 
     # normalize trajectory
     if head.traj is not None:
@@ -228,7 +234,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
 def write_acqheader(filename, head, filepath="./", dataformat="hdf5"):
     """
     Write acquisition header to file.
-    
+
     Supported output format are 'hdf5' (faster i/o) and 'mrd'.
 
     Parameters

@@ -55,7 +55,7 @@ def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=N
     resolution, spacing = _get_resolution_and_spacing(matfile, shape, ndim)
 
     # initialize header
-    head = Header(shape, t, _resolution=resolution, _spacing=spacing)
+    head = Header(shape, resolution, t, _spacing=spacing)
     head.traj = k
     head.dcf = dcf
     head._adc = adc
@@ -114,7 +114,7 @@ def _get_trajectory(matfile):
             theta = matfile["theta"].T
             sintheta = np.sin(np.deg2rad(theta))
             costheta = np.cos(np.deg2rad(theta))
-            
+
             k = np.stack(
                 [
                     ks[..., 0] * costheta * cosphi
@@ -221,7 +221,7 @@ def _get_shape(matfile, ndim):
         shape = [int(shape)] * ndim
     else:
         shape = shape.astype(int)
-    
+
     return shape
 
 
@@ -234,11 +234,11 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
             fov = fov[::-1]
         else:
             raise RuntimeError("Field of View not found!")
-            
+
         # expand scalar
         if np.isscalar(fov) or fov.size == 1:
             fov = [float(fov)] * ndim
-            
+
         resolution = (np.asarray(fov) / np.asarray(shape)).tolist()
 
     # get spacing
@@ -246,7 +246,7 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
         spacing = matfile["spacing"]
     else:
         spacing = resolution[0]
-        
+
     return resolution, spacing
 
 
@@ -419,11 +419,11 @@ def _reformat_trajectory(head, acq_type, reshape):
         nviews = int(k.shape[0] / ncontrasts)
         k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
         k = k.astype(np.float32)
-        
+
         if dcf is not None and acq_type == "noncart":
             dcf = dcf.reshape(nviews, ncontrasts, -1).swapaxes(0, 1)
             dcf = dcf.astype(np.float32)
-            
+
     # fix mode
     if acq_type == "hybrid":
         acq_type = "noncart"

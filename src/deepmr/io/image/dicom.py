@@ -73,7 +73,7 @@ def read_dicom(filepath):
     sorted_image = np.zeros((n_contrasts, n_slices, ny, nx), dtype=image.dtype)
     for n in range(ninstances):
         sorted_image[contrastIdx[n], sliceIdx[n], :, :] = image[n]
-    
+
     # fix phase shift along z
     if "GE" in vendor.upper() and np.iscomplexobj(sorted_image):
         phase = np.angle(sorted_image)
@@ -473,11 +473,9 @@ def _cast_to_complex(dsets_in):
         img, dsets_out = _cast_to_complex_philips(dsets_in)
         return img, dsets_out, vendor
 
-
     if "SIEMENS" in vendor.upper():
         img, dsets_out = _cast_to_complex_siemens(dsets_in)
         return img, dsets_out, vendor
-
 
     if "DEEPMR" in vendor.upper():
         img, dsets_out = _cast_to_complex_deepmr(dsets_in)
@@ -584,11 +582,11 @@ def _cast_to_complex_philips(dsets_in):
             phase.append(dset.pixel_array)
 
     if magnitude and phase:
-        scale = 2 * math.pi / 4095
-        offset = -math.pi
-        img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(
-            1j * (scale * np.stack(phase, axis=0) + offset).astype(np.float32)
-        )
+        phase = np.stack(phase, axis=0).astype(np.float32)
+        min_phase = phase.min()
+        max_phase = phase.max()
+        phase = (phase - min_phase) / (max_phase - min_phase) * 2 * math.pi - math.pi
+        img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(1j * phase)
     else:
         img = np.stack(magnitude, axis=0).astype(np.float32)
 
@@ -624,11 +622,11 @@ def _cast_to_complex_siemens(dsets_in):
             phase.append(dset.pixel_array)
 
     if magnitude and phase:
-        scale = 2 * math.pi / 4095
-        offset = -math.pi
-        img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(
-            1j * (scale * np.stack(phase, axis=0) + offset).astype(np.float32)
-        )
+        phase = np.stack(phase, axis=0).astype(np.float32)
+        min_phase = phase.min()
+        max_phase = phase.max()
+        phase = (phase - min_phase) / (max_phase - min_phase) * 2 * math.pi - math.pi
+        img = np.stack(magnitude, axis=0).astype(np.float32) * np.exp(1j * phase)
     else:
         img = np.stack(magnitude, axis=0).astype(np.float32)
 
