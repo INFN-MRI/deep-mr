@@ -14,8 +14,24 @@ A framework to accelerate the development of modern MR acquisition and reconstru
 
 ## Installation
 
-```bash
-$ pip install deepmr
+Deep-MR can be installed using pip:
+
+1. Clone the repo
+
+```
+git clone https://github.com/INFN-PREDATOR/deep-mr.git
+```
+
+2. Navigate to the repository root folder and install using pip:
+
+```
+pip install .
+```
+
+or, for editable mode:
+
+```
+pip install -e .
 ```
 
 ## Usage
