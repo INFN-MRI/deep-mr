@@ -31,7 +31,7 @@ jobs:
         run: |
           git config --global user.email youremail
           git config --global user.name yourusername
-          git diff --quiet || (git add -a . && git commit -m "README update Automation")
+          git diff --quiet || (git add -A . && git commit -m "README update Automation")
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
