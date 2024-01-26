@@ -55,10 +55,9 @@ write_custom_acqheader(filepath, head, *args, **kwargs) # header
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
-	:recursive:
 	
 	deepmr.io.read_matfile
 	deepmr.io.read_hdf5
 	deepmr.io.write_hdf5
-	deepmr.io.docs.Header
+	deepmr.io.Header
 ```
