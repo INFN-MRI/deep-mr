@@ -12,13 +12,27 @@
 </p>
 A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI.
 
-## Installation
+Deep-MR can be installed using pip:
+
+1. Clone the repo
 
 ```bash
-$ pip install deepmr
+git clone https://github.com/INFN-PREDATOR/deep-mr.git
 ```
 
-## Usage
+2. Navigate to the repository root folder and install using pip:
+
+```bash
+pip install .
+```
+
+or, for editable mode:
+
+```bash
+pip install -e .
+```
+
+## UsageUsage
 
 - TODO
 
