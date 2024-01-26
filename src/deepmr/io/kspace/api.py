@@ -296,7 +296,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
                     f"K-space shape: (nslices={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, nviews={data.shape[3]}, nsamples={data.shape[4]})"
                 )
                 print(
-                    f"Expected image shape: (nslices={data.shape[0]}, nchannels={data.shape[0]}, ncontrasts={data.shape[1]}, ny={head.shape[1]}, nx={head.shape[2]})"
+                    f"Expected image shape: (nslices={data.shape[0]}, nchannels={data.shape[1]}, ncontrasts={data.shape[2]}, ny={head.shape[1]}, nx={head.shape[2]})"
                 )
         elif head.user["mode"] == "3Dnoncart":
             data = data[0]

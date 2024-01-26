@@ -74,6 +74,8 @@ class Header:
         The default is an empty list (no transposition).
 
     """
+    def __init__(self):
+        pass
 
     def torch(self, device="cpu"):
         """

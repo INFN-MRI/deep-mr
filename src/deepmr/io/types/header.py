@@ -450,6 +450,7 @@ class Header:
 
         return cls(
             shape,
+            resolution,
             t,
             traj,
             dcf,
@@ -464,7 +465,6 @@ class Header:
             user,
             adc,
             shift,
-            resolution,
             spacing,
             orientation,
         )
