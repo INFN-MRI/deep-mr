@@ -5,19 +5,26 @@ References:
     https://sigpy.readthedocs.io/en/latest/_modules/sigpy/sim.html#shepp_logan
 """
 
-import numpy as np
+__all__ = ["ct_shepp_logan"]
 
+import numpy as np
+import torch
 
 def ct_shepp_logan(npix, nslices):
     """
     Generate a Shepp Logan phantom with a given shape and dtype.
 
-    Args:
-        npix (tuple of ints): shape, can be scalar or tuple (ny, nx).
-        nslices (int): number of slices.
+    Parameters
+    ----------
+    npix : Iterable[int]
+        In-plane matrix size.
+    nslices : int
+        Number of slices.
 
-    Returns:
-        array: Shepp-Logan phantom of shape (nslices, ny, nx).
+    Returns
+    -------
+    out : torch.Tensor
+        Shepp-Logan phantom of shape (nslices, ny, nx).
 
     """
     # get shape
@@ -46,7 +53,7 @@ def ct_shepp_logan(npix, nslices):
         width = int(nslices // 2)
         out = out[center - width : center + width]
 
-    return out
+    return torch.as_tensor(out.copy(), dtype=torch.float32).squeeze()
 
 
 # %% local utils

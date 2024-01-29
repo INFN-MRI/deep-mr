@@ -1,10 +1,10 @@
-# Signal (deepmr)
+# Signal
 
 ```{eval-rst}
 .. automodule:: deepmr.signal
 ```
 
-## Resize and resampling functions
+## Resize and resampling
 ```{eval-rst}
 .. autosummary::
 	:toctree: generated

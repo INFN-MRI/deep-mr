@@ -5,26 +5,40 @@ References:
     https://github.com/mckib2/phantominator
 
 """
+
+__all__ = ["mr_shepp_logan"]
+
 from dataclasses import asdict
-from typing import Tuple, Union
 
 import numpy as np
+import torch
 
 from . import tissue_classes
 
-
-def mr_shepp_logan(npix: Union[int, Tuple[int]], nslices: int, B0=3.0, model="single"):
+def mr_shepp_logan(npix, nslices, B0=3.0, model="single"):
     """
-    Generate a Shepp Logan phantom with a given shape and dtype.
+    Generate a Shepp Logan phantom with a given shape.
 
-    Args:
-        npix (tuple of ints): shape, can be scalar or tuple (ny, nx).
-        nslices (int): number of slices.
-        B0 (float): static field strength (defaults to 3.0 T).
-        model (str): signal model (single or multicomponent).
+    Parameters
+    ----------
+    npix : Iterable[int]
+        In-plane matrix size.
+    nslices : int
+        Number of slices.
+    B0 : float, optional
+        Static field strength in T. The default is 3.0.
+    model : str, optional
+        Signal mode. Can be "single", "bm" (Bloch-McConnell), "mt" (Magnetization Transfer)
+        or "bm-mt" (Bloch-McConnell + Magnetization Transfer). The default is "single".
 
-    Returns:
-        array: Shepp-Logan phantom of shape (nslices, ny, nx).
+    Returns
+    -------
+    tissue_mask : TYPE
+        DESCRIPTION.
+    mrtp : TYPE
+        DESCRIPTION.
+    emtp : TYPE
+        DESCRIPTION.
 
     """
     assert model in [
@@ -82,11 +96,11 @@ def mr_shepp_logan(npix: Union[int, Tuple[int]], nslices: int, B0=3.0, model="si
     bm = {"T1": [], "T2": [], "chemshift": [], "k": [], "weight": []}
     mt = {"k": [], "weight": []}
 
-    emtp = {
-        "chi": np.zeros(tissue_mask.shape, np.float32),
-        "sigma": np.zeros(tissue_mask.shape, np.float32),
-        "epsilon": np.zeros(tissue_mask.shape, np.float32),
-    }
+    emtp = {"chi": [], "sigma": [], "epsilon": []}
+        # "chi": np.zeros(tissue_mask.shape, np.float32),
+        # "sigma": np.zeros(tissue_mask.shape, np.float32),
+        # "epsilon": np.zeros(tissue_mask.shape, np.float32),
+    # }
     for n in range(len(tissue_params)):
         par = tissue_params[n]
         for k in [
@@ -106,9 +120,12 @@ def mr_shepp_logan(npix: Union[int, Tuple[int]], nslices: int, B0=3.0, model="si
             for k in ["k", "weight"]:
                 mt[k].append(par["mt"][k])
 
-        emtp["chi"][tissue_mask == n] = par["chi"]
-        emtp["sigma"][tissue_mask == n] = par["sigma"]
-        emtp["epsilon"][tissue_mask == n] = par["epsilon"]
+        # emtp["chi"][tissue_mask == n] = par["chi"]
+        # emtp["sigma"][tissue_mask == n] = par["sigma"]
+        # emtp["epsilon"][tissue_mask == n] = par["epsilon"]
+        emtp["chi"].append(par["chi"][0])
+        emtp["sigma"].append(par["sigma"][0])
+        emtp["epsilon"].append(par["epsilon"][0])
 
     # concatenate mrtp
     for k in [
@@ -131,45 +148,25 @@ def mr_shepp_logan(npix: Union[int, Tuple[int]], nslices: int, B0=3.0, model="si
             mt[k] = np.concatenate(mt[k], axis=0)
         mrtp["mt"] = mt
 
-    # assign units
-    # mrtp["T1"] = utils.assign_unit(mrtp["T1"], "ms")
-    # mrtp["T2"] = utils.assign_unit(mrtp["T2"], "ms")
-    # mrtp["T2star"] = utils.assign_unit(mrtp["T2star"], "ms")
-    # mrtp["chemshift"] = utils.assign_unit(mrtp["chemshift"], "Hz")
-    # mrtp["D"] = utils.assign_unit(mrtp["D"], "um**2 / ms")
-    # mrtp["v"] = utils.assign_unit(mrtp["v"], "cm / s")
-    # mrtp["k"] = utils.assign_unit(mrtp["k"], "1 / s")
-    # emtp["sigma"] = utils.assign_unit(emtp["sigma"], "S / m")
-
-    # if "bm" in mrtp and mrtp["bm"]:
-    #     mrtp["bm"]["T1"] = utils.assign_unit(mrtp["bm"]["T1"], "ms")
-    #     mrtp["bm"]["T2"] = utils.assign_unit(mrtp["bm"]["T2"], "ms")
-    #     mrtp["bm"]["chemical_shift"] = utils.assign_unit(
-    #         mrtp["bm"]["chemical_shift"], "Hz"
-    #     )
-
-    # if "mt" in mrtp and mrtp["mt"]:
-    #     mrtp["mt"]["T1"] = utils.assign_unit(mrtp["mt"]["T1"], "ms")
-
-    return tissue_mask, mrtp, emtp
-
+    return torch.as_tensor(tissue_mask.copy(), dtype=int).squeeze(), mrtp, emtp
 
 def _shepp_logan_segmentation(shape):
     # initialize shepp logan
     discrete_model = np.round(_shepp_logan(shape, dtype=np.float32)).astype(np.int32)
 
     # collapse vessels rois, csf rois and re-order indexes
-    discrete_model[discrete_model == 1] = 1  # blood
-    discrete_model[discrete_model == 2] = 1  # blood
-    discrete_model[discrete_model == 3] = 1  # blood
-    discrete_model[discrete_model == 4] = 1  # blood
-    discrete_model[discrete_model == 5] = 2  # csf
-    discrete_model[discrete_model == 6] = 2  # csf
-    discrete_model[discrete_model == 7] = 3  # gray matter
-    discrete_model[discrete_model == 8] = 4  # white matter
-    discrete_model[discrete_model == 9] = 5  # fat
+    out = discrete_model.copy()
+    out[discrete_model == 1] = 8  # blood
+    out[discrete_model == 2] = 8  # blood
+    out[discrete_model == 3] = 8  # blood
+    out[discrete_model == 4] = 8  # blood
+    out[discrete_model == 5] = 4  # csf
+    out[discrete_model == 6] = 4  # csf
+    out[discrete_model == 7] = 2  # white matter
+    out[discrete_model == 8] = 3  # gray matter
+    out[discrete_model == 9] = 1  # fat
 
-    return discrete_model
+    return out
 
 
 # %% local utils
@@ -228,10 +225,7 @@ sl_angles = [
 
 
 def phantom(shape, amps, scales, offsets, angles, dtype):
-    """
-    Generate a cube of given shape using a list of ellipsoid
-    parameters.
-    """
+    """Generate a cube of given shape using a list of ellipsoid parameters."""
     if len(shape) == 2:
         ndim = 2
         shape = (1, shape[-2], shape[-1])
@@ -268,8 +262,10 @@ def phantom(shape, amps, scales, offsets, angles, dtype):
 def ellipsoid(amp, scale, offset, angle, coords, out):
     """
     Generate a cube containing an ellipsoid defined by its parameters.
+    
     If out is given, fills the given cube instead of creating a new
     one.
+
     """
     R = rotation_matrix(angle)
     coords = (np.matmul(R, coords) - np.reshape(offset, (3, 1))) / np.reshape(

@@ -12,6 +12,8 @@ __all__ = [
     "Blood",
 ]
 
+import math
+
 from dataclasses import dataclass, fields
 from typing import Union
 
@@ -25,15 +27,14 @@ np.random.seed(42)
 c0 = 299792458.0
 
 # Vacuum permeability [H/m].
-mu0 = 4.0e-7 * np.pi
+mu0 = 4.0e-7 * math.pi
 
 # Vacuum permeability [F/m].
 eps0 = 1.0 / mu0 / c0**2
 
 # gyromagnetic factors
 gamma_bar = 42.575 * 1e6  # MHz / T -> Hz / T
-gamma = 2 * np.pi * gamma_bar  # rad / T / s
-
+gamma = 2 * math.pi * gamma_bar  # rad / T / s
 
 def _default_bm(n_atoms, model):
     if "bm" in model:
@@ -109,9 +110,10 @@ class AbstractTissue:
 
     def _calculate_t2star(self, B0, T2, susceptibility):
         if susceptibility:
+            k = 2 * 0.0075 # empirical
             R2 = 1 / (T2 * 1e-3)  # 1 / ms -> 1 / s
-            R2prime = gamma * np.abs(gamma * B0 * susceptibility)  # rad / s
-            R2star = R2 + R2prime
+            R2prime = k * 0.5 * gamma_bar * np.abs(B0 * susceptibility)  # 1 / s
+            R2star = R2 + R2prime # 1 / s
             return 1e3 / R2star  # s -> ms
 
         return None
