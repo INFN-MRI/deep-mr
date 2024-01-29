@@ -5,7 +5,7 @@
 ```
 
 ## Resize and resampling
-```{eval-rst}
+```{eval-rst} 
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
