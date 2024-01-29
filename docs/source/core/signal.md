@@ -1,4 +1,4 @@
-# Signal (`deepmr)
+# Signal (deepmr)
 
 ```{eval-rst}
 .. automodule:: deepmr.signal
@@ -10,5 +10,5 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.resize
+	deepmr.signal.resize
 ```
