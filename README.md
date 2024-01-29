@@ -32,7 +32,7 @@ or, for editable mode:
 pip install -e .
 ```
 
-## UsageUsage
+## Usage
 
 - TODO
 
