@@ -1,7 +1,7 @@
 # Virtual Objects
 
 ```{eval-rst}
-.. automodule:: deepmr.phantoms
+.. automodule:: deepmr.vobj
 ```
 
 ## Phantoms
@@ -10,8 +10,8 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.phantoms.shepp_logan
-    deepmr.phantoms.custom_phantom
+	deepmr.vobj.shepp_logan
+    deepmr.vobj.custom_phantom
 ```
 
 ## Scanner
