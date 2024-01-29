@@ -23,6 +23,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
+autosummary_generate = True
+autosummary_imported_members = True
 
 autodoc_mock_imports = [
     "dacite",

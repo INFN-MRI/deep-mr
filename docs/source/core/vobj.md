@@ -6,30 +6,11 @@
 
 ## Phantoms
 ```{eval-rst}
+.. currentmodule:: deepmr 
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.vobj.shepp_logan
-    deepmr.vobj.custom_phantom
-```
-
-## Scanner
-
-```
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	
-```
-
-## Sampling
-
-```
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	
+	deepmr.shepp_logan
+	deepmr.custom_phantom
 ```

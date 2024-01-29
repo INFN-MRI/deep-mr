@@ -5,10 +5,11 @@
 ```
 
 ## Resize and resampling
-```{eval-rst} 
+```{eval-rst}
+.. currentmodule:: deepmr 
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.signal.resize
+	deepmr.resize
 ```
