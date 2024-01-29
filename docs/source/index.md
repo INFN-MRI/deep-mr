@@ -30,6 +30,7 @@ tutorials/02-dl-mri-recon.ipynb
 :hidden:
 :caption: Core Modules
 
+core/signal.md
 core/io.md
 
 ```
