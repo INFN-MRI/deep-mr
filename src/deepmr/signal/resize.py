@@ -23,6 +23,43 @@ def resize(input, oshape):
     output : torch.Tensor
         Zero-padded or cropped result of shape (..., oshape).
         
+    Examples
+    --------
+    >>> import torch
+    >>> import deepmr
+    
+    We can pad tensors to desired shape:
+        
+    >>> x = torch.tensor([0, 1, 0])
+    >>> y = deepmr.resize(x, [5])
+    >>> y
+    tensor([0, 0, 1, 0, 0])
+    
+    Batch dimensions are automatically expanded (pad will be applied starting from rightmost dimension):
+        
+    >>> x = torch.tensor([0, 1, 0])[None, ...]
+    >>> x.shape
+    torch.Size([1, 3])
+    >>> y = deepmr.resize(x, [5]) # len(oshape) == 1
+    >>> y.shape
+    torch.Size([1, 5])
+    
+    Similarly, if oshape is smaller than ishape, the tensor will be cropped:
+        
+    >>> x = torch.tensor([0, 0, 1, 0, 0])
+    >>> y = deepmr.resize(x, [3])
+    >>> y
+    tensor([0, 1, 0])
+    
+    Again, batch dimensions are automatically expanded:
+    
+    >>> x = torch.tensor([0, 0, 1, 0, 0])[None, ...]
+    >>> x.shape
+    torch.Size([1, 5])
+    >>> y = deepmr.resize(x, [3]) # len(oshape) == 1
+    >>> y.shape
+    torch.Size([1, 3])
+            
     References
     ----------
     [1] https://github.com/mikgroup/sigpy/blob/main/sigpy/util.py
