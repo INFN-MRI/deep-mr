@@ -94,7 +94,7 @@ def resize(input, oshape):
 
 def resample(input, oshape, filt=True, polysmooth=False):
     """
-    Resample ND signal.
+    Resample a n-dimensional signal.
 
     Parameters
     ----------

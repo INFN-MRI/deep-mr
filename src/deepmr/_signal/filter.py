@@ -6,7 +6,7 @@ import torch
 
 def fermi(ndim, size, width=None):
     """
-    Build a ND Fermi filter.
+    Build a n-dimensional Fermi filter.
     
     This routine can handle isotropic ND matrices. User
     can specify the size of window support and the FWHM.
