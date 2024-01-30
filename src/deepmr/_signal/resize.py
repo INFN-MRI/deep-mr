@@ -113,7 +113,7 @@ def resample(input, oshape, filt=True, polysmooth=False):
     Returns
     -------
     output : torch.Tensor
-        Resampled tensor of shape (..., oshape)..
+        Resampled tensor of shape (..., oshape).
 
     """
     if isinstance(oshape, int):
