@@ -5,6 +5,8 @@ __all__ = ["resize", "resample"]
 import numpy as np
 import torch
 
+from .filter import fermi
+
 def resize(input, oshape):
     """
     Resize with zero-padding or cropping.
@@ -21,7 +23,7 @@ def resize(input, oshape):
     Returns
     -------
     output : torch.Tensor
-        Zero-padded or cropped result of shape (..., oshape).
+        Zero-padded or cropped tensor of shape (..., oshape).
         
     Examples
     --------
@@ -65,6 +67,9 @@ def resize(input, oshape):
     [1] https://github.com/mikgroup/sigpy/blob/main/sigpy/util.py
 
     """
+    if isinstance(oshape, int):
+        oshape = [oshape]
+        
     ishape1, oshape1 = _expand_shapes(input.shape, oshape)
 
     if ishape1 == oshape1:
@@ -89,26 +94,69 @@ def resize(input, oshape):
 
 def resample(input, oshape, filt=True, polysmooth=False):
     """
-    
+    Resample ND signal.
 
     Parameters
     ----------
     input : torch.Tensor
-        DESCRIPTION.
+        Input tensor of shape (..., ishape).
     oshape : Iterable
-        DESCRIPTION.
+        Output shape.
     filt : bool, optional
-        DESCRIPTION. The default is True.
+        If True and signal is upsampled (i.e., any(oshape > ishape)),
+        apply Fermi filter to limit ringing. 
+        The default is True.
     polysmooth : bool, optional
-        DESCRIPTION. The default is False.
+        If true, perform polynomial smoothing. 
+        The default is False. !!! NOT IMPLEMENTED YET !!!
 
     Returns
     -------
     output : torch.Tensor
-        DESCRIPTION.
+        Resampled tensor of shape (..., oshape)..
 
     """
-    output = input
+    if isinstance(oshape, int):
+        oshape = [oshape]
+        
+    # first, get number of dimensions
+    ndim = len(oshape)
+    axes = list(range(-ndim, 0))
+    isreal = torch.isreal(input).all()
+    
+    # take fourier transform along last ndim axes
+    freq = _fftc(input, axes)
+    
+    # get initial and final shapes
+    ishape1, oshape1 = _expand_shapes(input.shape, oshape)
+    
+    # build filter
+    if filt and np.any(np.asarray(oshape1) > np.asarray(ishape1)):
+        size = np.max(oshape1)
+        width = np.min(oshape1)
+        filt = fermi(ndim, size, width)
+        filt = resize(filt, oshape1) # crop to match dimension
+    else:
+        filt = None
+    
+    # resize in frequency space
+    freq = resize(freq, oshape1)
+    
+    # if required, apply filtering
+    if filt is not None:
+        freq *= filt
+        
+    # transform back
+    output = _ifftc(freq, axes)
+    
+    # smooth
+    if polysmooth:
+        print("Polynomial smoothing not implemented yet; skipping")
+        
+    # take magnitude if original signal was real
+    if isreal:
+        output = abs(output)
+    
     return output
 
 # %% subroutines
@@ -118,4 +166,11 @@ def _expand_shapes(*shapes):
     shapes_exp = [[1] * (max_ndim - len(shape)) + shape for shape in shapes]
 
     return tuple(shapes_exp)
+
+def _fftc(x, ax):
+    return torch.fft.fftshift(torch.fft.fftn(torch.fft.ifftshift(x, dim=ax), dim=ax, norm='ortho'), dim=ax) 
+
+def _ifftc(x, ax):
+    return torch.fft.fftshift(torch.fft.ifftn(torch.fft.ifftshift(x, dim=ax), dim=ax, norm='ortho'), dim=ax) 
+
 

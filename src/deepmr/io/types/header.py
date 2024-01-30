@@ -14,7 +14,7 @@ import numpy as np
 import pydicom
 import torch
 
-from ...external.nii2dcm.dcm import DicomMRI
+from ..._external.nii2dcm.dcm import DicomMRI
 
 from . import dicom
 from . import gehc

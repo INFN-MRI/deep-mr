@@ -6,7 +6,7 @@ import pickle
 
 import numpy as np
 
-from ...external.nii2dcm.dcm import DicomMRI
+from ..._external.nii2dcm.dcm import DicomMRI
 
 
 def _find_in_user_params(userField, *keys):

@@ -1,7 +1,7 @@
 # Virtual Objects
 
 ```{eval-rst}
-.. automodule:: deepmr.vobj
+.. automodule:: deepmr._vobj
 ```
 
 ## Phantoms

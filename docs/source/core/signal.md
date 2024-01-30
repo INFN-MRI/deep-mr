@@ -1,7 +1,7 @@
 # Signal
 
 ```{eval-rst}
-.. automodule:: deepmr.signal
+.. automodule:: deepmr._signal
 ```
 
 ## Resize and resampling
@@ -12,4 +12,15 @@
 	:nosignatures:
 	
 	deepmr.resize
+	deepmr.resample
+```
+
+## Filtering
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.fermi
 ```
