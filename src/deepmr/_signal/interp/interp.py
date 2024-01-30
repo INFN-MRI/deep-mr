@@ -49,6 +49,7 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     dshape = sparse_coeff.dshape
     ishape = sparse_coeff.ishape
     ndim = sparse_coeff.ndim
+    scale = sparse_coeff.scale
     device = sparse_coeff.device
     
     # cast to device
@@ -88,7 +89,7 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     data_out = data_out.swapaxes(0, 1)
     data_out = data_out.reshape([*batch_shape, nframes, *ishape[1:]]).squeeze()
 
-    return data_out
+    return data_out / scale
 
 #%% subroutines
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover

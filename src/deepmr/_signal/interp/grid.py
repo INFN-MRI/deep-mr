@@ -49,6 +49,7 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
     dshape = sparse_coeff.dshape
     ishape = sparse_coeff.ishape
     ndim = sparse_coeff.ndim
+    scale = sparse_coeff.scale
     device = sparse_coeff.device
     
     # cast to device
@@ -94,7 +95,7 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
     data_out = data_out.swapaxes(0, 1)
     data_out = data_out.reshape([*batch_shape, ncoeff, *dshape]).squeeze()
 
-    return data_out
+    return data_out / scale
 
 def _do_gridding2(data_out, data_in, value, index, basis):
     """2D Gridding routine wrapper."""
