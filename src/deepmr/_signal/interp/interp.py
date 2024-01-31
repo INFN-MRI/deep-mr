@@ -17,23 +17,23 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     Parameters
     ----------
     data_in : torch.Tensor
-        Input Cartesian array of shape (..., ncontrasts, ny, nx) (2D)
-        or (..., ncontrasts, nz, ny, nx) (3D).
+        Input Cartesian array of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)v (3D).
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     adjoint_basis : torch.Tensor, optional
         Adjoint low rank subspace projection operator 
-        of shape (ncontrasts, ncoeffs); can be "None". The default is "None".
+        of shape ``(ncontrasts, ncoeffs)``; can be ``"None"``. The default is ``"None"``.
     threadsperblock : int
         CUDA blocks size (for GPU only). The default is 128.
     device : str, optional
-        Computational device ("cpu" or "cuda:n", with n=0, 1,...nGPUs).
-        The default is "None" (same as interpolator).
+        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
+        The default is ``"None"`` (same as interpolator).
 
     Returns
     -------
     data_out : torch.Tensor
-        Output Non-Cartesian array of shape (..., ncontrasts, nviews, nsamples).
+        Output Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
                 
     """
     # convert to tensor if nececessary
@@ -86,8 +86,11 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     gc.collect()
 
     # reformat for output
-    data_out = data_out.swapaxes(0, 1)
-    data_out = data_out.reshape([*batch_shape, nframes, *ishape[1:]]).squeeze()
+    if nframes == 1:
+        data_out = data_out[0].reshape([*batch_shape, *ishape[1:]])
+    else:
+        data_out = data_out.swapaxes(0, 1)
+        data_out = data_out.reshape([*batch_shape, nframes, *ishape[1:]])
 
     return data_out / scale
 

@@ -17,44 +17,44 @@ def plan_interpolator(coord, shape, width, beta, device="cpu"):
     Parameters
     ----------
     coord : torch.Tensor
-        K-space coordinates of shape (ncontrasts, nviews, nsamples, ndims).
-        Coordinates must be normalized between (-0.5, 0.5).
+        K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
+        Coordinates must be normalized between ``(-0.5, 0.5)``.
     shape : int | Iterable[int]
-        Oversampled grid size of shape (ndim,).
+        Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
     width : int | Iterable[int]
-        Interpolation kernel full-width of shape (ndim,).
+        Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
     beta : float | Iterable[float]
-        Kaiser-Bessel beta parameter of shape (ndim,).
+        Kaiser-Bessel beta parameter of shape ``(ndim,)``.
         If scalar, it is assumed equal for each axis.
     device : str, optional
-        Computational device ("cpu" or "cuda:n", with n=0, 1,...nGPUs).
-        The default is "cpu".
+        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
+        The default is ``"cpu"``.
 
     Returns
     -------
     interpolator : dict
         Structure containing sparse interpolator matrix:
             
-            * index (torch.Tensor[int]): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
-            * value (torch.Tensor[float32]): values of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
-            * dshape (Iterable[int]): oversample grid shape of shape (ndim,). Order of axes is (z, y, x).
-            * ishape (Iterable[int]): interpolator shape (ncontrasts, nview, nsamples)
-            * ndim (int): number of spatial dimensions.
-            * device (str): computational device.
+            * index (``torch.Tensor[int]``): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
+            * value (``torch.Tensor[float32]``): values of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
+            * dshape (``Iterable[int]``): oversample grid shape of shape (ndim,). Order of axes is (z, y, x).
+            * ishape (``Iterable[int]``): interpolator shape (ncontrasts, nview, nsamples)
+            * ndim (``int``): number of spatial dimensions.
+            * device (``str``): computational device.
             
     Notes
     -----
-    Non-uniform coordinates axes ordering is assumed to be (x, y) for 2D signals
-    and (x, y, z) for 3D. Conversely, axes ordering for grid shape, kernel width
-    and Kaiser Bessel parameters are assumed to be (z, y, x).
+    Non-uniform coordinates axes ordering is assumed to be ``(x, y)`` for 2D signals
+    and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape, kernel width
+    and Kaiser Bessel parameters are assumed to be ``(z, y, x)``.
     
-    Coordinates tensor shape is (ncontrasts, nviews, nsamples, ndim). If there are less dimensions 
+    Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions 
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
         
-        * coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)
-        * coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)
+        * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+        * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
         
     """
     # convert to tensor if nececessary

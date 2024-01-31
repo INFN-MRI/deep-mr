@@ -17,23 +17,23 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
     Parameters
     ----------
     data_in : torch.Tensor
-        Input Non-Cartesian array of shape (..., ncontrasts, nviews, nsamples).
+        Input Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     adjoint_basis : torch.Tensor, optional
         Low rank subspace projection operator 
-        of shape (ncoeff, ncontrasts); can be "None". The default is "None".
+        of shape ``(ncoeff, ncontrasts)``; can be ``"None"``. The default is ``"None"``.
     threadsperblock : int
         CUDA blocks size (for GPU only). The default is 128.
     device : str, optional
-        Computational device ("cpu" or "cuda:n", with n=0, 1,...nGPUs).
-        The default is "None" (same as interpolator).
+        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
+        The default is ``"None" ``(same as interpolator).
 
     Returns
     -------
     data_out : torch.Tensor
-        Output Cartesian array of shape (..., ncontrasts, ny, nx) (2D)
-        or (..., ncontrasts, nz, ny, nx) (3D).
+        Output Cartesian array of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
 
     """
     # convert to tensor if nececessary
@@ -92,8 +92,11 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
     gc.collect()
 
     # reformat for output
-    data_out = data_out.swapaxes(0, 1)
-    data_out = data_out.reshape([*batch_shape, ncoeff, *dshape]).squeeze()
+    if nframes == 1:
+        data_out = data_out[0].reshape([*batch_shape, *ishape[1:]])
+    else:
+        data_out = data_out.swapaxes(0, 1)
+        data_out = data_out.reshape([*batch_shape, ncoeff, *ishape[1:]])
 
     return data_out / scale
 
