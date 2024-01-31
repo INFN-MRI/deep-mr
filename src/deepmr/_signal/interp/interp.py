@@ -1,4 +1,4 @@
-"""2D and 3D interpolation (uniform -> non-uniform) subroutines."""
+"""ND interpolation (uniform -> non-uniform) subroutines."""
 
 __all__ = ["apply_interpolation"]
 
@@ -12,7 +12,7 @@ from . import backend
 
 
 def apply_interpolation(
-    data_in, sparse_coeff, adjoint_basis=None, device=None, threadsperblock=128
+    data_in, sparse_coeff, basis_adjoint=None, device=None, threadsperblock=128
 ):
     """
     Interpolation from array to points specified by coordinates.
@@ -24,7 +24,7 @@ def apply_interpolation(
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
-    adjoint_basis : torch.Tensor, optional
+    basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
@@ -40,7 +40,23 @@ def apply_interpolation(
 
     """
     # convert to tensor if nececessary
-    data_in = torch.as_tensor(data_in, dtype=torch.float32)
+    data_in = torch.as_tensor(data_in)
+
+    # make sure datatype is correct
+    if data_in.dtype in (torch.float16, torch.float32, torch.float64):
+        data_in = data_in.to(torch.float32)
+    else:
+        data_in = data_in.to(torch.complex64)
+
+    # handle basis
+    if basis_adjoint is not None:
+        basis_adjoint = torch.as_tensor(basis_adjoint)
+
+        # make sure datatype is correct
+        if basis_adjoint.dtype in (torch.float16, torch.float32, torch.float64):
+            basis_adjoint = basis_adjoint.to(torch.float32)
+        else:
+            basis_adjoint = basis_adjoint.to(torch.complex64)
 
     # cast tp device is necessary
     if device is not None:
@@ -57,9 +73,11 @@ def apply_interpolation(
 
     # cast to device
     data_in = data_in.to(device)
+    if basis_adjoint is not None:
+        basis_adjoint = basis_adjoint.to(device)
 
     # get input sizes
-    nframes = index.shape[0]
+    nframes = index[0].shape[0]
     npts = np.prod(ishape)
 
     # reformat data for computation
@@ -83,10 +101,10 @@ def apply_interpolation(
 
     # do actual interpolation
     if device == "cpu":
-        do_interpolation[ndim - 2](data_out, data_in, value, index, adjoint_basis)
+        do_interpolation[ndim - 1](data_out, data_in, value, index, basis_adjoint)
     else:
-        do_interpolation_cuda[ndim - 2](
-            data_out, data_in, value, index, adjoint_basis, threadsperblock
+        do_interpolation_cuda[ndim - 1](
+            data_out, data_in, value, index, basis_adjoint, threadsperblock
         )
 
     # collect garbage
@@ -94,15 +112,45 @@ def apply_interpolation(
 
     # reformat for output
     if nframes == 1:
-        data_out = data_out[0].reshape([*batch_shape, *ishape[1:]])
+        data_out = data_out[0].reshape([*batch_shape, *ishape])
     else:
         data_out = data_out.swapaxes(0, 1)
-        data_out = data_out.reshape([*batch_shape, nframes, *ishape[1:]])
+        data_out = data_out.reshape([*batch_shape, nframes, *ishape])
 
     return data_out / scale
 
 
 # %% subroutines
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _interpolate1(noncart_data, cart_data, interp_value, interp_index):  # noqa
+    # get sizes
+    nframes, batch_size, _ = cart_data.shape
+    npts = noncart_data.shape[-1]
+
+    # unpack interpolator
+    xindex = interp_index
+    xvalue = interp_value
+
+    # get interpolator width
+    xwidth = xindex.shape[-1]
+
+    # parallelize over frames, batches and k-space points
+    for i in nb.prange(nframes * batch_size * npts):  # pylint: disable=not-an-iterable
+        # get current frame and k-space index
+        frame = i // (batch_size * npts)
+        tmp = i % (batch_size * npts)
+        batch = tmp // npts
+        point = tmp % npts
+
+        # gather data within kernel radius
+        for i_x in range(xwidth):
+            idx = xindex[frame, point, i_x]
+            val = xvalue[frame, point, i_x]
+
+            noncart_data[frame, batch, point] += (
+                val * cart_data[frame, batch, idx]
+            )
+                               
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate2(noncart_data, cart_data, interp_value, interp_index):  # noqa
     # get sizes
@@ -138,13 +186,11 @@ def _interpolate2(noncart_data, cart_data, interp_value, interp_index):  # noqa
                     val * cart_data[frame, batch, idy, idx]
                 )
 
-    return noncart_data
-
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate3(noncart_data, cart_data, interp_value, interp_index):  # noqa
     # get sizes
-    nframes, batch_size, _, _ = cart_data.shape
+    nframes, batch_size, _, _, _ = cart_data.shape
     npts = noncart_data.shape[-1]
 
     # unpack interpolator
@@ -181,12 +227,49 @@ def _interpolate3(noncart_data, cart_data, interp_value, interp_index):  # noqa
                         val * cart_data[frame, batch, idz, idy, idx]
                     )
 
-    return noncart_data
-
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _interpolate_lowrank1(
+    noncart_data, cart_data, interp_value, interp_index, basis_adjoint
+):  # noqa
+    # get sizes
+    ncoeff, batch_size, _ = cart_data.shape
+    nframes = noncart_data.shape[0]
+    npts = noncart_data.shape[-1]
+
+    # unpack interpolator
+    xindex = interp_index
+    xvalue = interp_value
+
+    # get interpolator width
+    xwidth = xindex.shape[-1]
+
+    # parallelize over frames, batches and k-space points
+    for i in nb.prange(nframes * batch_size * npts):  # pylint: disable=not-an-iterable
+        # get current frame and k-space index
+        frame = i // (batch_size * npts)
+        tmp = i % (batch_size * npts)
+        batch = tmp // npts
+        point = tmp % npts
+
+        # gather data within kernel radius
+        for i_x in range(xwidth):
+            idx = xindex[frame, point, i_x]
+            val = xvalue[frame, point, i_x]
+
+            # do adjoint low rank projection (low-rank subspace -> time domain)
+            # while gathering data
+            for coeff in range(ncoeff):
+                noncart_data[frame, batch, point] += (
+                    val
+                    * basis_adjoint[frame, coeff]
+                    * cart_data[coeff, batch, idx]
+                )
+                    
+                    
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate_lowrank2(
-    noncart_data, cart_data, interp_value, interp_index, adjoint_basis
+    noncart_data, cart_data, interp_value, interp_index, basis_adjoint
 ):  # noqa
     # get sizes
     ncoeff, batch_size, _, _ = cart_data.shape
@@ -223,16 +306,14 @@ def _interpolate_lowrank2(
                 for coeff in range(ncoeff):
                     noncart_data[frame, batch, point] += (
                         val
-                        * adjoint_basis[frame, coeff]
+                        * basis_adjoint[frame, coeff]
                         * cart_data[coeff, batch, idy, idx]
                     )
-
-    return noncart_data
 
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate_lowrank3(
-    noncart_data, cart_data, interp_value, interp_index, adjoint_basis
+    noncart_data, cart_data, interp_value, interp_index, basis_adjoint
 ):  # noqa
     # get sizes
     ncoeff, batch_size, _, _, _ = cart_data.shape
@@ -274,69 +355,99 @@ def _interpolate_lowrank3(
                     for coeff in range(ncoeff):
                         noncart_data[frame, batch, point] += (
                             val
-                            * adjoint_basis[frame, coeff]
+                            * basis_adjoint[frame, coeff]
                             * cart_data[coeff, batch, idz, idy, idx]
                         )
 
-    return noncart_data
 
-
-def _do_interpolation2(data_out, data_in, value, index, adjoint_basis):
+def _do_interpolation1(data_out, data_in, value, index, basis_adjoint):
     """2D Interpolation routine wrapper."""
     data_out = backend.pytorch2numba(data_out)
     data_in = backend.pytorch2numba(data_in)
-    value = [backend.pytorch2numba(val) for val in value]
-    index = [backend.pytorch2numba(ind) for ind in index]
 
-    if adjoint_basis is None:
-        _interpolate2(data_out, data_in, value, index)
+    if basis_adjoint is None:
+        _interpolate1(data_out, data_in, value, index)
     else:
-        adjoint_basis = backend.pytorch2numba(adjoint_basis)
-        _interpolate_lowrank2(data_out, data_in, value, index, adjoint_basis)
-        adjoint_basis = backend.numba2pytorch(adjoint_basis)
+        basis_adjoint = backend.pytorch2numba(basis_adjoint)
+        _interpolate_lowrank1(data_out, data_in, value, index, basis_adjoint)
+        basis_adjoint = backend.numba2pytorch(basis_adjoint)
 
     data_out = backend.numba2pytorch(data_out)
     data_in = backend.numba2pytorch(data_in)
-    value = [backend.numba2pytorch(val) for val in value]
-    index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
+    
+    
+def _do_interpolation2(data_out, data_in, value, index, basis_adjoint):
+    """2D Interpolation routine wrapper."""
+    data_out = backend.pytorch2numba(data_out)
+    data_in = backend.pytorch2numba(data_in)
+
+    if basis_adjoint is None:
+        _interpolate2(data_out, data_in, value, index)
+    else:
+        basis_adjoint = backend.pytorch2numba(basis_adjoint)
+        _interpolate_lowrank2(data_out, data_in, value, index, basis_adjoint)
+        basis_adjoint = backend.numba2pytorch(basis_adjoint)
+
+    data_out = backend.numba2pytorch(data_out)
+    data_in = backend.numba2pytorch(data_in)
 
 
-def _do_interpolation3(data_out, data_in, value, index, adjoint_basis):
+def _do_interpolation3(data_out, data_in, value, index, basis_adjoint):
     """3D Interpolation routine wrapper."""
     data_out = backend.pytorch2numba(data_out)
     data_in = backend.pytorch2numba(data_in)
-    value = [backend.pytorch2numba(val) for val in value]
-    index = [backend.pytorch2numba(ind) for ind in index]
 
-    if adjoint_basis is None:
+    if basis_adjoint is None:
         _interpolate3(data_out, data_in, value, index)
     else:
-        adjoint_basis = backend.pytorch2numba(adjoint_basis)
-        _interpolate_lowrank3(data_out, data_in, value, index, adjoint_basis)
-        adjoint_basis = backend.numba2pytorch(adjoint_basis)
+        basis_adjoint = backend.pytorch2numba(basis_adjoint)
+        _interpolate_lowrank3(data_out, data_in, value, index, basis_adjoint)
+        basis_adjoint = backend.numba2pytorch(basis_adjoint)
 
     data_out = backend.numba2pytorch(data_out)
     data_in = backend.numba2pytorch(data_in)
-    value = [backend.numba2pytorch(val) for val in value]
-    index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
 
 
 # main handle
-do_interpolation = [_do_interpolation2, _do_interpolation3]
+do_interpolation = [_do_interpolation1, _do_interpolation2, _do_interpolation3]
 
 # %% CUDA
 if torch.cuda.is_available():
-    __all__.extend(
-        [
-            "_interpolate_cuda2",
-            "_interpolate_cuda3",
-            "_interpolate_lowrank_cuda2",
-            "_interpolate_lowrank_cuda3",
-        ]
-    )
 
     from numba import cuda
 
+    @cuda.jit(fastmath=True)  # pragma: no cover
+    def _interpolate_cuda1(noncart_data, cart_data, interp_value, interp_index):
+        # get sizes
+        nframes, batch_size, _ = cart_data.shape
+        npts = noncart_data.shape[-1]
+
+        # unpack interpolator
+        xindex = interp_index
+        xvalue = interp_value
+
+        # get interpolator width
+        xwidth = xindex.shape[-1]
+
+        # parallelize over frames, batches and k-space points
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
+        if i < nframes * batch_size * npts:
+            # get current frame and k-space index
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
+            batch = tmp // npts
+            point = tmp % npts
+
+            # gather data within kernel radius
+            for i_x in range(xwidth):
+                idx = xindex[frame, point, i_x]
+                val = xvalue[frame, point, i_x]
+
+                noncart_data[frame, batch, point] += (
+                    val * cart_data[frame, batch, idx]
+                )
+                    
+                    
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_cuda2(noncart_data, cart_data, interp_value, interp_index):
         # get sizes
@@ -373,12 +484,10 @@ if torch.cuda.is_available():
                         val * cart_data[frame, batch, idy, idx]
                     )
 
-        return noncart_data
-
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_cuda3(noncart_data, cart_data, interp_value, interp_index):
         # get sizes
-        nframes, batch_size, _, _ = cart_data.shape
+        nframes, batch_size, _, _, _ = cart_data.shape
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
@@ -416,11 +525,48 @@ if torch.cuda.is_available():
                             val * cart_data[frame, batch, idz, idy, idx]
                         )
 
-        return noncart_data
+    @cuda.jit(fastmath=True)  # pragma: no cover
+    def _interpolate_lowrank_cuda1(
+        noncart_data, cart_data, interp_value, interp_index, basis_adjoint
+    ):
+        # get sizes
+        ncoeff, batch_size, _ = cart_data.shape
+        nframes = noncart_data.shape[0]
+        npts = noncart_data.shape[-1]
 
+        # unpack interpolator
+        xindex = interp_index
+        xvalue = interp_value
+
+        # get interpolator width
+        xwidth = xindex.shape[-1]
+
+        # parallelize over frames, batches and k-space points
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
+        if i < nframes * batch_size * npts:
+            # get current frame and k-space index
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
+            batch = tmp // npts
+            point = tmp % npts
+
+            # gather data within kernel radius
+            for i_x in range(xwidth):
+                idx = xindex[frame, point, i_x]
+                val = xvalue[frame, point, i_x]
+
+                # do adjoint low rank projection (low-rank subspace -> time domain)
+                # while gathering data
+                for coeff in range(ncoeff):
+                    noncart_data[frame, batch, point] += (
+                        val
+                        * basis_adjoint[frame, coeff]
+                        * cart_data[coeff, batch, idx]
+                    )
+                        
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_lowrank_cuda2(
-        noncart_data, cart_data, interp_value, interp_index, adjoint_basis
+        noncart_data, cart_data, interp_value, interp_index, basis_adjoint
     ):
         # get sizes
         ncoeff, batch_size, _, _ = cart_data.shape
@@ -458,15 +604,13 @@ if torch.cuda.is_available():
                     for coeff in range(ncoeff):
                         noncart_data[frame, batch, point] += (
                             val
-                            * adjoint_basis[frame, coeff]
+                            * basis_adjoint[frame, coeff]
                             * cart_data[coeff, batch, idy, idx]
                         )
 
-        return noncart_data
-
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_lowrank_cuda3(
-        noncart_data, cart_data, interp_value, interp_index, adjoint_basis
+        noncart_data, cart_data, interp_value, interp_index, basis_adjoint
     ):
         # get sizes
         ncoeff, batch_size, _, _, _ = cart_data.shape
@@ -509,67 +653,102 @@ if torch.cuda.is_available():
                         for coeff in range(ncoeff):
                             noncart_data[frame, batch, point] += (
                                 val
-                                * adjoint_basis[frame, coeff]
+                                * basis_adjoint[frame, coeff]
                                 * cart_data[coeff, batch, idz, idy, idx]
                             )
 
-        return noncart_data
-
-    def _do_interpolation_cuda2(
-        data_out, data_in, value, index, adjoint_basis, threadsperblock
+    def _do_interpolation_cuda1(
+        data_out, data_in, value, index, basis_adjoint, threadsperblock
     ):
+        # calculate size
+        _, batch_size, _, _ = data_in.shape
+        nframes = data_out.shape[0]
+        npts = data_out.shape[-1]
+
         # define number of blocks
-        blockspergrid = (data_out.size + (threadsperblock - 1)) // threadsperblock
+        blockspergrid = (
+            (nframes * batch_size * npts) + (threadsperblock - 1)
+        ) // threadsperblock
 
         data_out = backend.pytorch2numba(data_out)
         data_in = backend.pytorch2numba(data_in)
-        value = [backend.pytorch2numba(val) for val in value]
-        index = [backend.pytorch2numba(ind) for ind in index]
 
         # run kernel
-        if adjoint_basis is None:
+        if basis_adjoint is None:
+            _interpolate_cuda1[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
+        else:
+            basis_adjoint = backend.pytorch2numba(basis_adjoint)
+            _interpolate_lowrank_cuda1[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis_adjoint
+            )
+            basis_adjoint = backend.numba2pytorch(basis_adjoint)
+
+        data_out = backend.numba2pytorch(data_out)
+        data_in = backend.numba2pytorch(data_in)
+        
+    def _do_interpolation_cuda2(
+        data_out, data_in, value, index, basis_adjoint, threadsperblock
+    ):
+        # calculate size
+        _, batch_size, _, _ = data_in.shape
+        nframes = data_out.shape[0]
+        npts = data_out.shape[-1]
+
+        # define number of blocks
+        blockspergrid = (
+            (nframes * batch_size * npts) + (threadsperblock - 1)
+        ) // threadsperblock
+
+        data_out = backend.pytorch2numba(data_out)
+        data_in = backend.pytorch2numba(data_in)
+
+        # run kernel
+        if basis_adjoint is None:
             _interpolate_cuda2[blockspergrid, threadsperblock](
                 data_out, data_in, value, index
             )
         else:
-            adjoint_basis = backend.pytorch2numba(adjoint_basis)
+            basis_adjoint = backend.pytorch2numba(basis_adjoint)
             _interpolate_lowrank_cuda2[blockspergrid, threadsperblock](
-                data_out, data_in, value, index, adjoint_basis
+                data_out, data_in, value, index, basis_adjoint
             )
-            adjoint_basis = backend.numba2pytorch(adjoint_basis)
+            basis_adjoint = backend.numba2pytorch(basis_adjoint)
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
-        value = [backend.numba2pytorch(val) for val in value]
-        index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
 
     def _do_interpolation_cuda3(
-        data_out, data_in, value, index, adjoint_basis, threadsperblock
+        data_out, data_in, value, index, basis_adjoint, threadsperblock
     ):
+        # calculate size
+        _, batch_size, _, _, _ = data_in.shape
+        nframes = data_out.shape[0]
+        npts = data_out.shape[-1]
+
         # define number of blocks
-        blockspergrid = (data_out.size + (threadsperblock - 1)) // threadsperblock
+        blockspergrid = (
+            (nframes * batch_size * npts) + (threadsperblock - 1)
+        ) // threadsperblock
 
         data_out = backend.pytorch2numba(data_out)
         data_in = backend.pytorch2numba(data_in)
-        value = [backend.pytorch2numba(val) for val in value]
-        index = [backend.pytorch2numba(ind) for ind in index]
 
         # run kernel
-        if adjoint_basis is None:
+        if basis_adjoint is None:
             _interpolate_cuda3[blockspergrid, threadsperblock](
                 data_out, data_in, value, index
             )
         else:
-            adjoint_basis = backend.pytorch2numba(adjoint_basis)
+            basis_adjoint = backend.pytorch2numba(basis_adjoint)
             _interpolate_lowrank_cuda3[blockspergrid, threadsperblock](
-                data_out, data_in, value, index, adjoint_basis
+                data_out, data_in, value, index, basis_adjoint
             )
-            adjoint_basis = backend.numba2pytorch(adjoint_basis)
+            basis_adjoint = backend.numba2pytorch(basis_adjoint)
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
-        value = [backend.numba2pytorch(val) for val in value]
-        index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
 
     # main handle
-    do_interpolation_cuda = [_do_interpolation_cuda2, _do_interpolation_cuda3]
+    do_interpolation_cuda = [_do_interpolation_cuda1, _do_interpolation_cuda2, _do_interpolation_cuda3]

@@ -11,7 +11,7 @@ def interpolate(
     data_in,
     coord,
     shape=None,
-    adjoint_basis=None,
+    basis_adjoint=None,
     device="cpu",
     threadsperblock=128,
     width=2,
@@ -32,7 +32,7 @@ def interpolate(
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
         The default is ``None`` (grid size equals to input data size, i.e. ``osf = 1``).
-    adjoint_basis : torch.Tensor, optional
+    basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
@@ -79,7 +79,7 @@ def interpolate(
 
     # perform actual interpolation
     return interp.apply_interpolation(
-        data_in, sparse_coeff, adjoint_basis, threadsperblock=threadsperblock
+        data_in, sparse_coeff, basis_adjoint, threadsperblock=threadsperblock
     )
 
 

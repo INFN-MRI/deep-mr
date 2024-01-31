@@ -227,31 +227,25 @@ def _kaiser_bessel_kernel(x, beta):
         )
 
 
-def _prepare_interpolator():
-    """Subroutines for interpolator planning."""
-    kernel = _kaiser_bessel_kernel
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _prepare_interpolator(
+    interp_value, interp_index, coord, kernel_width, kernel_param, grid_shape
+):
+    # get sizes
+    npts = coord.shape[0]
+    kernel_width = interp_index.shape[-1]
 
-    @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-    def _prepare_interpolator(
-        interp_value, interp_index, coord, kernel_width, kernel_param, grid_shape
-    ):
-        # get sizes
-        npts = coord.shape[0]
-        kernel_width = interp_index.shape[-1]
+    for i in nb.prange(npts):  # pylint: disable=not-an-iterable
+        x_0 = np.ceil(coord[i] - kernel_width / 2)
 
-        for i in nb.prange(npts):  # pylint: disable=not-an-iterable
-            x_0 = np.ceil(coord[i] - kernel_width / 2)
+        for x_i in range(kernel_width):
+            val = _kaiser_bessel_kernel(
+                ((x_0 + x_i) - coord[i]) / (kernel_width / 2), kernel_param
+            )
 
-            for x_i in range(kernel_width):
-                val = kernel(
-                    ((x_0 + x_i) - coord[i]) / (kernel_width / 2), kernel_param
-                )
-
-                # save interpolator
-                interp_value[i, x_i] = val
-                interp_index[i, x_i] = (x_0 + x_i) % grid_shape
-
-    return _prepare_interpolator
+            # save interpolator
+            interp_value[i, x_i] = val
+            interp_index[i, x_i] = (x_0 + x_i) % grid_shape
 
 
 def _do_prepare_interpolator(
