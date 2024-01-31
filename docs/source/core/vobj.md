@@ -1,4 +1,4 @@
-# Virtual Objects
+# Virtual Objects  (`deepmr`)
 
 ```{eval-rst}
 .. automodule:: deepmr._vobj
