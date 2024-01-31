@@ -17,6 +17,8 @@ from . import nifti as _nifti
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read image data from file.
+    
+    Supported formats are ``DICOM`` and ``NIfTI``.
 
     Parameters
     ----------
@@ -27,7 +29,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         If not provided, assume Cartesian acquisition and infer from data.
         The default is ``None``.
     device : str, optional
-        Computational device for internal attributes. The default is ``"cpu"``.
+        Computational device for internal attributes. The default is ``cpu``.
     verbose : int, optional
         Verbosity level ``(0=Silent, 1=Less, 2=More)``. The default is ``0``.
 
@@ -101,7 +103,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         * **2D:** ``(ncontrasts, nslices, ny, nx)``.
         * **3D:** ``(ncontrasts, nz, ny, nx)``.
 
-    The returned ``head`` (:func:`~deepmr.io.types.Header`) is a structure with the following fields:
+    The returned ``head`` (:func:`deepmr.io.Header`) is a structure with the following fields:
 
         * shape (torch.Tensor):
             This is the expected image size of shape ``(nz, ny, nx)``.
@@ -134,9 +136,9 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
                 * ordering (torch.Tensor):
                     Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped ``(3, nslices * ncontrasts * nview)``, whose rows are
-                    ``'contrast_index'``, ``'slice_index'`` and ``'view_index'``, respectively.
+                    ``contrast_index``, ``slice_index`` and ``view_index``, respectively.
                 * mode (str):
-                    Acquisition mode (``'2Dcart'``, ``'3Dcart'``, ``'2Dnoncart'``, ``'3Dnoncart'``).
+                    Acquisition mode (``2Dcart``, ``3Dcart``, ``2Dnoncart``, ``3Dnoncart``).
                 * separable (bool):
                     Whether the acquisition can be decoupled by fft along ``slice`` / ``readout`` directions
                     (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
@@ -306,7 +308,7 @@ def write_image(
         Complex image data of shape ``(ncontrasts, nslices, ny, n)``.
         See ``'Notes'`` for additional information.
     filepath : str, optional
-        Path to file. The default is ``"./"``.
+        Path to file. The default is ``./``.
     head : Header, optional
         Structure containing trajectory of shape ``(ncontrasts, nviews, npts, ndim)``
         and meta information (shape, resolution, spacing, etc). If None,
@@ -315,7 +317,7 @@ def write_image(
     dataformat : str, optional
         Available formats (``'dicom'`` or ``'nifti'``). The default is ``'nifti'``.
     series_description : str, optional
-        Custom series description. The default is ``""``.
+        Custom series description. The default is ``""`` (empty string).
     series_number_offset : int, optional
         Series number offset with respect to the acquired one.
         Final series number is ``series_number_scale * acquired_series_number + series_number_offset``.
@@ -400,7 +402,7 @@ def write_image(
 
     Notes
     -----
-    When the image to be written is the result of a reconstruction performed on k-space data loaded using deepmr.io.read_rawdata,
+    When the image to be written is the result of a reconstruction performed on k-space data loaded using :func:`deepmr.io.read_rawdata`,
     axis order depends on acquisition mode:
 
         * **2Dcart:** ``(nslices, ncontrasts, ny, nx)``

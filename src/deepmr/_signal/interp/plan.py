@@ -29,8 +29,8 @@ def plan_interpolator(coord, shape, width, beta, device="cpu"):
         Kaiser-Bessel beta parameter of shape ``(ndim,)``.
         If scalar, it is assumed equal for each axis.
     device : str, optional
-        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
-        The default is ``"cpu"``.
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``cpu``.
 
     Returns
     -------

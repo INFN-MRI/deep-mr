@@ -22,12 +22,12 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
         Pre-calculated interpolation coefficients in sparse COO format.
     adjoint_basis : torch.Tensor, optional
         Low rank subspace projection operator 
-        of shape ``(ncoeff, ncontrasts)``; can be ``"None"``. The default is ``"None"``.
+        of shape ``(ncoeff, ncontrasts)``; can be ``None``. The default is ``None``.
     threadsperblock : int
-        CUDA blocks size (for GPU only). The default is 128.
+        CUDA blocks size (for GPU only). The default is ``128``.
     device : str, optional
-        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
-        The default is ``"None" ``(same as interpolator).
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
 
     Returns
     -------

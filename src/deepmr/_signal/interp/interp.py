@@ -18,17 +18,17 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     ----------
     data_in : torch.Tensor
         Input Cartesian array of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)v (3D).
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     adjoint_basis : torch.Tensor, optional
         Adjoint low rank subspace projection operator 
-        of shape ``(ncontrasts, ncoeffs)``; can be ``"None"``. The default is ``"None"``.
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     threadsperblock : int
-        CUDA blocks size (for GPU only). The default is 128.
+        CUDA blocks size (for GPU only). The default is ``128``.
     device : str, optional
-        Computational device (``"cpu"`` or ``"cuda:n"``, with ``n=0, 1,...nGPUs``).
-        The default is ``"None"`` (same as interpolator).
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None`` (same as interpolator).
 
     Returns
     -------
