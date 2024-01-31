@@ -8,7 +8,7 @@ from . import plan
 
 def interpolate(data_in, coord, shape=None, adjoint_basis=None, device="cpu", threadsperblock=128, width=2, beta=1.0):
     """
-    Precompute interpolator object.
+    Interpolation from array to points specified by coordinates.
 
     Parameters
     ----------
@@ -72,7 +72,7 @@ def interpolate(data_in, coord, shape=None, adjoint_basis=None, device="cpu", th
 
 def gridding(data_in, coord, shape, basis=None, device="cpu", threadsperblock=128, width=2, beta=1.0):
     """
-    Precompute interpolator object.
+    Gridding of points specified by coordinates to array.
 
     Parameters
     ----------
