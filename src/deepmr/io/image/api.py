@@ -315,7 +315,7 @@ def write_image(
         assume 1mm isotropic resolution, contiguous slices and axial orientation.
         The default is None.
     dataformat : str, optional
-        Available formats (``'dicom'`` or ``'nifti'``). The default is ``'nifti'``.
+        Available formats (``dicom`` or ``nifti``). The default is ``nifti``.
     series_description : str, optional
         Custom series description. The default is ``""`` (empty string).
     series_number_offset : int, optional
