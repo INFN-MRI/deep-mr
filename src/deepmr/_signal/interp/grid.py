@@ -10,7 +10,7 @@ import torch
 
 from . import backend
 
-def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, device=None):
+def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblock=128):
     """
     Gridding of points specified by coordinates to array.
 
@@ -20,14 +20,14 @@ def apply_gridding(data_in, sparse_coeff,  basis=None, threadsperblock=128, devi
         Input Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
-    adjoint_basis : torch.Tensor, optional
+    basis : torch.Tensor, optional
         Low rank subspace projection operator 
-        of shape ``(ncoeff, ncontrasts)``; can be ``None``. The default is ``None``.
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
 
     Returns
     -------
@@ -325,16 +325,18 @@ if torch.cuda.is_available():
     
     __all__.extend(["_gridding2_cuda", "_gridding3_cuda", "_gridding_lowrank2_cuda", "_gridding_lowrank3_cuda"])
     
-    @nb.cuda.jit(device=True, inline=True)  # pragma: no cover
+    from numba import cuda
+    
+    @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _update_real(output, index, value):
-        nb.cuda.atomic.add(output, index, value)
+        cuda.atomic.add(output, index, value)
 
-    @nb.cuda.jit(device=True, inline=True)  # pragma: no cover
+    @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _update_complex(output, index, value):
-        nb.cuda.atomic.add(output.real, index, value.real)
-        nb.cuda.atomic.add(output.imag, index, value.imag)
+        cuda.atomic.add(output.real, index, value.real)
+        cuda.atomic.add(output.imag, index, value.imag)
         
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda2(cart_data, noncart_data, interp_value, interp_index, iscomplex):
         
         # get function
@@ -356,7 +358,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -378,7 +380,7 @@ if torch.cuda.is_available():
 
         return cart_data
 
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda3(cart_data, noncart_data, interp_value, interp_index, iscomplex):
         
         # get function
@@ -401,7 +403,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -427,7 +429,7 @@ if torch.cuda.is_available():
 
         return cart_data
     
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_lowrank_cuda2(cart_data, noncart_data, interp_value, interp_index, basis, iscomplex):
         
         # get function
@@ -450,7 +452,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -475,7 +477,7 @@ if torch.cuda.is_available():
 
         return cart_data
 
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_lowrank_cuda3(cart_data, noncart_data, interp_value, interp_index, basis, iscomplex):
         
         # get function
@@ -499,7 +501,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index

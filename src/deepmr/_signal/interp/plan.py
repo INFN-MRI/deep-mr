@@ -10,7 +10,7 @@ import torch
 
 from . import backend
 
-def plan_interpolator(coord, shape, width, beta, device="cpu"):
+def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     """
     Precompute interpolator object.
 
@@ -22,12 +22,14 @@ def plan_interpolator(coord, shape, width, beta, device="cpu"):
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
-    width : int | Iterable[int]
+    width : int | Iterable[int], optional
         Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
-    beta : float | Iterable[float]
+        The default is ``2``.
+    beta : float | Iterable[float], optional
         Kaiser-Bessel beta parameter of shape ``(ndim,)``.
         If scalar, it is assumed equal for each axis.
+        The default is ``1.0``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``cpu``.

@@ -24,3 +24,15 @@
 	
 	deepmr.fermi
 ```
+
+## Interpolation and gridding
+
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.interpolate
+	deepmr.gridding
+```

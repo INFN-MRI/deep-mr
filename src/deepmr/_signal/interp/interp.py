@@ -10,7 +10,7 @@ import torch
 
 from . import backend
 
-def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblock=128, device=None):
+def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, device=None, threadsperblock=128):
     """
     Interpolation from array to points specified by coordinates.
 
@@ -24,11 +24,11 @@ def apply_interpolation(data_in, sparse_coeff, adjoint_basis=None, threadsperblo
     adjoint_basis : torch.Tensor, optional
         Adjoint low rank subspace projection operator 
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
 
     Returns
     -------
@@ -307,7 +307,9 @@ if torch.cuda.is_available():
     
     __all__.extend(["_interpolate_cuda2", "_interpolate_cuda3", "_interpolate_lowrank_cuda2", "_interpolate_lowrank_cuda3"])
     
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    from numba import cuda
+
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_cuda2(noncart_data, cart_data, interp_value, interp_index):
 
         # get sizes
@@ -323,7 +325,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -345,7 +347,7 @@ if torch.cuda.is_available():
 
         return noncart_data
 
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_cuda3(noncart_data, cart_data, interp_value, interp_index):
 
         # get sizes
@@ -362,7 +364,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -388,7 +390,7 @@ if torch.cuda.is_available():
 
         return noncart_data
     
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_lowrank_cuda2(noncart_data, cart_data, interp_value, interp_index, adjoint_basis):
 
         # get sizes
@@ -405,7 +407,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
@@ -430,7 +432,7 @@ if torch.cuda.is_available():
 
         return noncart_data
 
-    @nb.cuda.jit(fastmath=True)  # pragma: no cover
+    @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_lowrank_cuda3(noncart_data, cart_data, interp_value, interp_index, adjoint_basis):
 
         # get sizes
@@ -448,7 +450,7 @@ if torch.cuda.is_available():
         xwidth = xindex.shape[-1]
 
         # parallelize over frames, batches and k-space points
-        i = nb.cuda.grid(1)  # pylint: disable=too-many-function-args
+        i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes*batch_size*npts:
 
             # get current frame and k-space index
