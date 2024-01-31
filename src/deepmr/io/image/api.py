@@ -21,11 +21,11 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     Parameters
     ----------
     filepath : str
-        Path to image file. Supports wildcard ``(e.g., /path-to-dicom-exam/*, /path-to-BIDS/*.nii)``.
+        Path to image file. Supports wildcard (e.g., ``/path-to-dicom-exam/*``, ``/path-to-BIDS/*.nii``).
     acqheader : Header, optional
         Acquisition header loaded from trajectory.
         If not provided, assume Cartesian acquisition and infer from data.
-        The default is None.
+        The default is ``None``.
     device : str, optional
         Computational device for internal attributes. The default is ``"cpu"``.
     verbose : int, optional
@@ -52,7 +52,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     >>> image_dcm, head_dcm = deepmr.io.read_image(dcmpath)
     >>> image_nii, head_nii = deepmr.io.read_image(niftipath)
 
-    The result is a image/header pair. 'Image' contains image-space data.
+    The result is a image/header pair. ``Image`` contains image-space data.
     Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
 
     >>> image_dcm.shape
@@ -60,7 +60,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     >>> image_nii.shape
     torch.Size([3, 2, 192, 192])
 
-    'Head' contains the acquisition information. We can inspect the image shape and resolution:
+    ``Head`` contains the acquisition information. We can inspect the image shape and resolution:
 
     >>> head_dcm.shape
     tensor([  2, 192, 192])
@@ -79,7 +79,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     >>> head_nii.ref_dicom.PixelSpacing
     [0.67,0.67]
 
-    'Head' also contains contrast information (for forward simulation and parameter inference):
+    ``Head`` also contains contrast information (for forward simulation and parameter inference):
 
     >>> head_dcm.FA
     180.0
@@ -96,12 +96,12 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
 
     Notes
     -----
-    The returned 'image' tensor contains image space data. Dimensions are defined as following:
+    The returned ``image`` tensor contains image space data. Dimensions are defined as following:
 
         * **2D:** ``(ncontrasts, nslices, ny, nx)``.
         * **3D:** ``(ncontrasts, nz, ny, nx)``.
 
-    The returned 'head' (:func:`~deepmr.io.types.Header`) is a structure with the following fields:
+    The returned ``head`` (:func:`~deepmr.io.types.Header`) is a structure with the following fields:
 
         * shape (torch.Tensor):
             This is the expected image size of shape ``(nz, ny, nx)``.
@@ -132,7 +132,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             User parameters. Some examples are:
 
                 * ordering (torch.Tensor):
-                    Indices for reordering ``(acquisition to reconstruction)``
+                    Indices for reordering (acquisition to reconstruction)
                     of acquired k-space data, shaped ``(3, nslices * ncontrasts * nview)``, whose rows are
                     ``'contrast_index'``, ``'slice_index'`` and ``'view_index'``, respectively.
                 * mode (str):
@@ -327,11 +327,11 @@ def write_image(
     rescale : bool, optional
         If true, rescale image intensity between ``0`` and ``int16_max``.
         Beware! Avoid this if you are working with quantitative maps.
-        The default is False.
+        The default is ``False``.
     anonymize : bool, optional
-        If True, remove sensible info from header. The default is ``"False"``.
+        If True, remove sensible info from header. The default is ``False``.
     verbose : bool, optional
-        Verbosity flag. The default is ``"False"``.
+        Verbosity flag. The default is ``False``.
 
     Example
     -------
@@ -355,7 +355,7 @@ def write_image(
     >>>     image_dcm, head_dcm = deepmr.io.read_image(dcmpath)
     >>>     image_nii, head_nii = deepmr.io.read_image(niftipath)
 
-    The result is a image/header pair. 'Image' contains image-space data.
+    The result is a image/header pair. ``Image`` contains image-space data.
     Here, it represents a 2D cartesian acquisition with 3 echoes, 2 slices and 192x192 matrix size.
 
     >>> image_dcm.shape
@@ -363,7 +363,7 @@ def write_image(
     >>> image_nii.shape
     torch.Size([3, 2, 192, 192])
 
-    'Head' contains the acquisition information. We can inspect the image shape and resolution:
+    ``Head`` contains the acquisition information. We can inspect the image shape and resolution:
 
     >>> head_dcm.shape
     tensor([  2, 192, 192])
@@ -382,7 +382,7 @@ def write_image(
     >>> head_nii.ref_dicom.PixelSpacing
     [0.67,0.67]
 
-    'Head' also contains contrast information (for forward simulation and parameter inference):
+    ``Head`` also contains contrast information (for forward simulation and parameter inference):
 
     >>> head_dcm.FA
     180.0
@@ -409,14 +409,14 @@ def write_image(
         * **3Dnoncart:** ``(nx, ncontrasts, nz, ny)``
 
     In this case, image should be transposed to ``(ncontrasts, nslices, ny, nx)`` or ``(ncontrasts, nz, ny, nx)`` for 2D/3D acquisitions, respectively.
-    If provided, 'head' will contain the appropriate permutation order (:func:`~head.transpose`):
+    If provided, ``head`` will contain the appropriate permutation order (:func:`head.transpose`):
 
         * **2Dcart:** ``head.transpose = [1, 0, 2, 3]``
         * **2Dnoncart:** ``head.transpose = [1, 0, 2, 3]``
         * **3Dcart:** ``head.transpose = [0, 1, 2, 3]``
         * **3Dnoncart:** ``head.transpose = [1, 2, 3, 0]``
 
-    If 'head' is not provided, the user shoudl manually transpose the image tensor to match the required shape.
+    If ``head`` is not provided, the user shoudl manually transpose the image tensor to match the required shape.
 
     """
     if dataformat == "dicom":
