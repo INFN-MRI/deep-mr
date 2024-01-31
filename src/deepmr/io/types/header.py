@@ -21,6 +21,7 @@ from . import gehc
 from . import mrd
 from . import nifti
 
+
 @dataclass
 class Header:
     """

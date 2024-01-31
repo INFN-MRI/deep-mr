@@ -36,6 +36,7 @@ eps0 = 1.0 / mu0 / c0**2
 gamma_bar = 42.575 * 1e6  # MHz / T -> Hz / T
 gamma = 2 * math.pi * gamma_bar  # rad / T / s
 
+
 def _default_bm(n_atoms, model):
     if "bm" in model:
         z = np.zeros((n_atoms, 1), dtype=np.float32)
@@ -110,10 +111,10 @@ class AbstractTissue:
 
     def _calculate_t2star(self, B0, T2, susceptibility):
         if susceptibility:
-            k = 2 * 0.0075 # empirical
+            k = 2 * 0.0075  # empirical
             R2 = 1 / (T2 * 1e-3)  # 1 / ms -> 1 / s
             R2prime = k * 0.5 * gamma_bar * np.abs(B0 * susceptibility)  # 1 / s
-            R2star = R2 + R2prime # 1 / s
+            R2star = R2 + R2prime  # 1 / s
             return 1e3 / R2star  # s -> ms
 
         return None

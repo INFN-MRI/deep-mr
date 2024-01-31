@@ -8,8 +8,7 @@ random rigid motion generation routines and sampling trajectories (Cartesian and
 """
 from . import phantoms as _phantoms
 
-from .phantoms import * # noqa
+from .phantoms import *  # noqa
 
 __all__ = []
 __all__.extend(_phantoms.__all__)
-

@@ -10,6 +10,7 @@ __all__ = ["ct_shepp_logan"]
 import numpy as np
 import torch
 
+
 def ct_shepp_logan(npix, nslices):
     """
     Generate a Shepp Logan phantom with a given shape and dtype.

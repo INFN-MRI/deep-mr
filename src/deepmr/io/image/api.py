@@ -17,7 +17,7 @@ from . import nifti as _nifti
 def read_image(filepath, acqheader=None, device="cpu", verbose=0):
     """
     Read image data from file.
-    
+
     Supported formats are ``DICOM`` and ``NIfTI``.
 
     Parameters

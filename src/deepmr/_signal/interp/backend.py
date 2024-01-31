@@ -5,6 +5,7 @@ __all__ = ["numba2pytorch", "pytorch2numba"]
 import torch
 import numba as nb
 
+
 def numba2pytorch(array, requires_grad=False):
     """
     Zero-copy conversion from Numpy/Numba CUDAarray to PyTorch tensor.
@@ -30,10 +31,11 @@ def numba2pytorch(array, requires_grad=False):
             tensor = torch.from_numpy(array)  # pylint: disable=no-member
     else:
         tensor = torch.from_numpy(array)  # pylint: disable=no-member
-    
+
     tensor.requires_grad = requires_grad
     return tensor.contiguous()
-    
+
+
 def pytorch2numba(tensor):
     """
     Zero-copy conversion from PyTorch tensor to Numpy/Numba CUDA array.
@@ -50,10 +52,10 @@ def pytorch2numba(tensor):
 
     """
     device = tensor.device
-    if device.type == 'cpu':
+    if device.type == "cpu":
         array = tensor.detach().contiguous().numpy()
     else:
         with nb.cuda.devices.gpus[device.index]:
             array = nb.cuda.as_cuda_array(tensor.detach().contiguous())
 
-    return array    
+    return array

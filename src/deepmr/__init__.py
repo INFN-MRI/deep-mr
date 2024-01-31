@@ -15,8 +15,8 @@ from .testdata import testdata
 from . import _signal
 from . import _vobj
 
-from ._signal import * # noqa
-from ._vobj import * # noqa
+from ._signal import *  # noqa
+from ._vobj import *  # noqa
 
 __all__ = [testdata]
 __all__.extend(_signal.__all__)

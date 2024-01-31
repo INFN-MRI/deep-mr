@@ -15,6 +15,7 @@ import torch
 
 from . import tissue_classes
 
+
 def mr_shepp_logan(npix, nslices, B0=3.0, model="single"):
     """
     Generate a Shepp Logan phantom with a given shape.
@@ -97,9 +98,9 @@ def mr_shepp_logan(npix, nslices, B0=3.0, model="single"):
     mt = {"k": [], "weight": []}
 
     emtp = {"chi": [], "sigma": [], "epsilon": []}
-        # "chi": np.zeros(tissue_mask.shape, np.float32),
-        # "sigma": np.zeros(tissue_mask.shape, np.float32),
-        # "epsilon": np.zeros(tissue_mask.shape, np.float32),
+    # "chi": np.zeros(tissue_mask.shape, np.float32),
+    # "sigma": np.zeros(tissue_mask.shape, np.float32),
+    # "epsilon": np.zeros(tissue_mask.shape, np.float32),
     # }
     for n in range(len(tissue_params)):
         par = tissue_params[n]
@@ -149,6 +150,7 @@ def mr_shepp_logan(npix, nslices, B0=3.0, model="single"):
         mrtp["mt"] = mt
 
     return torch.as_tensor(tissue_mask.copy(), dtype=int).squeeze(), mrtp, emtp
+
 
 def _shepp_logan_segmentation(shape):
     # initialize shepp logan
@@ -262,7 +264,7 @@ def phantom(shape, amps, scales, offsets, angles, dtype):
 def ellipsoid(amp, scale, offset, angle, coords, out):
     """
     Generate a cube containing an ellipsoid defined by its parameters.
-    
+
     If out is given, fills the given cube instead of creating a new
     one.
 

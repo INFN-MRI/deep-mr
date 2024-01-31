@@ -10,6 +10,7 @@ import torch
 
 from . import backend
 
+
 def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblock=128):
     """
     Gridding of points specified by coordinates to array.
@@ -21,7 +22,7 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     sparse_coeff : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     basis : torch.Tensor, optional
-        Low rank subspace projection operator 
+        Low rank subspace projection operator
         of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
@@ -38,11 +39,11 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     """
     # convert to tensor if nececessary
     data_in = torch.as_tensor(data_in, dtype=torch.float32)
-    
+
     # cast tp device is necessary
     if device is not None:
         sparse_coeff.to(device)
-    
+
     # unpack input
     index = sparse_coeff.index
     value = sparse_coeff.value
@@ -51,11 +52,11 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     ndim = sparse_coeff.ndim
     scale = sparse_coeff.scale
     device = sparse_coeff.device
-    
+
     # cast to device
     data_in = data_in.to(device)
 
-    # get input sizes    
+    # get input sizes
     nframes = index.shape[0]
     npts = np.prod(ishape)
 
@@ -63,7 +64,7 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     if nframes == 1:
         batch_shape = data_in.shape[:-ndim]
     else:
-        batch_shape = data_in.shape[:-ndim-1]
+        batch_shape = data_in.shape[: -ndim - 1]
     batch_size = np.prod(batch_shape)  # ncoils * nslices * [int]
 
     # get number of coefficients
@@ -75,19 +76,23 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     # argument reshape
     data_in = data_in.reshape([batch_size, nframes, npts])
     data_in = data_in.swapaxes(0, 1)
-    
+
     # collect garbage
     gc.collect()
 
     # preallocate output data
-    data_out = torch.zeros((ncoeff, batch_size, *dshape), dtype=data_in.dtype, device=device)
+    data_out = torch.zeros(
+        (ncoeff, batch_size, *dshape), dtype=data_in.dtype, device=device
+    )
 
     # do actual gridding
-    if device == 'cpu':
-        do_gridding[ndim-2](data_out, data_in, value, index, basis)
+    if device == "cpu":
+        do_gridding[ndim - 2](data_out, data_in, value, index, basis)
     else:
-        do_gridding_cuda[ndim-2](data_out, data_in, value, index, basis, threadsperblock)
-        
+        do_gridding_cuda[ndim - 2](
+            data_out, data_in, value, index, basis, threadsperblock
+        )
+
     # collect garbage
     gc.collect()
 
@@ -99,6 +104,7 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
         data_out = data_out.reshape([*batch_shape, ncoeff, *ishape[1:]])
 
     return data_out / scale
+
 
 def _do_gridding2(data_out, data_in, value, index, basis):
     """2D Gridding routine wrapper."""
@@ -119,6 +125,7 @@ def _do_gridding2(data_out, data_in, value, index, basis):
     value = [backend.numba2pytorch(val) for val in value]
     index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
 
+
 def _do_gridding3(data_out, data_in, value, index, basis):
     """3D Gridding routine wrapper."""
     data_out = backend.pytorch2numba(data_out)
@@ -138,13 +145,14 @@ def _do_gridding3(data_out, data_in, value, index, basis):
     value = [backend.numba2pytorch(val) for val in value]
     index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
 
+
 # main handle
 do_gridding = [_do_gridding2, _do_gridding3]
 
-#%% subroutines
-@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-def _gridding2(cart_data, noncart_data, interp_value, interp_index): # noqa
 
+# %% subroutines
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _gridding2(cart_data, noncart_data, interp_value, interp_index):  # noqa
     # get sizes
     nframes, batch_size, _, _ = cart_data.shape
     npts = noncart_data.shape[-1]
@@ -158,15 +166,13 @@ def _gridding2(cart_data, noncart_data, interp_value, interp_index): # noqa
     xwidth = xindex.shape[-1]
 
     # parallelize over frames and batches
-    for i in nb.prange(nframes*batch_size):  # pylint: disable=not-an-iterable
-
+    for i in nb.prange(nframes * batch_size):  # pylint: disable=not-an-iterable
         # get current frame and batch index
         frame = i // batch_size
         batch = i % batch_size
 
         # iterate over non-cartesian point of current frame/batch
         for point in range(npts):
-
             # spread data within kernel radius
             for i_y in range(ywidth):
                 idy = yindex[frame, point, i_y]
@@ -176,13 +182,15 @@ def _gridding2(cart_data, noncart_data, interp_value, interp_index): # noqa
                     idx = xindex[frame, point, i_x]
                     val = valy * xvalue[frame, point, i_x]
 
-                    cart_data[frame, batch, idy, idx] += val * noncart_data[frame, batch, point]
+                    cart_data[frame, batch, idy, idx] += (
+                        val * noncart_data[frame, batch, point]
+                    )
 
     return cart_data
 
-@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-def _gridding3(cart_data, noncart_data, interp_value, interp_index): # noqa
 
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _gridding3(cart_data, noncart_data, interp_value, interp_index):  # noqa
     # get sizes
     nframes, batch_size, _, _ = cart_data.shape
     npts = noncart_data.shape[-1]
@@ -197,15 +205,13 @@ def _gridding3(cart_data, noncart_data, interp_value, interp_index): # noqa
     xwidth = xindex.shape[-1]
 
     # parallelize over frames and batches
-    for i in nb.prange(nframes*batch_size):  # pylint: disable=not-an-iterable
-
+    for i in nb.prange(nframes * batch_size):  # pylint: disable=not-an-iterable
         # get current frame and batch index
         frame = i // batch_size
         batch = i % batch_size
 
         # iterate over non-cartesian point of current frame/batch
         for point in range(npts):
-
             # spread data within kernel radius
             for i_z in range(zwidth):
                 idz = zindex[frame, point, i_z]
@@ -219,13 +225,17 @@ def _gridding3(cart_data, noncart_data, interp_value, interp_index): # noqa
                         idx = xindex[frame, point, i_x]
                         val = valy * xvalue[frame, point, i_x]
 
-                        cart_data[frame, batch, idz, idy, idx] += val * noncart_data[frame, batch, point]
+                        cart_data[frame, batch, idz, idy, idx] += (
+                            val * noncart_data[frame, batch, point]
+                        )
 
     return cart_data
 
-@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-def _gridding_lowrank2(cart_data, noncart_data, interp_value, interp_index, basis): # noqa
 
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _gridding_lowrank2(
+    cart_data, noncart_data, interp_value, interp_index, basis
+):  # noqa
     # get sizes
     ncoeff, batch_size, _, _ = cart_data.shape
     nframes = noncart_data.shape[0]
@@ -240,18 +250,15 @@ def _gridding_lowrank2(cart_data, noncart_data, interp_value, interp_index, basi
     xwidth = xindex.shape[-1]
 
     # parallelize over low-rank coefficients and batches
-    for i in nb.prange(ncoeff*batch_size):  # pylint: disable=not-an-iterable
-
+    for i in nb.prange(ncoeff * batch_size):  # pylint: disable=not-an-iterable
         # get current low-rank coefficient and batch index
         coeff = i // batch_size
         batch = i % batch_size
 
         # iterate over frames in current coefficient/batch
         for frame in range(nframes):
-
             # iterate over non-cartesian point of current frame
             for point in range(npts):
-
                 # spread data within kernel radius
                 for i_y in range(ywidth):
                     idy = yindex[frame, point, i_y]
@@ -263,15 +270,19 @@ def _gridding_lowrank2(cart_data, noncart_data, interp_value, interp_index, basi
 
                         # do adjoint low rank projection (low-rank subspace -> time domain)
                         # while spreading data
-                        cart_data[coeff, batch, idy, idx] += \
-                            val * basis[coeff, frame] * \
-                            noncart_data[frame, batch, point]
+                        cart_data[coeff, batch, idy, idx] += (
+                            val
+                            * basis[coeff, frame]
+                            * noncart_data[frame, batch, point]
+                        )
 
     return cart_data
 
-@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-def _gridding_lowrank3(cart_data, noncart_data, interp_value, interp_index, basis): # noqa
 
+@nb.njit(fastmath=True, parallel=True)  # pragma: no cover
+def _gridding_lowrank3(
+    cart_data, noncart_data, interp_value, interp_index, basis
+):  # noqa
     # get sizes
     ncoeff, batch_size, _, _, _ = cart_data.shape
     nframes = noncart_data.shape[0]
@@ -287,18 +298,15 @@ def _gridding_lowrank3(cart_data, noncart_data, interp_value, interp_index, basi
     xwidth = xindex.shape[-1]
 
     # parallelize over low-rank coefficients and batches
-    for i in nb.prange(ncoeff*batch_size):  # pylint: disable=not-an-iterable
-
+    for i in nb.prange(ncoeff * batch_size):  # pylint: disable=not-an-iterable
         # get current low-rank coefficient and batch index
         coeff = i // batch_size
         batch = i % batch_size
 
         # iterate over frames in current coefficient/batch
         for frame in range(nframes):
-
             # iterate over non-cartesian point of current frame
             for point in range(npts):
-
                 # spread data within kernel radius
                 for i_z in range(zwidth):
                     idz = zindex[frame, point, i_z]
@@ -314,19 +322,28 @@ def _gridding_lowrank3(cart_data, noncart_data, interp_value, interp_index, basi
 
                             # do adjoint low rank projection (low-rank subspace -> time domain)
                             # while gathering data
-                            cart_data[coeff, batch, idz, idy, idx] += \
-                                val * basis[coeff, frame] * \
-                                noncart_data[frame, batch, point]
+                            cart_data[coeff, batch, idz, idy, idx] += (
+                                val
+                                * basis[coeff, frame]
+                                * noncart_data[frame, batch, point]
+                            )
 
     return cart_data
 
+
 # %% CUDA
 if torch.cuda.is_available():
-    
-    __all__.extend(["_gridding2_cuda", "_gridding3_cuda", "_gridding_lowrank2_cuda", "_gridding_lowrank3_cuda"])
-    
+    __all__.extend(
+        [
+            "_gridding2_cuda",
+            "_gridding3_cuda",
+            "_gridding_lowrank2_cuda",
+            "_gridding_lowrank3_cuda",
+        ]
+    )
+
     from numba import cuda
-    
+
     @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _update_real(output, index, value):
         cuda.atomic.add(output, index, value)
@@ -335,10 +352,9 @@ if torch.cuda.is_available():
     def _update_complex(output, index, value):
         cuda.atomic.add(output.real, index, value.real)
         cuda.atomic.add(output.imag, index, value.imag)
-        
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda2(cart_data, noncart_data, interp_value, interp_index, iscomplex):
-        
         # get function
         if iscomplex:
             _update = _update_complex
@@ -359,11 +375,10 @@ if torch.cuda.is_available():
 
         # parallelize over frames, batches and k-space points
         i = cuda.grid(1)  # pylint: disable=too-many-function-args
-        if i < nframes*batch_size*npts:
-
+        if i < nframes * batch_size * npts:
             # get current frame and k-space index
-            frame = i // (batch_size*npts)
-            tmp = i % (batch_size*npts)
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
             batch = tmp // npts
             point = tmp % npts
 
@@ -376,13 +391,16 @@ if torch.cuda.is_available():
                     idx = xindex[frame, point, i_x]
                     val = valy * xvalue[frame, point, i_x]
 
-                    _update(cart_data, (frame, batch, idy, idx), val * noncart_data[frame, batch, point])
+                    _update(
+                        cart_data,
+                        (frame, batch, idy, idx),
+                        val * noncart_data[frame, batch, point],
+                    )
 
         return cart_data
 
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda3(cart_data, noncart_data, interp_value, interp_index, iscomplex):
-        
         # get function
         if iscomplex:
             _update = _update_complex
@@ -404,11 +422,10 @@ if torch.cuda.is_available():
 
         # parallelize over frames, batches and k-space points
         i = cuda.grid(1)  # pylint: disable=too-many-function-args
-        if i < nframes*batch_size*npts:
-
+        if i < nframes * batch_size * npts:
             # get current frame and k-space index
-            frame = i // (batch_size*npts)
-            tmp = i % (batch_size*npts)
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
             batch = tmp // npts
             point = tmp % npts
 
@@ -425,13 +442,18 @@ if torch.cuda.is_available():
                         idx = xindex[frame, point, i_x]
                         val = valy * xvalue[frame, point, i_x]
 
-                        _update(cart_data, (frame, batch, idz, idy, idx), val * noncart_data[frame, batch, point])
+                        _update(
+                            cart_data,
+                            (frame, batch, idz, idy, idx),
+                            val * noncart_data[frame, batch, point],
+                        )
 
         return cart_data
-    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
-    def _gridding_lowrank_cuda2(cart_data, noncart_data, interp_value, interp_index, basis, iscomplex):
-        
+    def _gridding_lowrank_cuda2(
+        cart_data, noncart_data, interp_value, interp_index, basis, iscomplex
+    ):
         # get function
         if iscomplex:
             _update = _update_complex
@@ -453,11 +475,10 @@ if torch.cuda.is_available():
 
         # parallelize over frames, batches and k-space points
         i = cuda.grid(1)  # pylint: disable=too-many-function-args
-        if i < nframes*batch_size*npts:
-
+        if i < nframes * batch_size * npts:
             # get current frame and k-space index
-            frame = i // (batch_size*npts)
-            tmp = i % (batch_size*npts)
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
             batch = tmp // npts
             point = tmp % npts
 
@@ -473,13 +494,20 @@ if torch.cuda.is_available():
                     # do adjoint low rank projection (low-rank subspace -> time domain)
                     # while spreading data
                     for coeff in range(ncoeff):
-                        _update(cart_data, (coeff, batch, idy, idx), val * basis[coeff, frame] * noncart_data[frame, batch, point])
+                        _update(
+                            cart_data,
+                            (coeff, batch, idy, idx),
+                            val
+                            * basis[coeff, frame]
+                            * noncart_data[frame, batch, point],
+                        )
 
         return cart_data
 
     @cuda.jit(fastmath=True)  # pragma: no cover
-    def _gridding_lowrank_cuda3(cart_data, noncart_data, interp_value, interp_index, basis, iscomplex):
-        
+    def _gridding_lowrank_cuda3(
+        cart_data, noncart_data, interp_value, interp_index, basis, iscomplex
+    ):
         # get function
         if iscomplex:
             _update = _update_complex
@@ -502,11 +530,10 @@ if torch.cuda.is_available():
 
         # parallelize over frames, batches and k-space points
         i = cuda.grid(1)  # pylint: disable=too-many-function-args
-        if i < nframes*batch_size*npts:
-
+        if i < nframes * batch_size * npts:
             # get current frame and k-space index
-            frame = i // (batch_size*npts)
-            tmp = i % (batch_size*npts)
+            frame = i // (batch_size * npts)
+            tmp = i % (batch_size * npts)
             batch = tmp // npts
             point = tmp % npts
 
@@ -526,10 +553,16 @@ if torch.cuda.is_available():
                         # do adjoint low rank projection (low-rank subspace -> time domain)
                         # while gathering data
                         for coeff in range(ncoeff):
-                            _update(cart_data, (coeff, batch, idz, idy, idx), val * basis[coeff, frame] * noncart_data[frame, batch, point])
+                            _update(
+                                cart_data,
+                                (coeff, batch, idz, idy, idx),
+                                val
+                                * basis[coeff, frame]
+                                * noncart_data[frame, batch, point],
+                            )
 
         return cart_data
-    
+
     def _do_gridding_cuda2(data_out, data_in, value, index, basis, threadsperblock):
         # get if function is complex
         is_complex = torch.is_complex(data_in)
@@ -544,10 +577,14 @@ if torch.cuda.is_available():
 
         # run kernel
         if basis is None:
-            _gridding_cuda2[blockspergrid, threadsperblock](data_out, data_in, value, index, is_complex)
+            _gridding_cuda2[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, is_complex
+            )
         else:
             basis = backend.pytorch2numba(basis)
-            _gridding_lowrank_cuda2[blockspergrid, threadsperblock](data_out, data_in, value, index, basis, is_complex)
+            _gridding_lowrank_cuda2[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis, is_complex
+            )
             basis = backend.numba2pytorch(basis)
 
         data_out = backend.numba2pytorch(data_out)
@@ -560,7 +597,7 @@ if torch.cuda.is_available():
         is_complex = torch.is_complex(data_in)
 
         # define number of blocks
-        blockspergrid = (data_out.size + (threadsperblock - 1) ) // threadsperblock
+        blockspergrid = (data_out.size + (threadsperblock - 1)) // threadsperblock
 
         data_out = backend.pytorch2numba(data_out)
         data_in = backend.pytorch2numba(data_in)
@@ -569,16 +606,20 @@ if torch.cuda.is_available():
 
         # run kernel
         if basis is None:
-            _gridding_cuda3[blockspergrid, threadsperblock](data_out, data_in, value, index, is_complex)
+            _gridding_cuda3[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, is_complex
+            )
         else:
             basis = backend.pytorch2numba(basis)
-            _gridding_lowrank_cuda3[blockspergrid, threadsperblock](data_out, data_in, value, index, basis, is_complex)
+            _gridding_lowrank_cuda3[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis, is_complex
+            )
             basis = backend.numba2pytorch(basis)
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
         value = [backend.numba2pytorch(val) for val in value]
         index = [backend.numba2pytorch(ind, requires_grad=False) for ind in index]
-    
+
     # main handle
     do_gridding_cuda = [_do_gridding_cuda2, _do_gridding_cuda3]
