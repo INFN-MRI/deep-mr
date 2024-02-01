@@ -56,11 +56,11 @@ def plan_sampling(indexes, shape, device="cpu"):
     indexes = torch.as_tensor(indexes, dtype=torch.int16)
 
     # expand singleton dimensions
-    ishape = indexes.shape[:-1]
+    ishape = list(indexes.shape[:-1])
     ndim = indexes.shape[-1]
     
     while len(ishape) < 3:
-        ishape = ishape[None, ...]
+        ishape = [1] + ishape
 
     nframes = ishape[0]
     ishape = ishape[1:]

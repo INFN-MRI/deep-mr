@@ -16,18 +16,18 @@ def tensor2patches(image, patch_shape, patch_stride=None):
 
     Parameters
     ----------
-    image : `~torch.Tensor`
+    image : torch.Tensor
         N-dimensional image tensor, with the last ``ndim`` dimensions
         being the image dimensions.
     patch_shape : Iterable[int]
         Shape of the patch of length ``ndim``.
     patch_stride : Iterable[int], optional
         Stride of the windows of length ``ndim``. 
-        The default it is the patch size (i.e., non overelapping).
+        The default it is the patch size (i.e., non overlapping).
 
     Returns
     -------
-    patches : `~torch.Tensor`
+    patches : torch.Tensor
         Tensor of (overlapping) patches of shape: 
         
             * ``1D: (..., npatches_z, patch_size_x)``
@@ -103,7 +103,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
 
     Parameters
     ----------
-    patches : `~torch.Tensor`
+    patches : torch.Tensor
         Tensor of (overlapping) patches of shapes:
             
             * ``1D: (..., npatches_z, patch_size_x)``
@@ -117,11 +117,11 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
         Shape of the patch of length ``ndim``.
     patch_stride : Iterable[int], optional
         Stride of the windows of length ``ndim``. 
-        The default it is the patch size (i.e., non overelapping).
+        The default it is the patch size (i.e., non overlapping).
 
     Returns
     -------
-    image : `~torch.Tensor`
+    image : torch.Tensor
         N-dimensional image tensor, with the last ``ndim`` dimensions
         being the image dimensions.
              
@@ -157,14 +157,17 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     num_patches = 1 + (ishape - patch_shape - remainder) / patch_stride
     num_patches = num_patches.astype(int)
     
+    # pad if required
+    padsize = remainder
+    padded_shape = shape + padsize
+    
     # get reshape to (b, nz, ny, nx), (b, ny, nx), (b, nx) for 3, 2, and 1D, respectively
-    # patches = patches.view(int(np.prod(batch_shape)), *num_patches, *patch_shape)
     patches = patches.reshape(int(np.prod(batch_shape)), -1, int(np.prod(patch_shape)))
     patches = patches.permute(0, 2, 1)
     
     # get image
-    weight = foldNd(torch.ones_like(patches[[0]]), tuple(shape), tuple(patch_shape), stride=tuple(patch_stride))
-    image = foldNd(patches, tuple(shape), tuple(patch_shape), stride=tuple(patch_stride))
+    weight = foldNd(torch.ones_like(patches[[0]]), tuple(padded_shape), tuple(patch_shape), stride=tuple(patch_stride))
+    image = foldNd(patches, tuple(padded_shape), tuple(patch_shape), stride=tuple(patch_stride))
     
     # get rid of channel dim
     weight = weight[0, 0]

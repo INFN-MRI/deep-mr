@@ -64,11 +64,11 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     coord = torch.as_tensor(coord, dtype=torch.float32)
 
     # expand singleton dimensions
-    ishape = coord.shape[:-1]
+    ishape = list(coord.shape[:-1])
     ndim = coord.shape[-1]
-    
+
     while len(ishape) < 3:
-        ishape = ishape[None, ...]
+        ishape = [1] + ishape
         
     nframes = ishape[0]
     ishape = ishape[1:]
