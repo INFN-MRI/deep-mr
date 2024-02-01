@@ -184,8 +184,8 @@ def _gridding1(cart_data, noncart_data, interp_value, interp_index):  # noqa
     npts = noncart_data.shape[-1]
 
     # unpack interpolator
-    xindex = interp_index
-    xvalue = interp_value
+    xindex = interp_index[0]
+    xvalue = interp_value[0]
 
     # get interpolator width
     xwidth = xindex.shape[-1]
@@ -292,8 +292,8 @@ def _gridding_lowrank1(
     npts = noncart_data.shape[-1]
 
     # unpack interpolator
-    xindex = interp_index
-    xvalue = interp_value
+    xindex = interp_index[0]
+    xvalue = interp_value[0]
 
     # get interpolator width
     xwidth = xindex.shape[-1]
@@ -437,8 +437,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
 
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -557,8 +557,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
     
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
     
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -696,8 +696,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
 
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -816,8 +816,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
 
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -989,7 +989,7 @@ if torch.cuda.is_available():
             is_complex = is_complex or torch.is_complex(basis)
 
         # calculate size
-        _, batch_size, _, _ = data_out.shape
+        _, batch_size, _ = data_out.shape
         nframes = data_in.shape[0]
         npts = data_in.shape[-1]
 

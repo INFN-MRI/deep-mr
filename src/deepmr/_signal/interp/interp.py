@@ -128,8 +128,8 @@ def _interpolate1(noncart_data, cart_data, interp_value, interp_index):  # noqa
     npts = noncart_data.shape[-1]
 
     # unpack interpolator
-    xindex = interp_index
-    xvalue = interp_value
+    xindex = interp_index[0]
+    xvalue = interp_value[0]
 
     # get interpolator width
     xwidth = xindex.shape[-1]
@@ -238,8 +238,8 @@ def _interpolate_lowrank1(
     npts = noncart_data.shape[-1]
 
     # unpack interpolator
-    xindex = interp_index
-    xvalue = interp_value
+    xindex = interp_index[0]
+    xvalue = interp_value[0]
 
     # get interpolator width
     xwidth = xindex.shape[-1]
@@ -423,8 +423,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
 
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -535,8 +535,8 @@ if torch.cuda.is_available():
         npts = noncart_data.shape[-1]
 
         # unpack interpolator
-        xindex = interp_index
-        xvalue = interp_value
+        xindex = interp_index[0]
+        xvalue = interp_value[0]
 
         # get interpolator width
         xwidth = xindex.shape[-1]
@@ -661,7 +661,7 @@ if torch.cuda.is_available():
         data_out, data_in, value, index, basis_adjoint, threadsperblock
     ):
         # calculate size
-        _, batch_size, _, _ = data_in.shape
+        _, batch_size, _ = data_in.shape
         nframes = data_out.shape[0]
         npts = data_out.shape[-1]
 

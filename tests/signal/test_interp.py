@@ -19,52 +19,52 @@ device = ["cpu"]
 if torch.cuda.is_available():
     device += ["cuda"]
 
-# @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
-# def test_interp1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
+@pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
+def test_interp1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
 
-#     # get ground truth
-#     if ncontrasts == 1:
-#         kdata_ground_truth = torch.ones((nslices, ncoils, 1, npix), dtype=torch.complex64, device=device)
-#     else:
-#         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
+    # get ground truth
+    if ncontrasts == 1:
+        kdata_ground_truth = torch.ones((nslices, ncoils, 1, npix), dtype=torch.complex64, device=device)
+    else:
+        kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
-#     # k-space coordinates
-#     wave = _kt_space_trajectory(1, ncontrasts, npix)
-#     coord = wave.coordinates
+    # k-space coordinates
+    wave = _kt_space_trajectory(1, ncontrasts, npix)
+    coord = wave.coordinates
 
-#     # input
-#     if ncontrasts == 1:
-#         kdata_in = torch.ones((nslices, ncoils, npix), dtype=torch.complex64)
-#     else:
-#         kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
+    # input
+    if ncontrasts == 1:
+        kdata_in = torch.ones((nslices, ncoils, npix), dtype=torch.complex64)
+    else:
+        kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
-#     # computation
-#     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, device=device, width=width)
+    # computation
+    kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, device=device, width=width)
 
-#     # check
-#     npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    # check
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
 
-# @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
-# def test_interp_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
+@pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
+def test_interp_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
 
-#     # get ground truth
-#     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
+    # get ground truth
+    kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
-#     # k-space coordinates
-#     wave = _kt_space_trajectory(1, ncontrasts, npix)
-#     coord = wave.coordinates
+    # k-space coordinates
+    wave = _kt_space_trajectory(1, ncontrasts, npix)
+    coord = wave.coordinates
 
-#     # input
-#     kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
+    # input
+    kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
-#     # get basis
-#     basis_adjoint = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    # get basis
+    basis_adjoint = _lowrank_subspace_projection(torch.complex64, ncontrasts)
 
-#     # computation
-#     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
+    # computation
+    kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
-#     # check
-#     npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    # check
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
     
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_interp2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -161,76 +161,76 @@ def test_interp_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
     npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
 
 
-# @pytest.mark.parametrize(
-#     "ncontrasts, ncoils, nslices, device",
-#     list(itertools.product(*[[1, 2], ncoils, nslices, device])),
-# )
-# def test_gridding1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
-#     # get ground truth
-#     if ncontrasts == 1:
-#         kdata_ground_truth = torch.ones((nslices, ncoils, npix), dtype=torch.complex64)
-#     else:
-#         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[1, 2], ncoils, nslices, device])),
+)
+def test_gridding1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
+    # get ground truth
+    if ncontrasts == 1:
+        kdata_ground_truth = torch.ones((nslices, ncoils, npix), dtype=torch.complex64)
+    else:
+        kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
-#     # k-space coordinates
-#     wave = _kt_space_trajectory(1, ncontrasts, npix)
-#     coord = wave.coordinates
+    # k-space coordinates
+    wave = _kt_space_trajectory(1, ncontrasts, npix)
+    coord = wave.coordinates
 
-#     # input
-#     if ncontrasts == 1:
-#         kdata_in = torch.ones((nslices, ncoils, 1, npix), dtype=torch.complex64, device=device)
-#     else:
-#         kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
+    # input
+    if ncontrasts == 1:
+        kdata_in = torch.ones((nslices, ncoils, 1, npix), dtype=torch.complex64, device=device)
+    else:
+        kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
-#     # computation
-#     kdata_out = deepmr.gridding(
-#         kdata_in.clone(), shape=npix, coord=coord, device=device, width=width
-#     )
+    # computation
+    kdata_out = deepmr.gridding(
+        kdata_in.clone(), shape=npix, coord=coord, device=device, width=width
+    )
 
-#     # check
-#     npt.assert_allclose(
-#         kdata_out.detach().cpu(),
-#         kdata_ground_truth.detach().cpu(),
-#         rtol=0.01,
-#         atol=0.01,
-#     )
+    # check
+    npt.assert_allclose(
+        kdata_out.detach().cpu(),
+        kdata_ground_truth.detach().cpu(),
+        rtol=0.01,
+        atol=0.01,
+    )
     
 
-# @pytest.mark.parametrize(
-#     "ncontrasts, ncoils, nslices, device",
-#     list(itertools.product(*[[2, 3], ncoils, nslices, device])),
-# )
-# def test_gridding_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
-#     # get ground truth
-#     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[2, 3], ncoils, nslices, device])),
+)
+def test_gridding_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
+    # get ground truth
+    kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
-#     # k-space coordinates
-#     wave = _kt_space_trajectory(1, ncontrasts, npix)
-#     coord = wave.coordinates
+    # k-space coordinates
+    wave = _kt_space_trajectory(1, ncontrasts, npix)
+    coord = wave.coordinates
 
-#     # input
-#     kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
+    # input
+    kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
-#     # get basis
-#     basis = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    # get basis
+    basis = _lowrank_subspace_projection(torch.complex64, ncontrasts)
 
-#     # computation
-#     kdata_out = deepmr.gridding(
-#         kdata_in.clone(),
-#         shape=npix,
-#         coord=coord,
-#         basis=basis,
-#         device=device,
-#         width=width,
-#     )
+    # computation
+    kdata_out = deepmr.gridding(
+        kdata_in.clone(),
+        shape=npix,
+        coord=coord,
+        basis=basis,
+        device=device,
+        width=width,
+    )
 
-#     # check
-#     npt.assert_allclose(
-#         kdata_out.detach().cpu(),
-#         kdata_ground_truth.detach().cpu(),
-#         rtol=0.01,
-#         atol=0.01,
-#     )
+    # check
+    npt.assert_allclose(
+        kdata_out.detach().cpu(),
+        kdata_ground_truth.detach().cpu(),
+        rtol=0.01,
+        atol=0.01,
+    )
 
     
 @pytest.mark.parametrize(
