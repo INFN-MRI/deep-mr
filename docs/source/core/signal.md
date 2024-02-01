@@ -45,7 +45,7 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.tensor2patch
-	deepmr.patch2tensor
+	deepmr.tensor2patches
+	deepmr.patches2tensor
 ```
 
