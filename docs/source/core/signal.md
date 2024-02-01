@@ -36,3 +36,16 @@
 	deepmr.interpolate
 	deepmr.gridding
 ```
+
+## Tensor folding and unfolding
+
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.tensor2patch
+	deepmr.patch2tensor
+```
+
