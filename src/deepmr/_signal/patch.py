@@ -18,7 +18,7 @@ def tensor2patches(image, patch_shape, patch_stride=None):
     ----------
     image : `~torch.Tensor`
         N-dimensional image tensor, with the last ``ndim`` dimensions
-        being the image dimensions
+        being the image dimensions.
     patch_shape : Iterable[int]
         Shape of the patch of length ``ndim``.
     patch_stride : Iterable[int], optional
@@ -28,10 +28,11 @@ def tensor2patches(image, patch_shape, patch_stride=None):
     Returns
     -------
     patches : `~torch.Tensor`
-        Tensor of (overlapping) patches
-        of shape (..., npatches)
-    unfold_shape : Iterable[int]
-        Patches shape to retrieve original tensor.
+        Tensor of (overlapping) patches of shape: 
+        
+            * ``1D: (..., npatches_z, patch_size_x)``
+            * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
+            * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
           
     References
     ----------
@@ -90,8 +91,8 @@ def tensor2patches(image, patch_shape, patch_stride=None):
        raise ValueError(f"Only support ndim=1, 2, or 3, got {ndim}") 
         
     # reformat
-    patches = patches.reshape(*batch_shape, -1, *patch_shape)
-
+    patches = patches.reshape(*batch_shape, *patches.shape[1:])
+    
     return patches
 
 def patches2tensor(patches, shape, patch_shape, patch_stride=None):
@@ -103,8 +104,12 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     Parameters
     ----------
     patches : `~torch.Tensor`
-        Tensor of (overlapping) patches
-        of shape (..., npatches)
+        Tensor of (overlapping) patches of shapes:
+            
+            * ``1D: (..., npatches_z, patch_size_x)``
+            * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
+            * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
+            
     shape : Iterable[int]
         Output shape of length ``ndim``.
         If scalar, assume isotropic matrix of shape ``ndim * [shape]``.
@@ -118,7 +123,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     -------
     image : `~torch.Tensor`
         N-dimensional image tensor, with the last ``ndim`` dimensions
-        being the image dimensions
+        being the image dimensions.
              
     References
     ----------
@@ -144,7 +149,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
             
     # get number of dimensions
     ndim = len(shape)
-    batch_shape = patches.shape[:-ndim-1]
+    batch_shape = patches.shape[:-2*ndim]
         
     # count number of patches for each dimension
     ishape = np.asarray(shape)
@@ -154,7 +159,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     
     # get reshape to (b, nz, ny, nx), (b, ny, nx), (b, nx) for 3, 2, and 1D, respectively
     # patches = patches.view(int(np.prod(batch_shape)), *num_patches, *patch_shape)
-    patches = patches.view(int(np.prod(batch_shape)), patches.shape[-ndim-1], -1)
+    patches = patches.reshape(int(np.prod(batch_shape)), -1, int(np.prod(patch_shape)))
     patches = patches.permute(0, 2, 1)
     
     # get image
@@ -182,4 +187,4 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     image = image.reshape(*batch_shape, *shape)
     weight = weight.reshape(*shape)
 
-    return image, weight
+    return (image / weight).to(patches.dtype)
