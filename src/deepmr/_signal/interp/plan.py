@@ -8,7 +8,7 @@ import numpy as np
 import numba as nb
 import torch
 
-from . import backend
+from .. import backend
 
 
 def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
@@ -66,11 +66,12 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     # expand singleton dimensions
     ishape = coord.shape[:-1]
     ndim = coord.shape[-1]
-    if len(coord.shape) < 4:
-        nframes = 1
-    else:
-        nframes = ishape[0]
-        ishape = ishape[1:]
+    
+    while len(ishape) < 3:
+        ishape = ishape[None, ...]
+        
+    nframes = ishape[0]
+    ishape = ishape[1:]
 
     # parse input sizes
     npts = np.prod(ishape)

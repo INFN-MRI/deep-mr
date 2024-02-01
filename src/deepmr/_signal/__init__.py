@@ -11,6 +11,7 @@ from . import interp as _interp
 from .resize import *  # noqa
 from .filter import *  # noqa
 from .interp import *  # noqa
+from .sparse import *  # noqa
 
 __all__ = []
 __all__.extend(_resize.__all__)

@@ -8,7 +8,7 @@ import numpy as np
 import numba as nb
 import torch
 
-from . import backend
+from .. import backend
 
 
 def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblock=128):
