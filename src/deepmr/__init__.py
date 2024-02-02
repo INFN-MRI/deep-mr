@@ -7,6 +7,7 @@ __version__ = version("deepmr")
 
 # from . import bloch
 from . import io
+from . import fft
 
 # from . import optim
 # from . import prox
