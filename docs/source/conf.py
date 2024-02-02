@@ -17,6 +17,7 @@ author = "Matteo Cencini"
 # ones.
 extensions = [
     "myst_nb",
+	"matplotlib.sphinxext.plot_directive",
     #    "autoapi.extension",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
