@@ -31,6 +31,7 @@ tutorials/02-dl-mri-recon.ipynb
 :caption: Core Modules
 
 core/signal.md
+core/fft.md
 core/vobj.md
 core/io.md
 
