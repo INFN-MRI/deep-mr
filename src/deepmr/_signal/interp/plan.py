@@ -37,7 +37,7 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
 
     Returns
     -------
-    interpolator : dict
+    interpolator : Interpolator
         Structure containing sparse interpolator matrix:
 
             * index (``torch.Tensor[int]``): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
