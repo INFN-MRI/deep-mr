@@ -8,9 +8,6 @@ import numpy.testing as npt
 import torch
 import deepmr
 
-from conftest import _kt_space_trajectory
-from conftest import _lowrank_subspace_projection
-
 # test values
 ncoils = [1, 2]
 nslices = [1, 2]
@@ -29,8 +26,7 @@ def test_interp1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(1, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(1, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -51,14 +47,13 @@ def test_interp_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(1, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(1, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
     # get basis
-    basis_adjoint = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
@@ -76,8 +71,7 @@ def test_interp2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(2, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -98,14 +92,13 @@ def test_interp_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(2, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64)
 
     # get basis
-    basis_adjoint = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
@@ -123,8 +116,7 @@ def test_interp3(ncontrasts, ncoils, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(3, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -145,14 +137,13 @@ def test_interp_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
     kdata_ground_truth = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(3, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64)
 
     # get basis
-    basis_adjoint = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
@@ -173,8 +164,7 @@ def test_gridding1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(1, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(1, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -205,14 +195,13 @@ def test_gridding_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(1, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(1, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # get basis
-    basis = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.gridding(
@@ -245,8 +234,7 @@ def test_gridding2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(2, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -277,14 +265,13 @@ def test_gridding_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(2, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # get basis
-    basis = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.gridding(
@@ -317,8 +304,7 @@ def test_gridding3(ncontrasts, ncoils, device, npix=4, width=12):
         kdata_ground_truth = torch.ones((ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(3, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -349,14 +335,13 @@ def test_gridding_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
     kdata_ground_truth = torch.ones((ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64)
 
     # k-space coordinates
-    wave = _kt_space_trajectory(3, ncontrasts, npix)
-    coord = wave.coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # get basis
-    basis = _lowrank_subspace_projection(torch.complex64, ncontrasts)
+    basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
     kdata_out = deepmr.gridding(
@@ -376,3 +361,39 @@ def test_gridding_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
         atol=0.01,
     )
 
+# %% local subroutines
+def _generate_coordinates(ndim, ncontrasts, npix):
+
+    # data type
+    dtype = torch.float32
+
+    # build coordinates
+    nodes = torch.arange(npix) - (npix // 2)
+
+    if ndim == 1:
+        coord = nodes[..., None]
+    elif ndim == 2:
+        x_i, y_i = torch.meshgrid(nodes, nodes, indexing="ij")
+        x_i = x_i.flatten()
+        y_i = y_i.flatten()
+        coord = torch.stack((x_i, y_i), axis=-1).to(dtype)
+    elif ndim == 3:
+        x_i, y_i, z_i = torch.meshgrid(nodes, nodes, nodes, indexing="ij")
+        x_i = x_i.flatten()
+        y_i = y_i.flatten()
+        z_i = z_i.flatten()
+        coord = torch.stack((x_i, y_i, z_i), axis=-1).to(dtype)
+
+    # assume single shot trajectory
+    coord = coord[None, ...]  # (nview=1, nsamples=npix**ndim, ndim=ndim)
+    if ncontrasts > 1:
+        coord = torch.repeat_interleave(coord[None, ...], ncontrasts, axis=0)
+        
+    # normalize
+    cmax = (coord**2).sum(axis=-1)**0.5
+    coord = coord / cmax.max() / 2
+
+    # build dcf
+    dcf = torch.ones(coord.shape[:-1], dtype=dtype)
+    
+    return coord, dcf
