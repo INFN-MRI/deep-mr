@@ -161,6 +161,30 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     padsize = remainder
     padded_shape = shape + padsize
     
+    # perform unfolding
+    if np.allclose(patch_shape, patch_stride):
+        image = _fold_nonoverlapping(patches, ndim, padded_shape, batch_shape)
+    else:
+        image = _fold_overlapping(patches, padded_shape, batch_shape, patch_shape, patch_stride)
+        
+    # crop
+    if ndim == 1:
+        image = image[:, :shape[0]]
+    elif ndim == 2:
+        image = image[:, :shape[0], :shape[1]]
+    elif ndim == 3:
+        image = image[:, :shape[0], :shape[1], :shape[2]]
+    else:
+       raise ValueError(f"Only support ndim=1, 2, or 3, got {ndim}") 
+       
+    # final reshape
+    image = image.reshape(*batch_shape, *shape)
+    
+    return image
+
+#%% local subroutines
+def _fold_overlapping(patches, padded_shape, batch_shape, patch_shape, patch_stride):
+    
     # get reshape to (b, nz, ny, nx), (b, ny, nx), (b, nx) for 3, 2, and 1D, respectively
     patches = patches.reshape(int(np.prod(batch_shape)), -1, int(np.prod(patch_shape)))
     patches = patches.permute(0, 2, 1)
@@ -173,21 +197,36 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     weight = weight[0, 0]
     image = image[:, 0]
     
-    # crop
-    if ndim == 1:
-        weight = weight[:shape[0]]
-        image = image[:, :shape[0]]
-    elif ndim == 2:
-        weight = weight[:shape[0], :shape[1]]
-        image = image[:, :shape[0], :shape[1]]
-    elif ndim == 3:
-        weight = weight[:shape[0], :shape[1], :shape[2]]
-        image = image[:, :shape[0], :shape[1], :shape[2]]
-    else:
-       raise ValueError(f"Only support ndim=1, 2, or 3, got {ndim}") 
-    
     # final reshape
-    image = image.reshape(*batch_shape, *shape)
-    weight = weight.reshape(*shape)
+    image = image.reshape(-1, *padded_shape)
+    weight = weight.reshape(*padded_shape)
 
     return (image / weight).to(patches.dtype)
+
+def _fold_nonoverlapping(patches, ndim, padded_shape, batch_shape):
+    
+    # get reshape to (b, nz, ny, nx), (b, ny, nx), (b, nx) for 3, 2, and 1D, respectively
+    unfold_shape = patches.shape[-2*ndim:]
+    patches = patches.view(int(np.prod(batch_shape)), *unfold_shape)
+    
+    if ndim == 3:
+        nz = unfold_shape[0] * unfold_shape[3]
+        ny = unfold_shape[1] * unfold_shape[4]
+        nx = unfold_shape[2] * unfold_shape[5]
+        patches = patches.permute(0, 1, 4, 2, 5, 3, 6)
+        image = patches.reshape(-1, nz, ny, nx)
+    elif ndim == 2:
+        ny = unfold_shape[0] * unfold_shape[2]
+        nx = unfold_shape[1] * unfold_shape[3]
+        patches = patches.permute(0, 1, 3, 2, 4)
+        image = patches.reshape(-1, ny, nx)
+    elif ndim == 1:
+        nx = unfold_shape[0] * unfold_shape[1]
+        image = patches.reshape(-1, nx)
+    else:
+       raise ValueError(f"Only support ndim=1, 2, or 3, got {ndim}") 
+       
+    # final reshape
+    image = image.reshape(-1, *padded_shape)
+       
+    return image
