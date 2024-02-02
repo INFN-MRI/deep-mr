@@ -1,3 +1,4 @@
+matplotlib
 myst-nb 
 myst-parser
 sphinx==6.2.1 
