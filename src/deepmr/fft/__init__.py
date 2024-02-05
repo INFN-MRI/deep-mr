@@ -7,24 +7,145 @@ FFT routines include:
     * n-dimensional NUFFT with embedded low rank subspace projection.
 
 """
+
 from . import fft as _fft
+from . import sparse_fft as _sparse_fft
 from . import nufft as _nufft
 
 from .fft import *  # noqa
 from .nufft import * # noqa
+from .sparse_fft import * # noqa
 
-__all__ = ["nufft", "nufft_adj"]
-__all__.extend(_fft.__all__)
+__all__ = _fft.__all__
+__all__.extend(["sparse_fft", "sparse_ifft", "nufft", "nufft_adj"])
+
+def sparse_fft(
+    image,
+    indexes,
+    basis_adjoint=None,
+    device="cpu",
+    threadsperblock=128,
+):
+    """
+    N-dimensional sparse Fast Fourier Transform.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+    indexes : torch.Tensor
+        Sampled k-space points indexes of shape ``(ncontrasts, nviews, nsamples, ndims)``.
+    shape : int | Iterable[int], optional
+        Oversampled grid size of shape ``(ndim,)``.
+        If scalar, isotropic matrix is assumed.
+        The default is ``None`` (grid size equals to input data size, i.e. ``osf = 1``).
+    basis_adjoint : torch.Tensor, optional
+        Adjoint low rank subspace projection operator
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``cpu``.
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    kspace : torch.Tensor
+        Output sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+
+    Notes
+    -----
+    Sampled points indexes axes ordering is assumed to be ``(x, y)`` for 2D signals
+    and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape is assumed to be ``(z, y, x)``.
+
+    Indexes tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
+    (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
+
+        * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+        * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+
+    """
+    # get number of dimensions
+    ndim = indexes.shape[-1]
+
+    # get shape if not provided
+    shape = image.shape[-ndim:]
+
+    # plan interpolator
+    sampling_mask = _sparse_fft.prepare_sampling(indexes, shape, device)
+
+    # perform actual interpolation
+    return _sparse_fft.apply_sparse_fft(
+        image, sampling_mask, basis_adjoint, threadsperblock=threadsperblock
+    )
+
+
+def sparse_ifft(
+    kspace,
+    indexes,
+    shape,
+    basis=None,
+    device="cpu",
+    threadsperblock=128,
+):
+    """
+    N-dimensional inverse sparse Fast Fourier Transform.
+
+    Parameters
+    ----------
+    kspace : torch.Tensor
+        Input sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+    indexes : torch.Tensor
+        Sampled k-space points indexes of shape ``(ncontrasts, nviews, nsamples, ndims)``.
+    shape : int | Iterable[int]
+        Oversampled grid size of shape ``(ndim,)``.
+        If scalar, isotropic matrix is assumed.
+    basis : torch.Tensor, optional
+        Low rank subspace projection operator
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``cpu``.
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    Notes
+    -----
+    Sampled points indexes axes ordering is assumed to be ``(x, y)`` for 2D signals
+    and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape is assumed to be ``(z, y, x)``.
+
+    Sampled points indexes axes ordering is assumed to be ``(x, y)`` for 2D signals
+    (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
+
+        * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+        * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+
+    """
+    # plan interpolator
+    sampling_mask = _sparse_fft.prepare_sampling(indexes, shape, device)
+
+    # perform actual interpolation
+    return _sparse_fft.apply_sparse_fft(
+        kspace, sampling_mask, basis, threadsperblock=threadsperblock
+    )
+
 
 def nufft(
-    data_in,
+    image,
     coord,
     shape=None,
     basis_adjoint=None,
     device="cpu",
     threadsperblock=128,
     width=3,
-    oversampling=1.125,
+    oversamp=1.125,
 ):
     """
     N-dimensional Non-Uniform Fast Fourier Transform.
@@ -53,15 +174,15 @@ def nufft(
         Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
         The default is ``2``.
-    beta : float | Iterable[float], optional
-        Kaiser-Bessel beta parameter of shape ``(ndim,)``.
-        If scalar, it is assumed equal for each axis.
-        The default is ``1.0``.
+    oversamp : float | Iterable[float], optional
+        Grid oversampling factor of shape ``(ndim,)``.
+        If scalar, isotropic oversampling is assumed.
+        The default is ``1.125``.
 
     Returns
     -------
-    data_out : torch.Tensor
-        Output Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
+    kspace : torch.Tensor
+        Output Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
     Notes
     -----
@@ -81,34 +202,34 @@ def nufft(
 
     # get shape if not provided
     if shape is None:
-        shape = data_in.shape[-ndim:]
+        shape = image.shape[-ndim:]
 
     # plan interpolator
-    interpolator = plan.plan_interpolator(coord, shape, width, beta, device)
+    nufft_plan = _nufft.plan_nufft(coord, shape, width, oversamp, device)
 
     # perform actual interpolation
-    return interp.apply_interpolation(
-        data_in, interpolator, basis_adjoint, threadsperblock=threadsperblock
+    return _nufft.apply_nufft(
+        image, nufft_plan, basis_adjoint, threadsperblock=threadsperblock
     )
 
 
 def nufft_adj(
-    data_in,
+    kspace,
     coord,
     shape,
     basis=None,
     device="cpu",
     threadsperblock=128,
-    width=2,
-    beta=1.0,
+    width=3,
+    oversamp=1.125,
 ):
     """
-    Gridding of points specified by coordinates to array.
+    N-dimensional adjoint Non-Uniform Fast Fourier Transform.
 
     Parameters
     ----------
-    data_in : torch.Tensor
-        Input Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
+    kspace : torch.Tensor
+        Input Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
     coord : torch.Tensor
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
         Coordinates must be normalized between ``(-0.5, 0.5)``.
@@ -127,15 +248,15 @@ def nufft_adj(
         Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
         The default is ``2``.
-    beta : float | Iterable[float], optional
-        Kaiser-Bessel beta parameter of shape ``(ndim,)``.
-        If scalar, it is assumed equal for each axis.
-        The default is ``1.0``.
+    oversamp : float | Iterable[float], optional
+        Grid oversampling factor of shape ``(ndim,)``.
+        If scalar, isotropic oversampling is assumed.
+        The default is ``1.125``.
 
     Returns
     -------
-    data_out : torch.Tensor
-        Output Cartesian array of shape ``(..., ncontrasts, ny, nx)`` (2D)
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
 
     Notes
@@ -152,10 +273,10 @@ def nufft_adj(
 
     """
     # plan interpolator
-    interpolator = plan.plan_interpolator(coord, shape, width, beta, device)
+    nufft_plan = _nufft.plan_nufft(coord, shape, width, oversamp, device)
 
     # perform actual interpolation
-    return grid.apply_gridding(
-        data_in, interpolator, basis, threadsperblock=threadsperblock
+    return _nufft.apply_nufft_adj(
+        kspace, nufft_plan, basis, threadsperblock=threadsperblock
     )
 

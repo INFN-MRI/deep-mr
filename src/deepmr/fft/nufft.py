@@ -1,4 +1,4 @@
-"""FFT subroutines."""
+"""NUFFT subroutines."""
 
 __all__ = ["plan_nufft", "apply_nufft", "apply_nufft_adj"]
 
@@ -11,7 +11,6 @@ from .._signal import resize as _resize
 from .._signal import interp as _interp
 
 from . import fft as _fft
-
 
 def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     """
@@ -41,14 +40,16 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     -------
     interpolator : dict
         Structure containing sparse interpolator matrix:
-
-            * index (``torch.Tensor[int]``): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
-            * value (``torch.Tensor[float32]``): values of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
-            * dshape (``Iterable[int]``): oversample grid shape of shape (ndim,). Order of axes is (z, y, x).
-            * ishape (``Iterable[int]``): interpolator shape (ncontrasts, nview, nsamples)
+            
             * ndim (``int``): number of spatial dimensions.
+            * oversampling (``Iterable[float]``): grid oversampling factor (z, y, x).
+            * width (``Iterable[int]``): kernel width (z, y, x).
+            * beta (``Iterable[float]``): Kaiser Bessel parameter (z, y, x).
+            * os_shape (``Iterable[int]``): oversampled grid shape (z, y, x).
+            * shape (``Iterable[int]``): grid shape (z, y, x).
+            * interpolator (``Interpolator``): precomputed interpolator object.
             * device (``str``): computational device.
-
+            
     Notes
     -----
     Non-uniform coordinates axes ordering is assumed to be ``(x, y)`` for 2D signals
@@ -82,7 +83,16 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         shape = np.asarray([shape] * ndim, dtype=np.int16)
     else:
         shape = np.array(shape, dtype=np.int16)
+        
+    # check for Cartesian axes
+    is_cart = [np.allclose(coord[..., ax], np.round(coord[..., ax])) for ax in range(ndim)]
+    is_cart = np.asarray(is_cart)
+    
+    # Cartesian axes have osf = 1.0 and kernel width = 1 (no interpolation)
+    oversamp[is_cart] = 1.0
+    width[is_cart] = 1
 
+    # get oversampled grid shape
     os_shape = _get_oversamp_shape(shape, oversamp, ndim)
 
     # compute interpolator
