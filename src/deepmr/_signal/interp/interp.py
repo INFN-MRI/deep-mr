@@ -12,7 +12,7 @@ from .. import backend
 
 
 def apply_interpolation(
-    data_in, sparse_coeff, basis_adjoint=None, device=None, threadsperblock=128
+    data_in, interpolator, basis_adjoint=None, device=None, threadsperblock=128
 ):
     """
     Interpolation from array to points specified by coordinates.
@@ -22,7 +22,7 @@ def apply_interpolation(
     data_in : torch.Tensor
         Input Cartesian array of shape ``(..., ncontrasts, ny, nx)`` (2D)
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-    sparse_coeff : dict
+    interpolator : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
@@ -60,16 +60,16 @@ def apply_interpolation(
 
     # cast tp device is necessary
     if device is not None:
-        sparse_coeff.to(device)
+        interpolator.to(device)
 
     # unpack input
-    index = sparse_coeff.index
-    value = sparse_coeff.value
-    dshape = sparse_coeff.dshape
-    ishape = sparse_coeff.ishape
-    ndim = sparse_coeff.ndim
-    scale = sparse_coeff.scale
-    device = sparse_coeff.device
+    index = interpolator.index
+    value = interpolator.value
+    dshape = interpolator.dshape
+    ishape = interpolator.ishape
+    ndim = interpolator.ndim
+    scale = interpolator.scale
+    device = interpolator.device
 
     # cast to device
     data_in = data_in.to(device)

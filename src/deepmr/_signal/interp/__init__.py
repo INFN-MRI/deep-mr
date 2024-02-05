@@ -6,6 +6,9 @@ from . import grid
 from . import interp
 from . import plan
 
+from .grid import apply_gridding
+from .interp import apply_interpolation
+from .plan import plan_interpolator
 
 def interpolate(
     data_in,
@@ -75,11 +78,11 @@ def interpolate(
         shape = data_in.shape[-ndim:]
 
     # plan interpolator
-    sparse_coeff = plan.plan_interpolator(coord, shape, width, beta, device)
+    interpolator = plan.plan_interpolator(coord, shape, width, beta, device)
 
     # perform actual interpolation
     return interp.apply_interpolation(
-        data_in, sparse_coeff, basis_adjoint, threadsperblock=threadsperblock
+        data_in, interpolator, basis_adjoint, threadsperblock=threadsperblock
     )
 
 
@@ -143,9 +146,9 @@ def gridding(
 
     """
     # plan interpolator
-    sparse_coeff = plan.plan_interpolator(coord, shape, width, beta, device)
+    interpolator = plan.plan_interpolator(coord, shape, width, beta, device)
 
     # perform actual interpolation
     return grid.apply_gridding(
-        data_in, sparse_coeff, basis, threadsperblock=threadsperblock
+        data_in, interpolator, basis, threadsperblock=threadsperblock
     )

@@ -11,7 +11,7 @@ import torch
 from .. import backend
 
 
-def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblock=128):
+def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblock=128):
     """
     Gridding of points specified by coordinates to array.
 
@@ -19,7 +19,7 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
     ----------
     data_in : torch.Tensor
         Input Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
-    sparse_coeff : dict
+    interpolator : dict
         Pre-calculated interpolation coefficients in sparse COO format.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
@@ -58,16 +58,16 @@ def apply_gridding(data_in, sparse_coeff, basis=None, device=None, threadsperblo
 
     # cast to device is necessary
     if device is not None:
-        sparse_coeff.to(device)
+        interpolator.to(device)
 
     # unpack input
-    index = sparse_coeff.index
-    value = sparse_coeff.value
-    dshape = sparse_coeff.dshape
-    ishape = sparse_coeff.ishape
-    ndim = sparse_coeff.ndim
-    scale = sparse_coeff.scale
-    device = sparse_coeff.device
+    index = interpolator.index
+    value = interpolator.value
+    dshape = interpolator.dshape
+    ishape = interpolator.ishape
+    ndim = interpolator.ndim
+    scale = interpolator.scale
+    device = interpolator.device
 
     # cast to device
     data_in = data_in.to(device)
