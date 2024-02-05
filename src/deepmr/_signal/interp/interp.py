@@ -88,7 +88,7 @@ def apply_interpolation(
     batch_size = np.prod(batch_shape)  # ncoils * nslices * [int]
 
     # reshape
-    data_in = data_in.reshape([batch_size, nframes, *dshape])
+    data_in = data_in.reshape(batch_size, nframes, *dshape)
     data_in = data_in.swapaxes(0, 1)
 
     # collect garbage
@@ -112,10 +112,10 @@ def apply_interpolation(
 
     # reformat for output
     if nframes == 1:
-        data_out = data_out[0].reshape([*batch_shape, *ishape])
+        data_out = data_out[0].reshape(*batch_shape, *ishape)
     else:
         data_out = data_out.swapaxes(0, 1)
-        data_out = data_out.reshape([*batch_shape, nframes, *ishape])
+        data_out = data_out.reshape(*batch_shape, nframes, *ishape)
 
     return data_out / scale
 

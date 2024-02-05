@@ -15,6 +15,9 @@ nslices = [1, 2]
 device = ["cpu"]
 if torch.cuda.is_available():
     device += ["cuda"]
+    
+# tolerance
+tol = 1e-4
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_interp1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -38,7 +41,7 @@ def test_interp1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
 def test_interp_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -59,7 +62,7 @@ def test_interp_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
     
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_interp2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -83,7 +86,7 @@ def test_interp2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
 def test_interp_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -104,7 +107,7 @@ def test_interp_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, device", list(itertools.product(*[[1, 2], ncoils, device])))
 def test_interp3(ncontrasts, ncoils, device, npix=4, width=12):
@@ -128,7 +131,7 @@ def test_interp3(ncontrasts, ncoils, device, npix=4, width=12):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, device", list(itertools.product(*[[2, 3], ncoils, device])))
 def test_interp_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
@@ -149,7 +152,7 @@ def test_interp_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
     kdata_out = deepmr.interpolate(kdata_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 
 @pytest.mark.parametrize(
@@ -181,8 +184,8 @@ def test_gridding1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
     
 
@@ -217,8 +220,8 @@ def test_gridding_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
     
@@ -251,8 +254,8 @@ def test_gridding2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -287,8 +290,8 @@ def test_gridding_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -321,8 +324,8 @@ def test_gridding3(ncontrasts, ncoils, device, npix=4, width=12):
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -357,8 +360,8 @@ def test_gridding_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
     npt.assert_allclose(
         kdata_out.detach().cpu(),
         kdata_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 # %% local subroutines
@@ -390,8 +393,7 @@ def _generate_coordinates(ndim, ncontrasts, npix):
         coord = torch.repeat_interleave(coord[None, ...], ncontrasts, axis=0)
         
     # normalize
-    cmax = (coord**2).sum(axis=-1)**0.5
-    coord = coord / cmax.max() / 2
+    coord = coord / npix
 
     # build dcf
     dcf = torch.ones(coord.shape[:-1], dtype=dtype)

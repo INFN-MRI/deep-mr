@@ -4,7 +4,7 @@ __all__ = ["fft", "ifft"]
 
 import torch
 
-def fft(input, axes):
+def fft(input, axes, norm="ortho"):
     """
     Centered Fast Fourier Transform.
     
@@ -59,11 +59,11 @@ def fft(input, axes):
     """
     ax = _normalize_axes(axes, input.ndim)
     return torch.fft.fftshift(
-        torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm="ortho"), dim=ax
+        torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
     )
 
 
-def ifft(input, axes):
+def ifft(input, axes, norm="ortho"):
     """
     Centered inverse Fast Fourier Transform.
     
@@ -117,7 +117,7 @@ def ifft(input, axes):
     """
     ax = _normalize_axes(axes, input.ndim)
     return torch.fft.fftshift(
-        torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm="ortho"), dim=ax
+        torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
     )
 
 

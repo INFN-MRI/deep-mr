@@ -74,7 +74,7 @@ def resize(input, oshape):
     ishape1, oshape1 = _expand_shapes(input.shape, oshape)
 
     if ishape1 == oshape1:
-        return input.reshape(oshape)
+        return input
 
     # shift not supported for now
     ishift = [max(i // 2 - o // 2, 0) for i, o in zip(ishape1, oshape1)]

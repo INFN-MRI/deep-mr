@@ -15,6 +15,9 @@ nslices = [1, 2]
 device = ["cpu"]
 if torch.cuda.is_available():
     device += ["cuda"]
+    
+# tolerance
+tol = 1e-4
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_nufft1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -36,10 +39,10 @@ def test_nufft1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     image_in[..., npix // 2] = 1.0
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
 def test_nufft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -58,10 +61,10 @@ def test_nufft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
     
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_nufft2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -83,10 +86,10 @@ def test_nufft2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     image_in[..., npix // 2, npix // 2] = 1.0
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[2, 3], ncoils, nslices, device])))
 def test_nufft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
@@ -105,10 +108,10 @@ def test_nufft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
     basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, device", list(itertools.product(*[[1, 2], ncoils, device])))
 def test_nufft3(ncontrasts, ncoils, device, npix=4, width=12):
@@ -130,10 +133,10 @@ def test_nufft3(ncontrasts, ncoils, device, npix=4, width=12):
     image_in[..., npix // 2, npix // 2, npix // 2] = 1.0
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, device", list(itertools.product(*[[2, 3], ncoils, device])))
 def test_nufft_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
@@ -152,10 +155,10 @@ def test_nufft_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
     basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    kdata_out = deepmr.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
+    kdata_out = deepmr.fft.nufft(image_in.clone(), coord=coord, basis_adjoint=basis_adjoint, device=device, width=width)
 
     # check
-    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=0.01, atol=0.01)
+    npt.assert_allclose(kdata_out.detach().cpu(), kdata_ground_truth.detach().cpu(), rtol=tol, atol=tol)
 
 
 @pytest.mark.parametrize(
@@ -180,16 +183,16 @@ def test_nufft_adjoint1(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(), shape=npix, coord=coord, device=device, width=width
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(), shape=npix, coord=coord, device=device, width=width
     )
 
     # check
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
     
 
@@ -212,8 +215,8 @@ def test_nufft_adjoint_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, wid
     basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(),
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(),
         shape=npix,
         coord=coord,
         basis=basis,
@@ -225,8 +228,8 @@ def test_nufft_adjoint_lowrank1(ncontrasts, ncoils, nslices, device, npix=4, wid
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
     
@@ -252,16 +255,16 @@ def test_nufft_adjoint2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
         kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(), shape=2 * [npix], coord=coord, device=device, width=width
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(), shape=2 * [npix], coord=coord, device=device, width=width
     )
 
     # check
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -284,8 +287,8 @@ def test_nufft_adjoint_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, wid
     basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(),
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(),
         shape=2 * [npix],
         coord=coord,
         basis=basis,
@@ -297,8 +300,8 @@ def test_nufft_adjoint_lowrank2(ncontrasts, ncoils, nslices, device, npix=4, wid
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -324,16 +327,16 @@ def test_nufft_adjoint3(ncontrasts, ncoils, device, npix=4, width=12):
         kdata_in = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(), shape=3 * [npix], coord=coord, device=device, width=width
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(), shape=3 * [npix], coord=coord, device=device, width=width
     )
 
     # check
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 
@@ -356,8 +359,8 @@ def test_nufft_adjoint_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
     basis = torch.eye(ncontrasts, dtype=torch.complex64)
 
     # computation
-    image_out = deepmr.nufft_adjoint(
-        dcf * kdata_in.clone(),
+    image_out = deepmr.fft.nufft_adj(
+        dcf.to(kdata_in.device) * kdata_in.clone(),
         shape=3 * [npix],
         coord=coord,
         basis=basis,
@@ -369,8 +372,8 @@ def test_nufft_adjoint_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
     npt.assert_allclose(
         image_out.detach().cpu(),
         image_ground_truth.detach().cpu(),
-        rtol=0.01,
-        atol=0.01,
+        rtol=tol,
+        atol=tol,
     )
 
 # %% local subroutines
@@ -402,9 +405,8 @@ def _generate_coordinates(ndim, ncontrasts, npix):
         coord = torch.repeat_interleave(coord[None, ...], ncontrasts, axis=0)
         
     # normalize
-    cmax = (coord**2).sum(axis=-1)**0.5
-    coord = coord / cmax.max() / 2
-
+    coord = coord / npix
+    
     # build dcf
     dcf = torch.ones(coord.shape[:-1], dtype=dtype)
     

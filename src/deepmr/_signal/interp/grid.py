@@ -92,7 +92,7 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
         ncoeff = nframes
 
     # argument reshape
-    data_in = data_in.reshape([batch_size, nframes, npts])
+    data_in = data_in.reshape(batch_size, nframes, npts)
     data_in = data_in.swapaxes(0, 1)
 
     # collect garbage
@@ -116,10 +116,10 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
 
     # reformat for output
     if nframes == 1:
-        data_out = data_out[0].reshape([*batch_shape, *dshape])
+        data_out = data_out[0].reshape(*batch_shape, *dshape)
     else:
         data_out = data_out.swapaxes(0, 1)
-        data_out = data_out.reshape([*batch_shape, ncoeff, *dshape])
+        data_out = data_out.reshape(*batch_shape, ncoeff, *dshape)
     
     return data_out / scale
 

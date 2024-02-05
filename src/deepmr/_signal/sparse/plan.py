@@ -80,7 +80,7 @@ def plan_sampling(indexes, shape, device="cpu"):
     indexes = indexes.permute(2, 0, 1)
 
     # send to numba
-    index = [backend.pytorch2numba(idx) for idx in index]
+    index = [backend.pytorch2numba(idx) for idx in indexes]
 
     # transform to tuples
     index = tuple(index)

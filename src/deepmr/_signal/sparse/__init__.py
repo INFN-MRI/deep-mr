@@ -6,6 +6,9 @@ from . import dense2sparse
 from . import sparse2dense
 from . import plan
 
+from .dense2sparse import apply_sampling
+from .sparse2dense import apply_zerofill
+from .plan import plan_sampling
 
 def sample(
     data_in,

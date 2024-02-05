@@ -3,6 +3,7 @@
 __all__ = ["plan_nufft", "apply_nufft", "apply_nufft_adj"]
 
 from dataclasses import dataclass
+import math
 
 import numpy as np
 import torch
@@ -77,15 +78,14 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         oversamp = np.asarray(oversamp, dtype=np.int16)
 
     # calculate Kaiser-Bessel beta parameter
-    beta = np.pi * (((width / oversamp) * (oversamp - 0.5))**2 - 0.8)**0.5
-
+    beta = math.pi * (((width / oversamp) * (oversamp - 0.5))**2 - 0.8)**0.5
     if np.isscalar(shape):
         shape = np.asarray([shape] * ndim, dtype=np.int16)
     else:
-        shape = np.array(shape, dtype=np.int16)
+        shape = np.asarray(shape, dtype=np.int16)
         
     # check for Cartesian axes
-    is_cart = [np.allclose(coord[..., ax], np.round(coord[..., ax])) for ax in range(ndim)]
+    is_cart = [np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax])) for ax in range(ndim)]
     is_cart = np.asarray(is_cart)
     
     # Cartesian axes have osf = 1.0 and kernel width = 1 (no interpolation)
@@ -96,7 +96,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     os_shape = _get_oversamp_shape(shape, oversamp, ndim)
 
     # compute interpolator
-    interpolator = _interp.prepare_interpolator(coord, os_shape, width, beta, device)
+    interpolator = _interp.plan_interpolator(coord, os_shape, width, beta, device)
 
     # transform to tuples
     ndim: int
@@ -179,15 +179,15 @@ def apply_nufft(image, nufft_plan, basis_adjoint=None, device=None, threadsperbl
     _apodize(image, ndim, oversamp, width, beta)
 
     # Zero-pad
-    image /= np.prod(image.shape[-ndim:])**0.5
-    image = _resize.resize(image, list(image.shape[:-ndim]) + os_shape)
+    # image /= np.prod(image.shape[-ndim:])**0.5
+    image = _resize(image, list(image.shape[:-ndim]) + list(os_shape))
 
     # FFT
     kspace = _fft.fft(image, axes=range(-ndim, 0), norm=None)
 
     # Interpolate
     kspace = _interp.apply_interpolation(kspace, interpolator, basis_adjoint, device, threadsperblock)
-    kspace /= np.prod(width)
+    # kspace /= np.prod(width)
 
     # Bring back to original device
     kspace = kspace.to(odevice)
@@ -249,7 +249,6 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     oversamp = nufft_plan.oversamp
     width = nufft_plan.width
     beta = nufft_plan.beta
-    os_shape = nufft_plan.os_shape
     shape = nufft_plan.shape
     interpolator = nufft_plan.interpolator
     device = nufft_plan.device
@@ -262,14 +261,14 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
 
     # Gridding
     kspace = _interp.apply_gridding(kspace, interpolator, basis, device, threadsperblock)
-    kspace /= np.prod(width)
+    # kspace /= np.prod(width)
 
     # IFFT
     image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
 
     # Crop
-    image = _resize.resize(image, list(image.shape[:-ndim]) + shape.tolist())
-    image *= np.prod(os_shape[-ndim:]) / np.prod(shape[-ndim:])**0.5
+    image = _resize(image, list(image.shape[:-ndim]) + list(shape))
+    # image *= np.prod(os_shape[-ndim:]) / np.prod(shape[-ndim:])**0.5
 
     # Apodize
     _apodize(image, ndim, oversamp, width, beta)
@@ -307,18 +306,26 @@ class NUFFTPlan:
             self.device = device
             
 def _get_oversamp_shape(shape, oversamp, ndim):
-    return list(shape)[:-ndim] + [np.ceil(oversamp * i).astype(np.int16) for i in shape[-ndim:]]
+    return np.ceil(oversamp * shape).astype(np.int16)
 
 def _apodize(data_in, ndim, oversamp, width, beta):
     data_out = data_in
     for axis in range(-ndim, 0):
         i = data_out.shape[axis]
         os_i = np.ceil(oversamp[axis] * i)
-        idx = torch.arange(i, dtype=torch.float32)
+        idx = torch.arange(i, dtype=torch.float32, device=data_in.device)
 
         # Calculate apodization
-        apod = (beta[axis]**2 - (np.pi * width[axis] * (idx - i // 2) / os_i)**2)**0.5
+        apod = (beta[axis]**2 - (math.pi * width[axis] * (idx - i // 2) / os_i)**2)**0.5
         apod /= torch.sinh(apod)
+        
+        # normalize by DC
+        apod = apod / apod[int(i // 2)]
+        
+        # avoid NaN
+        apod = torch.nan_to_num(apod, nan=1.0)
+        
+        # apply to axis
         data_out *= apod.reshape([i] + [1] * (-axis - 1))
 
     return data_out
