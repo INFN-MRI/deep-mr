@@ -28,59 +28,94 @@ def bssfpmrf(
     """
     Simulate an inversion-prepared bSSFP sequence with variable flip angles.
 
-    Args:
-        flip (float, array-like): Flip angle in [deg] of shape (npulses,) or (npulses, nmodes).
-        TR (float): Repetition time in [ms].
-        T1 (float, array-like): Longitudinal relaxation time in [ms].
-        T2 (float, array-like): Transverse relaxation time in [ms].
-        sliceprof (optional, bool or array-like): excitation slice profile (i.e., flip angle scaling across slice).
-            If False, pulse are non selective. If True, pulses are selective but ideal profile is assumed.
-            If array, flip angle scaling along slice is simulated. Defaults to False.
-        DE (optional, bool): If True, simulation is repeated 2 times to mimick Driven Equilibrium acquisition.
-            Defaults to  False.
-        diff (optional, str, tuple[str]): Arguments to get the signal derivative with respect to.
-            Defaults to None (no differentation).
-        device (optional, str): Computational device. Defaults to "cpu".
-        TI (optional, float): Inversion time in [ms]. Defaults to None (no preparation).
+    Parameters
+    ----------
+    flip : float | np.ndarray | torch.Tensor
+        Flip angle in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
+    TR : float 
+        Repetition time in [ms].
+    T1 : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for main pool in ``[ms]``.
+    T2 : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main pool in ``[ms]``.
+    sliceprof : float | np.ndarray | torch.Tensor
+        Excitation slice profile (i.e., flip angle scaling across slice).
+        If ``False``, pulse are non selective. If ``True``, pulses are selective but ideal profile is assumed.
+        If array, flip angle scaling along slice is simulated. Defaults to ``False``.
+    DE : bool, optional 
+        If True, simulation is repeated two times to mimick Driven Equilibrium acquisition.
+        Defaults to  ``False``.
+    diff : str | tuple[str], optional
+        String or tuple of strings, saying which arguments 
+        to get the signal derivative with respect to. 
+        Defaults to ``None`` (no differentation).
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+        Defaults to ``cpu``.
+    TI : float  
+        Inversion time in ``[ms]``. 
+        Defaults to ``None`` (no preparation).
 
-    Kwargs (simulation):
-        nstates (optional, int): Maximum number of EPG states to be retained during simulation.
-            High numbers improve accuracy but decrease performance. Defaults to 10.
-        max_chunk_size (optional, int): Maximum number of atoms to be simulated in parallel.
-            High numbers increase speed and memory footprint. Defaults to natoms.
-        nlocs (optional, int): Maximum number of spatial locations to be simulated (i.e., for slice profile effects).
-            Defaults to 15 for slice selective and 1 for non-selective / ideal profile acquisitions.
-        verbose (optional, bool): If true, prints execution time for signal (and gradient) calculations.
-
-    Kwargs (sequence):
-        TE (optional, float): Echo time in [ms]. Defaults to 0.0.
-        B1sqrdTau (float): pulse energies in [uT**2 * ms] when flip = 1 [deg].
-
-        global_inversion (bool): assume nonselective (True) or selective (False) inversion. Defaults to True.
-        inv_B1sqrdTau (float): inversion pulse energy in [uT**2 * ms] when flip = 1 [deg].
-
-     Kwargs (System):
-         B1 (optional, float, array-like): flip angle scaling factor (1.0 := nominal flip angle).
-             Defaults to None (nominal flip angle).
-         B0 (optional, float, array-like): Bulk off-resonance in [Hz]. Defaults to None.
-         B1Tx2 (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): flip angle scaling factor for secondary RF mode (1.0 := nominal flip angle). Defaults to None.
-         B1phase (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): B1 relative phase in [deg]. (0.0 := nominal rf phase). Defaults to None.
-
-    Kwargs (Main pool):
-        chemshift (optional, float): chemical shift for main pool in [Hz]. Defaults to None.
-
-    Kwargs (Bloch-McConnell):
-        T1bm (optional, float, array-like): longitudinal relaxation time for secondary pool in [ms]. Defaults to None.
-        T2bm (optional, float, array-like): transverse relaxation time for main secondary in [ms]. Defaults to None.
-        kbm (optional, float, array-like). Nondirectional exchange between main and secondary pool in [Hz]. Defaults to None.
-        weight_bm (optional, float, array-like): relative secondary pool fraction. Defaults to None.
-        chemshift_bm (optional, float): chemical shift for secondary pool in [Hz]. Defaults to None.
-
-    Kwargs (Magnetization Transfer):
-        kmt (optional, float, array-like). Nondirectional exchange between free and bound pool in [Hz].
-            If secondary pool is defined, exchange is between secondary and bound pools (i.e., myelin water and macromolecular), otherwise
-            exchange is between main and bound pools. Defaults to None.
-        weight_mt (optional, float, array-like): relative bound pool fraction. Defaults to None.
+    Other Parameters
+    ----------------
+    nstates : int, optional 
+        Maximum number of EPG states to be retained during simulation. 
+        High numbers improve accuracy but decrease performance. 
+        Defaults to ``10``.
+    max_chunk_size : int, optional
+        Maximum number of atoms to be simulated in parallel. 
+        High numbers increase speed and memory footprint. 
+        Defaults to ``natoms``.
+    verbose : bool, optional
+        If ``True``, prints execution time for signal (and gradient) calculations.
+        Defaults to ``False``.
+    TE : float, optional 
+        Echo time in ``[ms]``. Defaults to ``0.0``.
+    B1sqrdTau : float, optional 
+        Pulse energies in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
+    global_inversion : bool, optional 
+        Assume nonselective (``True``) or selective (``False``) inversion. 
+        Defaults to ``True``.
+    inv_B1sqrdTau : float, optional  
+        Inversion pulse energy in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
+     B1 : float | np.ndarray | torch.Tensor , optional
+         Flip angle scaling factor (``1.0 := nominal flip angle``). 
+         Defaults to ``None``.
+     B0 : float | np.ndarray | torch.Tensor , optional 
+         Bulk off-resonance in [Hz]. Defaults to ``None``
+     B1Tx2 : float | np.ndarray | torch.Tensor 
+         Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+         Defaults to ``None``.
+     B1phase : float | np.ndarray | torch.Tensor
+         B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+         Defaults to ``None``.      
+    chemshift : float | np.ndarray | torch.Tensor 
+        Chemical shift for main pool in ``[Hz]``. 
+        Defaults to ``None``.
+    T1bm : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for secondary pool in ``[ms]``. 
+        Defaults to ``None``.
+    T2bm : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main secondary in ``[ms]``. 
+        Defaults to ``None``.
+    kbm : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between main and secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    weight_bm : float | np.ndarray | torch.Tensor
+        Relative secondary pool fraction. 
+        Defaults to ``None``.
+    chemshift_bm : float | np.ndarray | torch.Tensor
+        Chemical shift for secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    kmt : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between free and bound pool in ``[Hz]``.
+        If secondary pool is defined, exchange is between secondary and bound pools 
+        (i.e., myelin water and macromolecular), otherwise exchange 
+        is between main and bound pools. 
+        Defaults to ``None``.
+    weight_mt : float | np.ndarray | torch.Tensor
+        Relative bound pool fraction. 
+        Defaults to ``None``.
 
     """
     # constructor

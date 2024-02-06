@@ -10,7 +10,6 @@ from dataclasses import dataclass, fields
 from functools import partial, wraps
 from typing import Tuple, Union
 
-import numpy as np
 import numpy.typing as npt
 import torch
 from torch.func import jacfwd, vmap
@@ -56,108 +55,141 @@ class BaseSimulator:
         2. spin parameters (T1, T2, B1, ...)
         3. buffer for EPG states and output signal (mandatory): states, signal
 
-    Example::
+    Examples
+    --------
+    >>> from deepmr import bloch
+    >>> from deepmr.bloch import ops
 
-        from deepmr import bloch
-        from deepmr.bloch import ops
-
-        class SSFP(bloch.BaseSimulator):
-
-            @staticmethod
-            def signal(flip, TR, T1, T2, states, signal):
-
-                # get device and sequence length
-                device = flip.device
-                npulses = flip.shape[-1]
-
-                # define operators
-                T = ops.RFPulse(device, alpha=flip) # RF pulse
-                E = ops.Relaxation(device, TR, T1, T2) # relaxation until TR
-                S = ops.Shift() # gradient spoil
-
-                # apply sequence
-                for n in range(npulses):
-                    states = T(states)
-                    signal[n] = ops.observe(states)
-                    states = E(states)
-                    states = S(states)
-
-                # return output
-                return signal
+    >>> class SSFP(bloch.BaseSimulator):
+    >>>
+    >>>     @staticmethod
+    >>>     def signal(flip, TR, T1, T2, states, signal):
+    >>>
+    >>>         # get device and sequence length
+    >>>         device = flip.device
+    >>>         npulses = flip.shape[-1]
+    >>>
+    >>>         # define operators
+    >>>         T = ops.RFPulse(device, alpha=flip) # RF pulse
+    >>>         E = ops.Relaxation(device, TR, T1, T2) # relaxation until TR
+    >>>         S = ops.Shift() # gradient spoil
+    >>>
+    >>>         # apply sequence
+    >>>         for n in range(npulses):
+    >>>             states = T(states)
+    >>>             signal[n] = ops.observe(states)
+    >>>             states = E(states)
+    >>>             states = S(states)
+    >>>
+    >>>             # return output
+    >>>             return signal
 
     The resulting class can be used to perform simulation by instantiating an object (spin properties as input)
     and using the '__call__' method (sequence properties as input).
 
-    Example::
-
-        ssfp = SSFP(device=device, T1=T1, T2=T2)
-        signal = ssfp(flip=flip, TR=TR)
+    >>> ssfp = SSFP(device=device, T1=T1, T2=T2)
+    >>> signal = ssfp(flip=flip, TR=TR)
 
     For convenience, simulator instantiation and actual simulation can (and should) be wrapped in a wrapper function.
 
-    Example::
-
-        def simulate_ssfp(flip, TR, T1, T2, device="cpu"):
-            mysim = SSFP(device=device, T1=T1, T2=T2)
-            return ssfp(flip=flip, TR=TR)
+    >>> def simulate_ssfp(flip, TR, T1, T2, device="cpu"):
+    >>>     mysim = SSFP(device=device, T1=T1, T2=T2)
+    >>>     return ssfp(flip=flip, TR=TR)
 
     The class also enable automatic forward differentiation wrt to input spin parameters via "diff" argument.
 
-    Example::
-
-        import numpy as np
-
-        def simulate_ssfp(flip, TR, T1, T2, diff=None, device="cpu"):
-            ssfp = SSFP(device=device, T1=T1, T2=T2, diff=diff)
-            return ssfp(flip=flip, TR=TR)
-
-        # this will return signal only (evolution towards steady state of unbalanced SSFP sequence)
-        signal = simulate_ssfp(flip=10.0*np.ones(1000, dtype=np.float32), TR=4.5, T1=500.0, T2=50.0)
-
-        # this will also return derivatives
-        signal, dsignal = simulate_ssfp(flip=10.0*np.ones(1000, dtype=np.float32), TR=8.5, T1=500.0, T2=50.0, diff=("T1", "T2"))
-
-        # dsignal[0] = dsignal / dT1 (derivative of signal wrt T1)
-        # dsignal[1] = dsignal / dT2 (derivative of signal wrt T2)
+    >>> import numpy as np
+    >>>
+    >>> def simulate_ssfp(flip, TR, T1, T2, diff=None, device="cpu"):
+    >>>     ssfp = SSFP(device=device, T1=T1, T2=T2, diff=diff)
+    >>>     return ssfp(flip=flip, TR=TR)
+    >>>
+    >>> # this will return signal only (evolution towards steady state of unbalanced SSFP sequence)
+    >>> signal = simulate_ssfp(flip=10.0*np.ones(1000, dtype=np.float32), TR=4.5, T1=500.0, T2=50.0)
+    >>>
+    >>> # this will also return derivatives
+    >>> signal, dsignal = simulate_ssfp(flip=10.0*np.ones(1000, dtype=np.float32), TR=8.5, T1=500.0, T2=50.0, diff=("T1", "T2"))
+    >>>
+    >>> # dsignal[0] = dsignal / dT1 (derivative of signal wrt T1)
+    >>> # dsignal[1] = dsignal / dT2 (derivative of signal wrt T2)
 
     This is useful e.g. for nonlinear fitting and for calculating objective functions (CRLB) for sequence optimization.
 
-    Args:
-        T1 (Union[float, npt.NDArray[float], torch.FloatTensor]): longitudinal relaxation time for main pool in [ms].
-        T2 (Union[float, npt.NDArray[float], torch.FloatTensor]): transverse relaxation time for main pool in [ms].
-        diff (optional, Union[str, Tuple[str]]): string or tuple of strings, saying which arguments to get the signal derivative with respect to. Defaults to None (no differentation).
-        device (optional, str): Computational device. Defaults to "cpu".
-        B1 (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): flip angle scaling factor (1.0 := nominal flip angle). Defaults to None.
-        B0 (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): Bulk off-resonance in [Hz]. Defaults to None
+    Parameters
+    ----------
+    T1 : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for main pool in ``[ms]``.
+    T2 : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main pool in ``[ms]``.
+    diff : str | tuple[str], optional
+        String or tuple of strings, saying which arguments 
+        to get the signal derivative with respect to. 
+        Defaults to ``None`` (no differentation).
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    B1 : float | np.ndarray | torch.Tensor , optional
+        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B0 : float | np.ndarray | torch.Tensor , optional 
+        Bulk off-resonance in [Hz]. Defaults to ``None``
 
-    Kwargs (simulation):
-        nstates (optional, int): Maximum number of EPG states to be retained during simulation. High numbers improve accuracy but decrease performance. Defaults to 10.
-        max_chunk_size (optional, int): Maximum number of atoms to be simulated in parallel. High numbers increase speed and memory footprint. Defaults to natoms.
-        nlocs (optional, int): Number of spatial locations to be simulated (i.e., for slice profile effects). Defaults to 1.
-
-    Kwargs (Main pool):
-        T2star (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): effective relaxation time for main pool in [ms]. Defaults to None.
-        D (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): apparent diffusion coefficient in [um**2 / ms]. Defaults to None.
-        v (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): spin velocity [cm / s]. Defaults to None.
-        moving (optional, bool): if True, simulate an in-flowing spin pool. Defaults to False.
-        chemshift (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): chemical shift for main pool in [Hz]. Defaults to None.
-
-    Kwargs (Bloch-McConnell):
-        T1bm (Union[float, npt.NDArray[float], torch.FloatTensor]): longitudinal relaxation time for secondary pool in [ms]. Defaults to None.
-        T2bm (Union[float, npt.NDArray[float], torch.FloatTensor]): transverse relaxation time for main secondary in [ms]. Defaults to None.
-        kbm (optional, Union[float, npt.NDArray[float], torch.FloatTensor]). Nondirectional exchange between main and secondary pool in [Hz]. Defaults to None.
-        weight_bm (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): relative secondary pool fraction. Defaults to None.
-        chemshift_bm (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): chemical shift for secondary pool in [Hz]. Defaults to None.
-
-    Kwargs (Magnetization Transfer):
-        kmt (optional, Union[float, npt.NDArray[float], torch.FloatTensor]). Nondirectional exchange between free and bound pool in [Hz].
-            If secondary pool is defined, exchange is between secondary and bound pools (i.e., myelin water and macromolecular), otherwise
-            exchange is between main and bound pools. Defaults to None.
-        weight_mt (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): relative bound pool fraction. Defaults to None.
-
-    Kwargs (System):
-        B1Tx2 (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): flip angle scaling factor for secondary RF mode (1.0 := nominal flip angle). Defaults to None.
-        B1phase (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): B1 relative phase in [deg]. (0.0 := nominal rf phase). Defaults to None.
+    Other Parameters
+    ----------------
+    nstates : int, optional 
+        Maximum number of EPG states to be retained during simulation. 
+        High numbers improve accuracy but decrease performance. 
+        Defaults to ``10``.
+    max_chunk_size : int, optional
+        Maximum number of atoms to be simulated in parallel. 
+        High numbers increase speed and memory footprint. 
+        Defaults to ``natoms``.
+    nlocs : int, optional
+        Number of spatial locations to be simulated (i.e., for slice profile effects). 
+        Defaults to ``1``.
+    T2star : float | np.ndarray | torch.Tensor
+        Effective relaxation time for main pool in ``[ms]``. 
+        Defaults to ``None``.
+    D : float | np.ndarray | torch.Tensor
+        Apparent diffusion coefficient in ``[um**2 / ms]``. 
+        Defaults to ``None``.
+    v : float | np.ndarray | torch.Tensor
+        Spin velocity ``[cm / s]``. Defaults to ``None``.
+    moving : bool, optional 
+        If True, simulate an in-flowing spin pool. 
+        Defaults to ``False``.
+    chemshift  : float | np.ndarray | torch.Tensor 
+        Chemical shift for main pool in ``[Hz]``. 
+        Defaults to ``None``.
+    T1bm : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for secondary pool in ``[ms]``. 
+        Defaults to ``None``.
+    T2bm : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main secondary in ``[ms]``. 
+        Defaults to ``None``.
+    kbm : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between main and secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    weight_bm  : float | np.ndarray | torch.Tensor
+        Relative secondary pool fraction. 
+        Defaults to ``None``.
+    chemshift_bm : float | np.ndarray | torch.Tensor
+        Chemical shift for secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    kmt : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between free and bound pool in ``[Hz]``.
+        If secondary pool is defined, exchange is between secondary and bound pools 
+        (i.e., myelin water and macromolecular), otherwise exchange 
+        is between main and bound pools. 
+        Defaults to ``None``.
+    weight_mt : float | np.ndarray | torch.Tensor
+        Relative bound pool fraction. 
+        Defaults to ``None``.
+    B1Tx2 : float | np.ndarray | torch.Tensor 
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B1phase : float | np.ndarray | torch.Tensor
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        Defaults to ``None``.
 
     """
 
@@ -273,52 +305,6 @@ class BaseSimulator:
             self.weight = torch.cat(
                 ((1 - self.weight_mt) * weight_free, self.weight_mt), axis=-1
             )
-
-        # build exchange matrix
-        # if self.model == "bm":
-        #     # build exchange matrix rows
-        #     k0 = 0 * self.kbm
-        #     kiew = torch.cat(
-        #         (k0, self.kbm * self.weight[..., [0]]), axis=-1
-        #     )  # intra-/extra-cellular water
-        #     kmw = torch.cat(
-        #         (self.kbm * self.weight[..., [1]], k0), axis=-1
-        #     )  # myelin water
-        #     self.k = torch.stack((kiew, kmw), axis=-2)
-        # elif self.model == "mt":
-        #     k0 = 0 * self.kmt
-        #     # build exchange matrix rows
-        #     kfree = torch.cat(
-        #         (k0, self.kmt * self.weight[..., [0]]), axis=-1
-        #     )  # myelin water (exchange both with intra-/extra-cellular water and semisolid)
-        #     kbound = torch.cat(
-        #         (self.kmt * self.weight[..., [1]], k0), axis=-1
-        #     )  # semisolid (exchange with myelin water only)
-        #     self.k = torch.stack((kfree, kbound), axis=-2)
-        # elif self.model == "bm-mt":
-        #     k0 = 0 * self.kbm
-        #     # build exchange matrix rows
-        #     kiew = torch.cat(
-        #         (k0, self.kbm * self.weight[..., [1]], k0), axis=-1
-        #     )  # intra-/extra-cellular water (exchange with myelin water only)
-        #     kmw = torch.cat(
-        #         (self.kbm * self.weight[..., [0]], k0, self.kmt * self.weight[..., 2]),
-        #         axis=-1,
-        #     )  # myelin water (exchange both with intra-/extra-cellular water and semisolid)
-        #     kbound = torch.cat(
-        #         (k0, self.kmt * self.weight[..., [1]], k0), axis=-1
-        #     )  # semisolid (exchange with myelin water only)
-        #     self.k = np.stack((kiew, kmw, kbound), axis=-2)
-        # else:
-        #     self.k = None
-
-        # # finalize exchange
-        # if self.k is not None:
-        #     self.k = _particle_conservation(self.k)
-
-        #     # single pool voxels do not exchange
-        #     idx = (self.weight == 1).sum(axis=-1) == 1
-        #     self.k[idx, :, :] = 0.0
 
         # build exchange matrix
         if self.model == "bm":
@@ -564,21 +550,8 @@ class BaseSimulator:
 
 
 # %% local utils
-# def _particle_conservation(k):
-#     """Adjust diagonal of exchange matrix by imposing particle conservation."""
-#     # get shape
-#     npools = k.shape[-1]
-
-#     for n in range(npools):
-#         k[..., n, n] = 0.0  # ignore existing diagonal
-#         k[..., n, n] = -k[..., n].sum(dim=-1)
-
-#     return k
-
-
 def inspect_signature(input):
     return list(inspect.signature(input).parameters)
-
 
 def jacadapt(func):
     @wraps(func)
@@ -595,7 +568,6 @@ def jacadapt(func):
         return complex2real(output)
 
     return wrapper
-
 
 def real2complex(input, what):
     if what == "signal":
@@ -618,10 +590,8 @@ def real2complex(input, what):
 
         return out
 
-
 def complex2real(input):
     return torch.stack((input.real, input.imag), dim=-1)
-
 
 def _sort_signature(input, reference):
     out = {k: input[k] for k in reference if k in input}

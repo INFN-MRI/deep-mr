@@ -17,7 +17,8 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
     """
     Simulate a Fast Spin Echo sequence.
 
-    Args:
+    Parameters
+    ----------
         flip (float, array-like): refocusing angle in [deg] of shape (npulses,) or (npulses, nmodes).
         phases (float, array-like): refocusing angle phases in [deg] of shape (npulses,) or (npulses, nmodes).
         ESP (float): Echo spacing in [ms].

@@ -1,4 +1,4 @@
-"""Common preparation blocks"""
+"""Common preparation blocks."""
 
 __all__ = ["InversionPrep", "T2Prep"]
 
@@ -11,16 +11,25 @@ def InversionPrep(TI, T1, T2, weight, k, inv_props):
 
     Consists of a 180° pulse followed by a crusher gradient.
 
-    Args:
-        TI (floattensor): Inversion time in [ms].
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        prep_props (dict): extra parameters.
+    Parameters
+    ----------
+    TI : torch.Tensor
+        Inversion time in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    prep_props : dict
+        Extra pulse parameters.
 
-    Returns:
-        (epgtorch.Operator): Adiabatic T2prep operator, including crusher.
+    Returns
+    -------
+    PrepPulse : deepmr.bloch.Operator 
+        Adiabatic Inversion pulse operator, including crusher.
 
     """
     if TI is not None and TI != 0.0:
@@ -48,19 +57,28 @@ def T2Prep(Tprep, T1, T2, weight, k, prep_props):
 
     Consists of a 90°-180°--90° composite pulse followed by a crusher gradient.
 
-    Args:
-        Tprep (floattensor): T2 preparation time in [ms].
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        prep_props (dict): extra parameters.
+    Parameters
+    ----------
+    Tprep : torch.Tensor 
+        T2 preparation time in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    prep_props : dict
+        Extra pulse parameters.
 
-    Returns:
-        (epgtorch.Operator): Adiabatic T2prep operator, including crusher.
+    Returns
+    -------
+    PrepPulse : deepmr.bloch.Operator 
+        Adiabatic T2prep pulse operator, including crusher.
 
     """
-    if TI is not None and TI != 0.0:
+    if Tprep is not None and Tprep != 0.0:
         # parse inversion properties
         if prep_props is None:
             prep_props = {}
@@ -73,15 +91,15 @@ def T2Prep(Tprep, T1, T2, weight, k, prep_props):
             T1.device, 0.5 * Tprep, T1, T2, weight, k, name="Preparation Interval"
         )
         T180 = ops.AdiabaticPulse(
-            T1.device, alpha=90.0, name="Inversion Pulse", **prep_props
+            T1.device, alpha=180.0, name="Inversion Pulse", **prep_props
         )
-        T90 = ops.AdiabaticPulse(
-            T1.device, alpha=90.0, phi=180.0, name="Flip-back Pulse", **prep_props
+        T90m = ops.AdiabaticPulse(
+            T1.device, alpha=90.0, phi=-180.0, name="Flip-back Pulse", **prep_props
         )
         Sprep = ops.Spoil(name="Prep Crusher")
 
         return ops.CompositeOperator(
-            Sprep, T90m, Eprep, T180, Eprep, T90p, name="Inversion Propagator"
+            Sprep, T90m, Eprep, T180, Eprep, T90p, name="T2prep Propagator"
         )
     else:
-        return ops.Identity(name="Inversion Propagator")
+        return ops.Identity(name="T2prep Propagator")

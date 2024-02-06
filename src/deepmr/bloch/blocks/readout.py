@@ -1,4 +1,4 @@
-"""Common readout blocks"""
+"""Common readout blocks."""
 
 __all__ = ["ExcPulse", "FSEStep", "bSSFPStep", "SSFPFidStep", "SSFPEchoStep"]
 
@@ -9,13 +9,19 @@ def ExcPulse(states, B1, rf_props):
     """
     RF operator.
 
-    Args:
-        states (tensor): EPG states matrix.
-        B1 (complex float): flip angle scaling of shape (...,nmodes).
-        rf_props (dict): extra parameters.
+    Parameters
+    ----------
+    states : dict
+        EPG states matrix.
+    B1 : float | complex
+        Flip angle scaling of shape ``(...,nmodes)``.
+    rf_props : dict
+        Extra RF parameters.
 
-    Returns:
-        (epgtorchx.Operator): RF pulse rotation operator.
+    Returns
+    -------
+    RFPulse : deepmr.bloch.Operator 
+        RF pulse rotation operator.
 
     """
     # parse rf properties
@@ -46,21 +52,35 @@ def FSEStep(
 
     Consists of rfpulse (omitted) - free precession - spoiling gradient.
 
-    Args:
-        states (tensor): EPG states matrix.
-        ESP (float): Echo Spacing in ms.
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        chemshift (tensor): chemical shift of each pool of shape (npools,).
-        D (tensor): Apparent diffusion coefficient of shape (...,) in [um**2/ms]. Assume same coefficient for each pool.
-        v (tensor): Spin velocity of shape (...,) in [cm/s]. Assume same coefficient for each pool.
-        grad_props (dict): extra parameters.
+    Parameters
+    ----------
+    states : dict
+        EPG states matrix.
+    ESP : float
+        Echo Spacing in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    chemshift : torch.Tensor  
+        Chemical shift of each pool of shape ``(npools,).
+    D : torch.Tensor  
+        Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
+    v : torch.Tensor  
+        Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
+    grad_props : dict
+        Extra parameters.
 
-    Returns:
-        TEop (epgtorch.Operator): Propagator until TE. If TE=0, this is the Identity.
-        TETRop (epgtorch.Operator): Propagator until next TR.
+    Returns
+    -------
+    TEop : deepmr.bloch.Operator 
+        Propagator until TE. If TE=0, this is the Identity.
+    TETRop : deepmr.bloch.Operator  
+        Propagator until next TR.
 
     """
     X, S = _free_precess(
@@ -80,22 +100,37 @@ def bSSFPStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None):
 
     Consists of rfpulse (omitted) - free precession.
 
-    Args:
-        states (tensor): EPG states matrix.
-        TE (float): Echo Time in ms.
-        TR (float): Repetition Time in ms.
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        chemshift (tensor): chemical shift of each pool of shape (npools,).
-        D (tensor): Apparent diffusion coefficient of shape (...,) in [um**2/ms]. Assume same coefficient for each pool.
-        v (tensor): Spin velocity of shape (...,) in [cm/s]. Assume same coefficient for each pool.
-        grad_props (dict): extra parameters.
+    Parameters
+    ----------
+    states : dict
+        EPG states matrix.
+    TE : float
+        Echo Time in ``[ms]``.
+    TR : float
+        Repetition Time in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    chemshift : torch.Tensor  
+        Chemical shift of each pool of shape ``(npools,).
+    D : torch.Tensor  
+        Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
+    v : torch.Tensor  
+        Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
+    grad_props : dict
+        Extra parameters.
 
-    Returns:
-        TEop (epgtorch.Operator): Propagator until TE. If TE=0, this is the Identity.
-        TETRop (epgtorch.Operator): Propagator until next TR.
+    Returns
+    -------
+    TEop : deepmr.bloch.Operator 
+        Propagator until TE. If TE=0, this is the Identity.
+    TETRop : deepmr.bloch.Operator  
+        Propagator until next TR.
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, None, None, None)
@@ -123,22 +158,37 @@ def SSFPFidStep(
 
     Consists of rfpulse (omitted) - free precession - spoiling gradient.
 
-    Args:
-        states (tensor): EPG states matrix.
-        TE (float): Echo Time in ms.
-        TR (float): Repetition Time in ms.
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        chemshift (tensor): chemical shift of each pool of shape (npools,).
-        D (tensor): Apparent diffusion coefficient of shape (...,) in [um**2/ms]. Assume same coefficient for each pool.
-        v (tensor): Spin velocity of shape (...,) in [cm/s]. Assume same coefficient for each pool.
-        grad_props (dict): extra parameters.
+    Parameters
+    ----------
+    states : dict
+        EPG states matrix.
+    TE : float
+        Echo Time in ``[ms]``.
+    TR : float
+        Repetition Time in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    chemshift : torch.Tensor  
+        Chemical shift of each pool of shape ``(npools,).
+    D : torch.Tensor  
+        Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
+    v : torch.Tensor  
+        Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
+    grad_props : dict
+        Extra parameters.
 
-    Returns:
-        TEop (epgtorch.Operator): Propagator until TE. If TE=0, this is the Identity.
-        TETRop (epgtorch.Operator): Propagator until next TR.
+    Returns
+    -------
+    TEop : deepmr.bloch.Operator 
+        Propagator until TE. If TE=0, this is the Identity.
+    TETRop : deepmr.bloch.Operator  
+        Propagator until next TR.
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, D, v, grad_props)
@@ -166,22 +216,37 @@ def SSFPEchoStep(
 
     Consists of rfpulse (omitted) - spoiling gradient - free precession.
 
-    Args:
-        states (tensor): EPG states matrix.
-        TE (float): Echo Time in ms.
-        TR (float): Repetition Time in ms.
-        T1 (tensor): T1 relaxation time of shape (..., npools) in [ms].
-        T2 (tensor): T2 relaxation time of shape (..., npools) in [ms].
-        weight (tensor): Pool relative fraction.
-        k (tensor): chemical exchange matrix (...., npools, npools) in [Hz].
-        chemshift (tensor): chemical shift of each pool of shape (npools,).
-        D (tensor): Apparent diffusion coefficient of shape (...,) in [um**2/ms]. Assume same coefficient for each pool.
-        v (tensor): Spin velocity of shape (...,) in [cm/s]. Assume same coefficient for each pool.
-        grad_props (dict): extra parameters.
+    Parameters
+    ----------
+    states : dict
+        EPG states matrix.
+    TE : float
+        Echo Time in ``[ms]``.
+    TR : float
+        Repetition Time in ``[ms]``.
+    T1 : torch.Tensor 
+        T1 relaxation time of shape ``(..., npools) in ``[ms]``.
+    T2 : torch.Tensor 
+        T2 relaxation time of shape ``(..., npools) in ``[ms]``.
+    weight : torch.Tensor  
+        Pool relative fraction.
+    k : torch.Tensor 
+        Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
+    chemshift : torch.Tensor  
+        Chemical shift of each pool of shape ``(npools,).
+    D : torch.Tensor  
+        Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
+    v : torch.Tensor  
+        Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
+    grad_props : dict
+        Extra parameters.
 
-    Returns:
-        TEop (epgtorch.Operator): Propagator until TE. If TE=0, this is the Identity.
-        TETRop (epgtorch.Operator): Propagator until next TR.
+    Returns
+    -------
+    TEop : deepmr.bloch.Operator 
+        Propagator until TE. If TE=0, this is the Identity.
+    TETRop : deepmr.bloch.Operator  
+        Propagator until next TR.
 
     """
     XTE, _ = _free_precess(states, TE, T1, T2, weight, k, chemshift, D, v, grad_props)

@@ -18,7 +18,8 @@ def t1t2shuffling(
     """
     Simulate a T1T2Shuffling Spin Echo sequence. Only single-pool for now.
 
-    Args:
+    Parameters
+    ----------
         flip (float, array-like): refocusing angle in [deg] of shape (npulses,) or (npulses, nmodes).
         phases (float, array-like): refocusing angle phases in [deg] of shape (npulses,) or (npulses, nmodes).
         ESP (float): Echo spacing in [ms].
