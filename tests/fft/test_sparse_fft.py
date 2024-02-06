@@ -29,7 +29,7 @@ def test_sparse_fft1(ncontrasts, ncoils, nslices, device, npix=4):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(1, ncontrasts, npix)
+    indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -51,7 +51,7 @@ def test_sparse_fft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4):
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes, _ = _generate_indexesinates(1, ncontrasts, npix)
+    indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
     image_in = torch.zeros((nslices, ncoils, ncontrasts, npix), dtype=torch.complex64)
@@ -76,7 +76,7 @@ def test_sparse_fft2(ncontrasts, ncoils, nslices, device, npix=4):
         kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes, _ = _generate_indexesinates(2, ncontrasts, npix)
+    indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -98,7 +98,7 @@ def test_sparse_fft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4):
     kdata_ground_truth = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes, _ = _generate_indexesinates(2, ncontrasts, npix)
+    indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
     image_in = torch.zeros((nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64)
@@ -123,7 +123,7 @@ def test_sparse_fft3(ncontrasts, ncoils, device, npix=4):
         kdata_ground_truth = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes, _ = _generate_indexesinates(3, ncontrasts, npix)
+    indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -145,7 +145,7 @@ def test_sparse_fft_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
     kdata_ground_truth = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
 
     # k-space indexesinates
-    indexes, _ = _generate_indexesinates(3, ncontrasts, npix)
+    indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
     image_in = torch.zeros((ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64)
@@ -174,7 +174,7 @@ def test_sparse_ifft1(ncontrasts, ncoils, nslices, device, npix=4):
     image_ground_truth[..., npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(1, ncontrasts, npix)
+    indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -206,7 +206,7 @@ def test_sparse_ifft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4):
     image_ground_truth[..., npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(1, ncontrasts, npix)
+    indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device)
@@ -245,7 +245,7 @@ def test_sparse_ifft2(ncontrasts, ncoils, nslices, device, npix=4):
     image_ground_truth[..., npix // 2, npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(2, ncontrasts, npix)
+    indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -277,7 +277,7 @@ def test_sparse_ifft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4):
     image_ground_truth[..., npix // 2, npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(2, ncontrasts, npix)
+    indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((nslices, ncoils, ncontrasts, 1, npix**2), dtype=torch.complex64, device=device)
@@ -316,7 +316,7 @@ def test_sparse_ifft3(ncontrasts, ncoils, device, npix=4):
     image_ground_truth[..., npix // 2, npix // 2, npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(3, ncontrasts, npix)
+    indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
     if ncontrasts == 1:
@@ -348,7 +348,7 @@ def test_sparse_ifft_lowrank3(ncontrasts, ncoils, device, npix=4):
     image_ground_truth[..., npix // 2, npix // 2, npix // 2] = 1.0
 
     # k-space indexesinates
-    indexes = _generate_indexesinates(3, ncontrasts, npix)
+    indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
     kdata_in = torch.ones((ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device)
@@ -374,7 +374,7 @@ def test_sparse_ifft_lowrank3(ncontrasts, ncoils, device, npix=4):
     )
 
 # %% local subroutines
-def _generate_indexesinates(ndim, ncontrasts, npix):
+def _generate_indexes(ndim, ncontrasts, npix):
 
     # data type
     dtype = torch.float32

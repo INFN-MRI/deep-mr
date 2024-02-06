@@ -132,7 +132,7 @@ def sparse_ifft(
     sampling_mask = _sparse_fft.prepare_sampling(indexes, shape, device)
 
     # perform actual interpolation
-    return _sparse_fft.apply_sparse_fft(
+    return _sparse_fft.apply_sparse_ifft(
         kspace, sampling_mask, basis, threadsperblock=threadsperblock
     )
 

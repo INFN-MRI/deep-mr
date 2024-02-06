@@ -334,13 +334,13 @@ if torch.cuda.is_available():
     from numba import cuda
 
     @cuda.jit(device=True, inline=True)  # pragma: no cover
-    def _update_real(output, index):
-        cuda.atomic.add(output, index)
+    def _update_real(output, index, value):
+        cuda.atomic.add(output, index, value)
 
     @cuda.jit(device=True, inline=True)  # pragma: no cover
-    def _update_complex(output, index):
-        cuda.atomic.add(output.real, index.real)
-        cuda.atomic.add(output.imag, index.imag)
+    def _update_complex(output, index, value):
+        cuda.atomic.add(output.real, index, value.real)
+        cuda.atomic.add(output.imag, index, value.imag)
 
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _zerofill_cuda1_real(cart_data, noncart_data, index):
@@ -719,7 +719,6 @@ if torch.cuda.is_available():
         threadsperblock,
         data_out,
         data_in,
-        value,
         index,
         basis,
         is_complex,
@@ -738,7 +737,6 @@ if torch.cuda.is_available():
         threadsperblock,
         data_out,
         data_in,
-        value,
         index,
         basis,
         is_complex,
@@ -757,7 +755,6 @@ if torch.cuda.is_available():
         threadsperblock,
         data_out,
         data_in,
-        value,
         index,
         basis,
         is_complex,

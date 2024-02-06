@@ -125,7 +125,7 @@ def apply_sparse_fft(image, sampling_mask, basis_adjoint=None, device=None, thre
     kspace = _fft.fft(image, axes=range(-ndim, 0), norm=None)
 
     # Interpolate
-    kspace = _sparse.dense2sparse(kspace, sampling_mask, basis_adjoint, device, threadsperblock)
+    kspace = _sparse.apply_sampling(kspace, sampling_mask, basis_adjoint, device, threadsperblock)
 
     # Bring back to original device
     kspace = kspace.to(odevice)
@@ -193,7 +193,7 @@ def apply_sparse_ifft(kspace, sampling_mask, basis=None, device=None, threadsper
     kspace = kspace.to(device)
 
     # Gridding
-    kspace = _sparse.sparse2dense(kspace, sampling_mask, basis, device, threadsperblock)
+    kspace = _sparse.apply_zerofill(kspace, sampling_mask, basis, device, threadsperblock)
 
     # IFFT
     image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
