@@ -34,6 +34,7 @@ core/signal.md
 core/fft.md
 core/vobj.md
 core/io.md
+core/bloch.md
 
 ```
 
