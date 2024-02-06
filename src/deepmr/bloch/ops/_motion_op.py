@@ -5,6 +5,8 @@ Can be used to simulate bulk motion and (isotropic) diffusion damping.
 """
 __all__ = ["DiffusionDamping", "FlowDephasing", "FlowWash"]
 
+import math 
+
 import torch
 
 from ._abstract_op import Operator
@@ -311,7 +313,7 @@ def _diffusion_damp_prep(
 
     # if total dephasing is not provided, calculate it:
     if total_dephasing is None or voxelsize is None:
-        gamma = 2 * torch.pi * gamma_bar
+        gamma = 2 * math.pi * gamma_bar
         k0_2 = (gamma * grad_amplitude * time * 1e-6) ** 2
     else:
         voxelsize = _get_projection(voxelsize, grad_direction)
@@ -374,7 +376,7 @@ def _flow_dephase_prep(
 
     # if total dephasing is not provided, calculate it:
     if total_dephasing is None or voxelsize is None:
-        dk = 2 * torch.pi * gamma_bar * grad_amplitude * time * 1e-6
+        dk = 2 * math.pi * gamma_bar * grad_amplitude * time * 1e-6
     else:
         voxelsize = _get_projection(voxelsize, grad_direction)
         dk = total_dephasing / voxelsize / 1e-3

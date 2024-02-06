@@ -7,6 +7,8 @@ and multiple transmit coil modes.
 
 __all__ = ["AdiabaticPulse", "RFPulse"]
 
+import math
+
 import numpy as np
 import scipy.interpolate
 import torch
@@ -229,7 +231,7 @@ class BasePulse(Operator):
             G = self.G  # [ms]
 
             # calculate W and D
-            W = torch.pi * (gamma * 1e-3) ** 2 * b1rms**2 * G
+            W = math.pi * (gamma * 1e-3) ** 2 * b1rms**2 * G
             self.WT = -W * tau
 
         except:
@@ -471,8 +473,8 @@ def super_lorentzian_lineshape(f, T2star=12e-6, fsample=[-30e3, 30e3]):
     ug, ffg = np.meshgrid(u, ff, indexing="ij")
 
     # prepare integrand
-    g = np.sqrt(2 / np.pi) * T2star / np.abs(3 * ug**2 - 1)
-    g = g * np.exp(-2 * (2 * np.pi * ffg * T2star / (3 * ug**2 - 1)) ** 2)
+    g = np.sqrt(2 / math.pi) * T2star / np.abs(3 * ug**2 - 1)
+    g = g * np.exp(-2 * (2 * math.pi * ffg * T2star / (3 * ug**2 - 1)) ** 2)
 
     # integrate over theta
     G = du * g.sum(axis=0)

@@ -1,7 +1,8 @@
-"""Base Simulation Class"""
+"""Base Simulation Class."""
 
 __all__ = ["BaseSimulator"]
 
+import math
 import gc
 import inspect
 import time
@@ -355,15 +356,15 @@ class BaseSimulator:
             R2prime = 1 / self.T2star - 1 / self.T2[..., -1]
             T2prime = 1 / R2prime
             T2prime = torch.nan_to_num(T2prime, posinf=0.0, neginf=0.0) + eps
-            self.df = R2prime + 1j * 2 * torch.pi * self.B0
+            self.df = R2prime + 1j * 2 * math.pi * self.B0
         elif self.T2star is None and self.model is None:
-            self.df = 1j * 2 * torch.pi * (self.B0 + self.chemshift)
+            self.df = 1j * 2 * math.pi * (self.B0 + self.chemshift)
         elif self.T2star is not None and self.model is None:
             R2star = 1 / self.T2star
             R2star = torch.nan_to_num(R2star, posinf=0.0, neginf=0.0) + eps
-            self.df = R2star + 1j * 2 * torch.pi * (self.B0 + self.chemshift)
+            self.df = R2star + 1j * 2 * math.pi * (self.B0 + self.chemshift)
         else:
-            self.df = 1j * 2 * torch.pi * self.B0
+            self.df = 1j * 2 * math.pi * self.B0
         self.df = torch.stack((self.df.real, self.df.imag), axis=-1)
 
         # B1

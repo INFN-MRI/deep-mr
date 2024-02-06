@@ -8,6 +8,8 @@ accounting for chemical shift.
 
 __all__ = ["Relaxation"]
 
+import math
+
 import torch
 
 from ._abstract_op import Operator
@@ -242,7 +244,7 @@ def _transverse_relax_exchange_prep(time, T2, k, df=None):
 
     # add chemical shift
     if df is not None:
-        R2tot = R2 + 1j * 2 * torch.pi * df * 1e-3  # (account for time in [ms])
+        R2tot = R2 + 1j * 2 * math.pi * df * 1e-3  # (account for time in [ms])
     else:
         R2tot = R2
 
