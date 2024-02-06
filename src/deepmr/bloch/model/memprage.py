@@ -77,75 +77,75 @@ def memprage(
     verbose : bool, optional
         If ``True``, prints execution time for signal (and gradient) calculations.
         Defaults to ``False``.
-     B1sqrdTau : float, optional 
-         Pulse energies in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
-     global_inversion : bool, optional 
-         Assume nonselective (``True``) or selective (``False``) inversion. 
-         Defaults to ``True``.
-     inv_B1sqrdTau : float, optional  
-         Inversion pulse energy in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
-     grad_tau : float, optional
-         Gradient lobe duration in ``[ms]``.
-     grad_amplitude : float, optional
-         Gradient amplitude along unbalanced direction in ``[mT / m]``.
-         If total_dephasing is not provided, this is used to compute diffusion and flow effects.
-     grad_dephasing : float, optional 
-         Total gradient-induced dephasing across a voxel (in grad direction).
-         If gradient_amplitude is not provided, this is used to compute diffusion and flow effects.
-     voxelsize : str | list | tuple | np.ndarray | torch.Tensor, optional  
-         Voxel size (``dx``, ``dy``, ``dz``) in ``[mm]``. 
-         If scalar, assume isotropic voxel. Defaults to ``None``.
-     grad_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
-         Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``). Defaults to ``"z"``.
-     slice_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
-         Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
-         Ignored if pulses are non-selective. Defaults to ``"z"``.
-      B1 : float | np.ndarray | torch.Tensor , optional
-          Flip angle scaling factor (``1.0 := nominal flip angle``). 
-          Defaults to ``None``.
-      B0 : float | np.ndarray | torch.Tensor , optional 
-          Bulk off-resonance in [Hz]. Defaults to ``None``
-      B1Tx2 : float | np.ndarray | torch.Tensor 
-          Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
-          Defaults to ``None``.
-      B1phase : float | np.ndarray | torch.Tensor
-          B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
-          Defaults to ``None``.      
-     T2star : float | np.ndarray | torch.Tensor
-         Effective relaxation time for main pool in ``[ms]``. 
-         Defaults to ``None``.
-     D : float | np.ndarray | torch.Tensor
-         Apparent diffusion coefficient in ``[um**2 / ms]``. 
-         Defaults to ``None``.
-     v : float | np.ndarray | torch.Tensor
-         Spin velocity ``[cm / s]``. Defaults to ``None``.  
-     chemshift : float | np.ndarray | torch.Tensor 
-         Chemical shift for main pool in ``[Hz]``. 
-         Defaults to ``None``.
-     T1bm : float | np.ndarray | torch.Tensor
-         Longitudinal relaxation time for secondary pool in ``[ms]``. 
-         Defaults to ``None``.
-     T2bm : float | np.ndarray | torch.Tensor
-         Transverse relaxation time for main secondary in ``[ms]``. 
-         Defaults to ``None``.
-     kbm  : float | np.ndarray | torch.Tensor 
-         Nondirectional exchange between main and secondary pool in ``[Hz]``. 
-         Defaults to ``None``.
-     weight_bm  : float | np.ndarray | torch.Tensor
-         Relative secondary pool fraction. 
-         Defaults to ``None``.
-     chemshift_bm : float | np.ndarray | torch.Tensor
-         Chemical shift for secondary pool in ``[Hz]``. 
-         Defaults to ``None``.
-     kmt : float | np.ndarray | torch.Tensor 
-         Nondirectional exchange between free and bound pool in ``[Hz]``.
-         If secondary pool is defined, exchange is between secondary and bound pools 
-         (i.e., myelin water and macromolecular), otherwise exchange 
-         is between main and bound pools. 
-         Defaults to ``None``.
-     weight_mt : float | np.ndarray | torch.Tensor
-         Relative bound pool fraction. 
-         Defaults to ``None``.
+    B1sqrdTau : float, optional 
+        Pulse energies in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
+    global_inversion : bool, optional 
+        Assume nonselective (``True``) or selective (``False``) inversion. 
+        Defaults to ``True``.
+    inv_B1sqrdTau : float, optional  
+        Inversion pulse energy in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
+    grad_tau : float, optional
+        Gradient lobe duration in ``[ms]``.
+    grad_amplitude : float, optional
+        Gradient amplitude along unbalanced direction in ``[mT / m]``.
+        If total_dephasing is not provided, this is used to compute diffusion and flow effects.
+    grad_dephasing : float, optional 
+        Total gradient-induced dephasing across a voxel (in grad direction).
+        If gradient_amplitude is not provided, this is used to compute diffusion and flow effects.
+    voxelsize : str | list | tuple | np.ndarray | torch.Tensor, optional  
+        Voxel size (``dx``, ``dy``, ``dz``) in ``[mm]``. 
+        If scalar, assume isotropic voxel. Defaults to ``None``.
+    grad_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
+        Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``). Defaults to ``"z"``.
+    slice_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
+        Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
+        Ignored if pulses are non-selective. Defaults to ``"z"``.
+    B1 : float | np.ndarray | torch.Tensor , optional
+        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B0 : float | np.ndarray | torch.Tensor , optional 
+        Bulk off-resonance in [Hz]. Defaults to ``None``
+    B1Tx2 : float | np.ndarray | torch.Tensor 
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B1phase : float | np.ndarray | torch.Tensor
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        Defaults to ``None``.      
+    T2star : float | np.ndarray | torch.Tensor
+        Effective relaxation time for main pool in ``[ms]``. 
+        Defaults to ``None``.
+    D : float | np.ndarray | torch.Tensor
+        Apparent diffusion coefficient in ``[um**2 / ms]``. 
+        Defaults to ``None``.
+    v : float | np.ndarray | torch.Tensor
+        Spin velocity ``[cm / s]``. Defaults to ``None``.  
+    chemshift : float | np.ndarray | torch.Tensor 
+        Chemical shift for main pool in ``[Hz]``. 
+        Defaults to ``None``.
+    T1bm : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for secondary pool in ``[ms]``. 
+        Defaults to ``None``.
+    T2bm : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main secondary in ``[ms]``. 
+        Defaults to ``None``.
+    kbm  : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between main and secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    weight_bm  : float | np.ndarray | torch.Tensor
+        Relative secondary pool fraction. 
+        Defaults to ``None``.
+    chemshift_bm : float | np.ndarray | torch.Tensor
+        Chemical shift for secondary pool in ``[Hz]``. 
+        Defaults to ``None``.
+    kmt : float | np.ndarray | torch.Tensor 
+        Nondirectional exchange between free and bound pool in ``[Hz]``.
+        If secondary pool is defined, exchange is between secondary and bound pools 
+        (i.e., myelin water and macromolecular), otherwise exchange 
+        is between main and bound pools. 
+        Defaults to ``None``.
+    weight_mt : float | np.ndarray | torch.Tensor
+        Relative bound pool fraction. 
+        Defaults to ``None``.
 
     """
     # constructor

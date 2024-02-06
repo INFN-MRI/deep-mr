@@ -20,34 +20,56 @@ def t1t2shuffling(
 
     Parameters
     ----------
-        flip (float, array-like): refocusing angle in [deg] of shape (npulses,) or (npulses, nmodes).
-        phases (float, array-like): refocusing angle phases in [deg] of shape (npulses,) or (npulses, nmodes).
-        ESP (float): Echo spacing in [ms].
-        TR (array-like): Variable TR list in [ms].
-        T1 (float, array-like): Longitudinal relaxation time in [ms].
-        T2 (float, array-like): Transverse relaxation time in [ms].
-        sliceprof (optional, bool or array-like): excitation slice profile (i.e., flip angle scaling across slice).
-            If False, pulse are non selective. If True, pulses are selective but ideal profile is assumed.
-            If array, flip angle scaling along slice is simulated. Defaults to False.
-        diff (optional, str, tuple[str]): Arguments to get the signal derivative with respect to.
-            Defaults to None (no differentation).
-        device (optional, str): Computational device. Defaults to "cpu".
+    flip : float | np.ndarray | torch.Tensor
+        Flip angle in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
+    phases : float | np.ndarray | torch.Tensor
+        Refocusing angle phases in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
+    ESP : float
+        Echo spacing in [ms].
+    TR : float 
+        Repetition time in [ms].
+    T1 : float | np.ndarray | torch.Tensor
+        Longitudinal relaxation time for main pool in ``[ms]``.
+    T2 : float | np.ndarray | torch.Tensor
+        Transverse relaxation time for main pool in ``[ms]``.
+    sliceprof : float | np.ndarray | torch.Tensor
+        Excitation slice profile (i.e., flip angle scaling across slice).
+        If ``False``, pulse are non selective. If ``True``, pulses are selective but ideal profile is assumed.
+        If array, flip angle scaling along slice is simulated. Defaults to ``False``.  
+    spoil_inc : float, optional 
+        RF spoiling increment in ``[deg]``. Defaults to ``117°``.      
+    diff : str | tuple[str], optional
+        String or tuple of strings, saying which arguments 
+        to get the signal derivative with respect to. 
+        Defaults to ``None`` (no differentation).
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+        Defaults to ``cpu``.
 
-    Kwargs (simulation):
-        nstates (optional, int): Maximum number of EPG states to be retained during simulation.
-            High numbers improve accuracy but decrease performance. Defaults to 10.
-        max_chunk_size (optional, int): Maximum number of atoms to be simulated in parallel.
-            High numbers increase speed and memory footprint. Defaults to natoms.
-        nlocs (optional, int): Maximum number of spatial locations to be simulated (i.e., for slice profile effects).
-            Defaults to 15 for slice selective and 1 for non-selective / ideal profile acquisitions.
-        verbose (optional, bool): If true, prints execution time for signal (and gradient) calculations.
-
-     Kwargs (System):
-         B1 (optional, float, array-like): flip angle scaling factor (1.0 := nominal flip angle).
-             Defaults to None (nominal flip angle).
-         B0 (optional, float, array-like): Bulk off-resonance in [Hz]. Defaults to None.
-         B1Tx2 (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): flip angle scaling factor for secondary RF mode (1.0 := nominal flip angle). Defaults to None.
-         B1phase (optional, Union[float, npt.NDArray[float], torch.FloatTensor]): B1 relative phase in [deg]. (0.0 := nominal rf phase). Defaults to None.
+    Other Parameters
+    ----------------
+    nstates : int, optional 
+        Maximum number of EPG states to be retained during simulation. 
+        High numbers improve accuracy but decrease performance. 
+        Defaults to ``10``.
+    max_chunk_size : int, optional
+        Maximum number of atoms to be simulated in parallel. 
+        High numbers increase speed and memory footprint. 
+        Defaults to ``natoms``.
+    verbose : bool, optional
+        If ``True``, prints execution time for signal (and gradient) calculations.
+        Defaults to ``False``.
+    B1 : float | np.ndarray | torch.Tensor , optional
+        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B0 : float | np.ndarray | torch.Tensor , optional 
+        Bulk off-resonance in [Hz]. Defaults to ``None``
+    B1Tx2 : float | np.ndarray | torch.Tensor 
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B1phase : float | np.ndarray | torch.Tensor
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        Defaults to ``None``. 
 
     """
     # constructor

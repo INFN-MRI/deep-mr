@@ -94,17 +94,17 @@ def ssfpmrf(
     slice_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
         Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
         Ignored if pulses are non-selective. Defaults to ``"z"``.
-     B1 : float | np.ndarray | torch.Tensor , optional
-         Flip angle scaling factor (``1.0 := nominal flip angle``). 
-         Defaults to ``None``.
-     B0 : float | np.ndarray | torch.Tensor , optional 
-         Bulk off-resonance in [Hz]. Defaults to ``None``
-     B1Tx2 : float | np.ndarray | torch.Tensor 
-         Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
-         Defaults to ``None``.
-     B1phase : float | np.ndarray | torch.Tensor
-         B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
-         Defaults to ``None``.      
+    B1 : float | np.ndarray | torch.Tensor , optional
+        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B0 : float | np.ndarray | torch.Tensor , optional 
+        Bulk off-resonance in [Hz]. Defaults to ``None``
+    B1Tx2 : float | np.ndarray | torch.Tensor 
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B1phase : float | np.ndarray | torch.Tensor
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        Defaults to ``None``.      
     T2star : float | np.ndarray | torch.Tensor
         Effective relaxation time for main pool in ``[ms]``. 
         Defaults to ``None``.

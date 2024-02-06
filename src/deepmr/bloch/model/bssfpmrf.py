@@ -78,17 +78,17 @@ def bssfpmrf(
         Defaults to ``True``.
     inv_B1sqrdTau : float, optional  
         Inversion pulse energy in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
-     B1 : float | np.ndarray | torch.Tensor , optional
-         Flip angle scaling factor (``1.0 := nominal flip angle``). 
-         Defaults to ``None``.
-     B0 : float | np.ndarray | torch.Tensor , optional 
-         Bulk off-resonance in [Hz]. Defaults to ``None``
-     B1Tx2 : float | np.ndarray | torch.Tensor 
-         Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
-         Defaults to ``None``.
-     B1phase : float | np.ndarray | torch.Tensor
-         B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
-         Defaults to ``None``.      
+    B1 : float | np.ndarray | torch.Tensor , optional
+        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B0 : float | np.ndarray | torch.Tensor , optional 
+        Bulk off-resonance in [Hz]. Defaults to ``None``
+    B1Tx2 : float | np.ndarray | torch.Tensor 
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+        Defaults to ``None``.
+    B1phase : float | np.ndarray | torch.Tensor
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        Defaults to ``None``.      
     chemshift : float | np.ndarray | torch.Tensor 
         Chemical shift for main pool in ``[Hz]``. 
         Defaults to ``None``.
