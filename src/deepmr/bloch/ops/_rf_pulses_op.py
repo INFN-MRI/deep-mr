@@ -19,7 +19,7 @@ from ._utils import gamma
 
 class BasePulse(Operator):
     """
-    Operator implementing the transformation performed by application of an RF pulse.
+    Operator representing a RF pulse.
 
     Parameters
     ----------
@@ -293,7 +293,41 @@ class BasePulse(Operator):
         return states
 
 
-class RFPulse(BasePulse):  # noqa
+class RFPulse(BasePulse):
+    """
+    Operator representing a RF pulse.
+
+    Parameters
+    ----------
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    nlocs : int
+        Number of spatial locations for slice profile simulation.
+    alpha : torch.Tensor, optional
+        Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
+    phi : torch.Tensor, optional 
+        Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
+    B1 : torch.Tensor, optional
+        Flip angle scaling due to B1+ inhomogeneities
+        of shape ``(nmodes,)``. The default is ``1.0``.
+
+    Other Parameters
+    ----------------
+    name : str 
+        Name of the operator.
+    rf_envelope : torch.Tensor
+        Pulse time envelope.
+    duration : float
+        Pulse duration in ``[ms]``.
+    b1rms : float
+        Pulse root-mean-squared B1 in ``[uT / deg]``,
+        when pulse is scaled such as ``flip angle = 1.0 [deg]``.
+    freq_offset : float 
+        Pulse frequency offset in ``[Hz]``.
+
+    """
     def __init__(self, device, nlocs=None, alpha=0.0, phi=0.0, B1=1.0, **props):  # noqa
         # base initialization
         super().__init__(device, alpha, phi, **props)
@@ -356,7 +390,39 @@ class RFPulse(BasePulse):  # noqa
         self.prepare_saturation(alpha)
 
 
-class AdiabaticPulse(BasePulse):  # noqa
+class AdiabaticPulse(BasePulse):
+    """
+    Operator representing an adiabatic RF pulse.
+
+    Parameters
+    ----------
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    alpha : torch.Tensor, optional
+        Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
+    phi : torch.Tensor, optional 
+        Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
+    efficiency : torch.Tensor, optional
+        Pulse efficiency of shape ``(nmodes,)``. 
+        The default is ``1.0``.
+
+    Other Parameters
+    ----------------
+    name : str 
+        Name of the operator.
+    rf_envelope : torch.Tensor
+        Pulse time envelope.
+    duration : float
+        Pulse duration in ``[ms]``.
+    b1rms : float
+        Pulse root-mean-squared B1 in ``[uT / deg]``,
+        when pulse is scaled such as ``flip angle = 1.0 [deg]``.
+    freq_offset : float 
+        Pulse frequency offset in ``[Hz]``.
+
+    """
     def __init__(self, device, alpha=0.0, phi=0.0, efficiency=1.0, **props):  # noqa
         super().__init__(device, alpha, phi, **props)
 

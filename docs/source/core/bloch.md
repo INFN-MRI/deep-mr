@@ -100,18 +100,7 @@ To facilitate the development of signal models, we include basic sequence buildi
 ## Sequence Blocks
 
 ```{eval-rst}
-.. currentmodule:: deepmr.bloch
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	deepmr.bloch.InversionPrep
-	deepmr.bloch.T2Prep
-    deepmr.bloch.ExcPulse
-	deepmr.bloch.bSSFPStep
-	deepmr.bloch.SSFPFidStep
-	deepmr.bloch.SSFPEchoStep
-	deepmr.bloch.FSEStep
+
 ```
 
 ## Sequence Blocks
@@ -127,7 +116,7 @@ To facilitate the development of signal models, we include basic sequence buildi
 	deepmr.bloch.ExcPulse
 	deepmr.bloch.bSSFPStep
 	deepmr.bloch.SSFPFidStep
-	deepmr.bloch.SSFPEcho
+	deepmr.bloch.SSFPEchoStep
 	deepmr.bloch.FSEStep
 ```
 
@@ -139,12 +128,16 @@ To facilitate the development of signal models, we include basic sequence buildi
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.bloch.EPGStates
+	deepmr.bloch.EPGstates
 	deepmr.bloch.RFPulse
+	deepmr.bloch.Adiabatic
 	deepmr.bloch.Relaxation
 	deepmr.bloch.Shift
 	deepmr.bloch.Spoil
 	deepmr.bloch.DiffusionDamping
 	deepmr.bloch.FlowDephasing
 	deepmr.bloch.FlowWash
+	deepmr.bloch.observe
+	deepmr.bloch.susceptibility
+	deepmr.bloch.t1sat
 ```
