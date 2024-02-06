@@ -5,6 +5,7 @@ Can be used to simulate longitudinal and transverse relaxation either
 in absence or presence of exchange (Chemical Exchange or MT), as well as
 accounting for chemical shift.
 """
+
 __all__ = ["Relaxation"]
 
 import torch
@@ -12,22 +13,31 @@ import torch
 from ._abstract_op import Operator
 from ._utils import matrix_exp
 
-
 class Relaxation(Operator):
     """
     The "decay operator" applying relaxation and "regrowth" of the magnetization components.
 
-    Args:
-        device (str): computational device (e.g., 'cpu' or 'cuda:n', with n=0,1,2...).
-        time (torch.Tensor): time step in [ms].
-        T1 (torch.Tensor): longitudinal relaxation time in [ms] of shape (npools,).
-        T2 (torch.Tensor): transverse relaxation time in [ms] of shape (npools,).
-        weight (torch.Tensor, optional): relative pool fractions of shape (npools,).
-        k (torch.Tensor, optional): exchange matrix of shape (npools, npools) in [s**-1].
-        df (torch.Tensor, optional): chemical shift in [Hz] of shape (npools,).
+    Parameters
+    ----------
+    device (str): str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    time : torch.Tensor)
+        Time step in ``[ms]``.
+    T1 : torch.Tensor
+        Longitudinal relaxation time in ``[ms]`` of shape ``(npools,)``.
+    T2 : torch.Tensor 
+        Transverse relaxation time in ``[ms]`` of shape ``(npools,)``.
+    weight : torch.Tensor, optional
+        Relative pool fractions of shape ``(npools,)``.
+    k : torch.Tensor, optional
+        Exchange matrix of shape ``(npools, npools)`` in ``[s**-1]``.
+    df : torch.Tensor, optional
+        Chemical shift in ``[Hz]`` of shape ``(npools,)``.
 
-    Kwargs:
-        name (str): Name of the operator.
+    Other Parameters
+    ----------------
+    name : str
+        Name of the operator.
 
     """
 
@@ -82,13 +92,17 @@ class Relaxation(Operator):
         """
         Apply free precession (relaxation + precession + exchange + recovery).
 
-        Args:
-            states (dict): input states matrix for free pools
-                and, optionally, for bound pools.
+        Parameters
+        ----------
+        states : dict
+            Input states matrix for free pools 
+            and, optionally, for bound pools.
 
-        Returns:
-            (dict): output states matrix for free pools
-                and, optionally, for bound pools.
+        Returns
+        -------
+        states : dict 
+            Output states matrix for free pools
+            and, optionally, for bound pools.
 
         """
         states = self._transverse_relax_apply(states, self.E2)
@@ -139,17 +153,6 @@ def _particle_conservation(k):
 
 
 def _transverse_relax_apply(states, E2):
-    """
-    Apply transverse relaxation operator.
-
-    Args:
-        states (dict): input states matrix for free pools.
-        E2 (torch.Tensor): transverse relaxation operator.
-
-    Returns:
-        (dict): output states matrix for free pools.
-
-    """
     # parse
     F = states["F"]
 
@@ -163,18 +166,6 @@ def _transverse_relax_apply(states, E2):
 
 
 def _longitudinal_relax_apply(states, E1, rE1):
-    """
-    Apply longitudinal relaxation operator.
-
-    Args:
-        states (dict): input states matrix for free pools.
-        E1 (torch.Tensor): longitudinal relaxation operator.
-        rE1 (torch.Tensor): longitudinal recovery operator.
-
-    Returns:
-        (dict): output states matrix for free pools.
-
-    """
     # parse
     Z = states["Z"]
 
@@ -209,17 +200,6 @@ def _longitudinal_relax_prep(time, T1):
 
 
 def _transverse_relax_exchange_apply(states, E2):
-    """
-    Apply transverse relaxation-exchange operator.
-
-    Args:
-        states (dict): input states matrix for free and bound pools.
-        E2 (torch.Tensor): transverse relaxation-exchange operator.
-
-    Returns:
-        (dict): output states matrix for free and bound pools.
-
-    """
     # parse
     F = states["F"]
 
@@ -233,18 +213,6 @@ def _transverse_relax_exchange_apply(states, E2):
 
 
 def _longitudinal_relax_exchange_apply(states, E1, rE1):
-    """
-    Apply longitudinal relaxation-exchange operator.
-
-    Args:
-        states (dict): input states matrix for free and bound pools.
-        E1 (torch.Tensor): longitudinal relaxation-exchange operator.
-        rE1 (torch.Tensor): longitudinal recovery operator.
-
-    Returns:
-        (dict): output states matrix for free and bound pools.
-
-    """
     # parse
     Z = states["Z"]
 

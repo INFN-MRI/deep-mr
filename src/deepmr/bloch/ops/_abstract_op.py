@@ -64,13 +64,19 @@ class CompositeOperator(Operator):
 
     def apply(self, epg):
         """
-        Apply the composite operator to an EPG by consecutive application of the contained operators.
+        Apply the composite operator to an EPG states matrix by consecutive application of the contained operators.
 
-        Args:
-            epg (EPGMatrix): epg matrix to be operated on.
+        Parameters
+        ----------
+        epg : EPGMatrix
+            EPG matrix to be operated on.
 
-        Returns:
-            epg after operator application.
+
+        Returns
+        -------
+        epg_dash : EPGMatrix 
+            EPG after operator application.
+            
         """
         epg_dash = epg
 
@@ -96,5 +102,5 @@ class CompositeOperator(Operator):
 
 class Identity(Operator):
     """Dummy operator."""
-
+    
     pass

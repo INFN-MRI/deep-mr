@@ -1,5 +1,4 @@
-"""
-Utilities related to MR simulation.
+"""Utilities related to MR simulation.
 """
 import torch
 from torch.func import vmap

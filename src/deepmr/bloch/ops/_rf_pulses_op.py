@@ -4,8 +4,8 @@ EPG RF Pulses operators.
 Can be used to simulate different types of RF pulses (soft and hard)
 and multiple transmit coil modes.
 """
-__all__ = ["AdiabaticPulse", "RFPulse"]
 
+__all__ = ["AdiabaticPulse", "RFPulse"]
 
 import numpy as np
 import scipy.interpolate
@@ -15,23 +15,36 @@ from ._abstract_op import Operator
 from ._stats import pulse_analysis
 from ._utils import gamma
 
-
 class BasePulse(Operator):
     """
     Operator implementing the transformation performed by application of an RF pulse.
 
-    Args:
-        device (str): computational device (e.g., 'cpu' or 'cuda:n', with n=0,1,2...).
-        nlocs (int): number of spatial locations for slice profile simulation.
-        alpha (torch.Tensor, optional): pulse flip angle in [deg] of shape (nmodes,).
-        phi (torch.Tensor, optional): pulse phase in [deg] of shape (nmodes,).
+    Parameters
+    ----------
+    device : str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    nlocs : int
+        Number of spatial locations for slice profile simulation.
+    alpha : torch.Tensor, optional
+        Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
+    phi : torch.Tensor, optional 
+        Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
+        The default is ``0.0 [deg]``.
 
-    Props:
-        name (str): Name of the operator.
-        rf_envelope (torch.Tensor): pulse time envelope.
-        duration (float): pulse duration in [ms].
-        b1rms (float): Pulse root-mean-squared B1 in [uT / deg] (when pulse is scaled such as flip angle = 1 [deg]).
-        freq_offset (float): pulse frequency offset in [Hz].
+    Other Parameters
+    ----------------
+    name : str 
+        Name of the operator.
+    rf_envelope : torch.Tensor
+        Pulse time envelope.
+    duration : float
+        Pulse duration in ``[ms]``.
+    b1rms : float
+        Pulse root-mean-squared B1 in ``[uT / deg]``,
+        when pulse is scaled such as ``flip angle = 1.0 [deg]``.
+    freq_offset : float 
+        Pulse frequency offset in ``[Hz]``.
 
     """
 
@@ -112,9 +125,12 @@ class BasePulse(Operator):
         """
         Prepare the matrix describing rotation due to RF pulse.
 
-        Args:
-            alpha (torch.Tensor): pulse flip angle in [deg] of shape (nmodes,).
-            phi (torch.Tensor): pulse phase in [deg] of shape (nmodes,).
+        Parameters
+        ----------
+        alpha : torch.Tensor
+            Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
+        phi : torch.Tensor
+            Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
 
         """
         # get device
@@ -171,8 +187,10 @@ class BasePulse(Operator):
         """
         Prepare the matrix describing saturation due to RF pulse.
 
-        Args:
-            alpha (torch.Tensor): pulse flip angle in [deg] of shape (nmodes,).
+        Parameters
+        ----------
+        alpha : torch.Tensor
+            Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
 
         """
         if self.WT is not None:
@@ -234,15 +252,21 @@ class BasePulse(Operator):
         """
         Apply RF pulse (rotation + saturation).
 
-        Args:
-            states (dict): input states matrix for free pools
-                and, optionally, for bound pools.
-            alpha(torch.Tensor, optional): flip angle in [deg].
-            phi (torch.Tensor, optional): rf phase in [deg].
+        Parameters
+        ----------
+        states : dict
+            Input states matrix for free pools 
+            and, optionally, for bound pools.
+        alpha : torch.Tensor, optional 
+            Flip angle in ``[deg]``.
+        phi : torch.Tensor, optional 
+            RF phase in ``[deg]``.
 
-        Returns:
-            (dict): output states matrix for free pools
-                and, optionally, for bound pools.
+        Returns
+        -------
+        states : dict 
+            Output states matrix for free pools
+            and, optionally, for bound pools.
 
         """
         # rotate free pools
@@ -349,17 +373,7 @@ class AdiabaticPulse(BasePulse):  # noqa
 
 # %% local utils
 def _apply_rotation(states, rf_mat):
-    """
-    Propagate EPG states through an RF rotation.
-
-    Args:
-        states (dict): input states matrix for free pool.
-        rf_mat (torch.Tensor): rf matrix of shape (nloc, 3, 3).
-
-    Returns:
-        (dict): output states matrix for free pools.
-
-    """
+    """Propagate EPG states through an RF rotation."""
     # parse
     Fin, Zin = states["F"], states["Z"]
 
@@ -382,16 +396,7 @@ def _apply_rotation(states, rf_mat):
 
 
 def _apply_saturation(states, sat_mat):
-    """
-    Propagate EPG states through an RF saturation.
-
-    Args:
-        states (dict): input states matrix for bound pool.
-        sat_mat (torch.Tensor): rf saturation factor of shape (nloc,).
-
-    Returns:
-        (dict): output states matrix for bound pools.
-    """
+    """Propagate EPG states through an RF saturation."""
     # parse
     Zbound = states["Zbound"]
 
@@ -407,19 +412,30 @@ def super_lorentzian_lineshape(f, T2star=12e-6, fsample=[-30e3, 30e3]):
     """
     Super Lorentzian lineshape.
 
-    Usage:
+    Parameters
+    ----------
+    f : float
+        Frequency offset of the pulse in ``[Hz]``.
+    T2star : float, optional
+        T2 of semisolid compartment in ``[ms]``. Defaults to ``12e-3 (12 us)``.
+    fsample : list | tuple, optional
+        Frequency range at which function is to be evaluated in ``[Hz]``. 
+        Defaults to ``[-2e3, 2e3]``.
+
+    Returns
+    -------
+    G(omega) : np.ndarray 
+        Actual lineshape at arbitrary frequency ``f``.
+        
+    Examples
+    --------
     >>> G = SuperLorentzianLineshape(12e-3, torch.arange(-500, 500))
 
-    Args:
-        f (float): frequency offset of the pulse in [Hz].
-        T2star (float, optional): T2 of semisolid compartment in [ms]. Defaults to 12e-3 (12 us).
-        fsample (list, tuple, optional): frequency range at which function is to be evaluated (in [Hz]). Defaults to [-2e3, 2e3].
-
-    Returns:
-        G(omega): interpolation function to estimate lineshape at arbitrary frequency offset omega in [fsample[0], fsample[1]].
-
+    References
+    ----------
     Shaihan Malik (c), King's College London, April 2019
     Matteo Cencini: Python porting (December 2022)
+    
     """
     # clone
     if isinstance(f, torch.Tensor):
@@ -484,9 +500,7 @@ def super_lorentzian_lineshape(f, T2star=12e-6, fsample=[-30e3, 30e3]):
 
 
 def _spline(x, y, xq):
-    """
-    Same as MATLAB cubic spline interpolation.
-    """
+    """Same as MATLAB cubic spline interpolation."""
     # interpolate
     cs = scipy.interpolate.InterpolatedUnivariateSpline(x, y)
     return cs(xq)

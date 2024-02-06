@@ -17,19 +17,34 @@ class DiffusionDamping(Operator):
     """
     Simulate diffusion effects by state dependent damping of the coefficients.
 
-    Args:
-        time (torch.Tensor): time step in [ms].
-        D (torch.Tensor): apparent diffusion coefficient [um**2 ms**-1].
-        nstates (int): number of EPG dephasing orders.
-        total_dephasing (float, optional): total dephasing due to unbalanced gradients in [rad].
-        voxelsize (float, optional): voxel thickness along unbalanced direction in [mm].
-        grad_amplitude (float, optional): gradient amplitude along unbalanced direction in [mT / m].
-        grad_direction (str, torch.Tensor): gradient orientation ("x", "y", "z" or versor).
+    Parameters
+    ----------
+    device (str): str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    time : torch.Tensor)
+        Time step in ``[ms]``.
+    D : torch.Tensor 
+        Apparent diffusion coefficient ``[um**2 ms**-1]``.
+    nstates : int 
+        Number of EPG dephasing orders.
+    total_dephasing : float, optional
+        Total dephasing due to unbalanced gradients in ``[rad]``.
+    voxelsize : float, optional 
+        Voxel thickness along unbalanced direction in ``[mm]``.
+    grad_amplitude : float, optional 
+        Gradient amplitude along unbalanced direction in ``[mT / m]``.
+    grad_direction : str | torch.Tensor
+        Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
 
+    Notes
+    -----
     User must provide either total dephasing and voxel size or gradient amplitude and duration.
 
-    Kwargs:
-        name (str): Name of the operator.
+    Other Parameters
+    ----------------
+    name : str
+        Name of the operator.
+        
     """
 
     def __init__(
@@ -82,13 +97,17 @@ class DiffusionDamping(Operator):
         """
         Apply diffusion damping.
 
-        Args:
-            states (dict): input states matrix for free pools
-                and, optionally, for bound pools.
+        Parameters
+        ----------
+        states : dict
+            Input states matrix for free pools 
+            and, optionally, for bound pools.
 
-        Returns:
-            (dict): output states matrix for free pools
-                and, optionally, for bound pools.
+        Returns
+        -------
+        states : dict 
+            Output states matrix for free pools
+            and, optionally, for bound pools.
 
         """
         states = diffusion_damp_apply(states, self.D1, self.D2)
@@ -104,20 +123,29 @@ class FlowDephasing(Operator):
     """
     Simulate state dependent phase accrual of the EPG coefficients due to flow.
 
-    Args:
-        time (torch.Tensor): time step in [ms].
-        v (torch.Tensor): spin velocity of shape (3,) in [cm / s]. If scalar, assume same direction as unbalanced gradient.
-        nstates (int): number of EPG dephasing orders.
-        total_dephasing (float, optional): total dephasing due to unbalanced gradients in [rad].
-        voxelsize (float, optional): voxel thickness along unbalanced direction in [mm].
-        grad_amplitude (float, optional): gradient amplitude along unbalanced direction in [mT / m].
-        grad_direction (str, torch.Tensor): gradient orientation ("x", "y", "z" or versor).
-
+    Parameters
+    ----------
+    device (str): str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    time : torch.Tensor)
+        Time step in ``[ms]``.
+    v : torch.Tensor 
+        Spin velocity of shape ``(3,)`` in ``[cm / s]``. 
+        If scalar, assume same direction as unbalanced gradient.
+    nstates : int 
+        Number of EPG dephasing orders.
+    total_dephasing : float, optional
+        Total dephasing due to unbalanced gradients in ``[rad]``.
+    voxelsize : float, optional 
+        Voxel thickness along unbalanced direction in ``[mm]``.
+    grad_amplitude : float, optional 
+        Gradient amplitude along unbalanced direction in ``[mT / m]``.
+    grad_direction : str | torch.Tensor
+        Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
+    
+    Notes
+    -----
     User must provide either total dephasing and voxel size or gradient amplitude and duration.
-
-    Returns:
-        J1 (torch.Tensor): flow dephasing operator for Z states.
-        J2 (torch.Tensor): flow dephasing operator for F+- states.
 
     """
 
@@ -171,13 +199,17 @@ class FlowDephasing(Operator):
         """
         Apply flow dephasing.
 
-        Args:
-            states (dict): input states matrix for free pools
-                and, optionally, for bound pools.
+        Parameters
+        ----------
+        states : dict
+            Input states matrix for free pools 
+            and, optionally, for bound pools.
 
-        Returns:
-            (dict): output states matrix for free pools
-                and, optionally, for bound pools.
+        Returns
+        -------
+        states : dict 
+            Output states matrix for free pools
+            and, optionally, for bound pools.
 
         """
         states = flow_dephase_apply(states, self.J1, self.J2)
@@ -192,16 +224,18 @@ class FlowDephasing(Operator):
 class FlowWash(Operator):
     """
     Simulate EPG states replacement due to flow.
-
-    Args:
-        time (torch.Tensor): time step in [ms].
-        v (torch.Tensor): spin velocity of shape (3,) in [cm / s]. If scalar,  as slice.
-        voxelsize (float, optional): voxel thickness along slice direction in [mm].
-        slice_direction(list, tuple, optional): slice orientation ("x", "y", "z" or versor).
-
-    Returns:
-        Win (torch.Tensor): wash-in operator.
-        Wout (torch.Tensor): wash-out operator.
+    
+    device (str): str
+        Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
+    time : torch.Tensor)
+        Time step in ``[ms]``.
+    v : torch.Tensor 
+        Spin velocity of shape ``(3,)`` in ``[cm / s]``. 
+        If scalar, assume same direction as unbalanced gradient.
+    voxelsize : float, optional 
+        Voxel thickness along unbalanced direction in ``[mm]``.
+    slice_direction : str | torch.Tensor
+        Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
 
     """
 
@@ -238,13 +272,17 @@ class FlowWash(Operator):
         """
         Apply spin replacement.
 
-        Args:
-            states (dict): input states matrix for free pools
-                and, optionally, for bound pools.
+        Parameters
+        ----------
+        states : dict
+            Input states matrix for free pools 
+            and, optionally, for bound pools.
 
-        Returns:
-            (dict): output states matrix for free pools
-                and, optionally, for bound pools.
+        Returns
+        -------
+        states : dict 
+            Output states matrix for free pools
+            and, optionally, for bound pools.
 
         """
         states = flow_washout_apply(states, self.Win, self.Wout)
@@ -302,18 +340,6 @@ def _diffusion_damp_prep(
 
 
 def diffusion_damp_apply(states, D1, D2):
-    """
-    Apply diffusion damping operator.
-
-    Args:
-        states (dict): input states matrix for free and bound pools.
-        D1 (torch.Tensor): diffusion damping operator for Z states.
-        D2 (torch.Tensor): diffusion damping operator for F+- states.
-
-    Returns:
-        (dict): output states matrix for free and bound pools.
-
-    """
     # parse
     F, Z = states["F"], states["Z"]
 
@@ -368,17 +394,6 @@ def _flow_dephase_prep(
 
 
 def flow_dephase_apply(states, J1, J2):
-    """
-    Apply flow dephasing operator.
-
-    Args:
-        states (dict): input states matrix for free and bound pools.
-        J1 (torch.Tensor): flow dephasing operator for Z states.
-        J2 (torch.Tensor): flow dephasing operator for F+- states.
-
-    Returns:
-        (dict): output states matrix for free and bound pools.
-    """
     # parse
     F, Z = states["F"], states["Z"]
 
@@ -422,17 +437,6 @@ def _flow_washout_prep(time, v, voxelsize, slice_direction=None):
 
 
 def flow_washout_apply(states, Win, Wout):
-    """
-    Apply flow wash-in / wash-out operator.
-
-    Args:
-        states (dict): input states matrix for free and bound pools.
-        Win (torch.Tensor): wash-in operator.
-        Wout (torch.Tensor): wash-out operator.
-
-    Returns:
-        (dict): output states matrix for free and bound pools.
-    """
     # parse
     F, Z = states["F"], states["Z"]
     Fmoving, Zmoving = states["moving"]["F"], states["moving"]["Z"]

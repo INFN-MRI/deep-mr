@@ -1,7 +1,6 @@
+"""Tools for the analysis of RF pulse waveforms and prediction of corresponding magnetization profiles.
 """
-Tools for the analysis of RF pulse waveforms and prediction of
-corresponding magnetization profiles.
-"""
+
 __all__ = ["pulse_analysis"]
 
 import math
@@ -14,37 +13,48 @@ from scipy.signal import correlate
 from ._utils import gamma
 
 
-def pulse_analysis(
-    rf_envelope: npt.NDArray,
-    duration: float,
-    flip_angle: float = 1.0,
-    npts: int = None,
-    verbose: bool = False,
-):
+def pulse_analysis(rf_envelope, duration, flip_angle=1.0, npts=None, verbose=False):
     """
-    Analyze RF pulse and retrieve pulse power spectrum,
-    number of bands, frequency offset and power deposition for each band,
+    Analyze RF pulse and retrieve pulse power spectrum.
+    
+    Parameters are number of bands, frequency offset and power deposition for each band,
     main lobe slice profile (small-angle approx), total pulse duration
     and isodelay.
 
-    Args:
-        rf_envelope: time envelope of RF pulse of shape (nchannels, npts).
-        duration: RF duration in [ms].
-        flip_angle: desired flip angle in [deg].
-        npts: number of points for main lobe slice profile (default: npts).
-        verbose: if True, display retrieved info.
+    Parameters
+    ----------
+    rf_envelope : np.ndarray 
+        Time envelope of RF pulse of shape (nchannels, npts).
+    duration : float 
+        RF duration in [ms].
+    flip_angle : float 
+        Desired flip angle in [deg]. The default is ``1.0 [deg]``.
+    npts : int, optional 
+        Number of points for main lobe slice profile.
+        The default is the number of points in rf_envelope.
+    verbose : bool, optional
+        If ``True``, display retrieved info.
+        The default is ``False``.
 
-    Returns:
-        info: dict with the following fields:
-            - 'duration': pulse duration in [s].
-            - 'isodelay': pulse isodelay in [s].
-            - 'freq_offset': frequency offset for each band in [Hz].
-            - 'b1rms': root-mean-squared B1 for each band in [T]
-        rf_main_lobe_profile: main lobe frequency profile (normalized to profile[f=0] = 1),
-                              interpolated to npts.
-        f_main_lobe: main lobe frequency axis in [Hz] (interpolated to npts).
-        rf_full_spectrum_profile: full RF spectrum (normalized to profile[f=0] = 1).
-        f_full_spectrum: full spectrum frequency axis in [Hz].
+    Returns
+    -------
+    info : dict 
+    Contain the following fields:
+        
+        * ``duration``: pulse duration in [s].
+        * ``isodelay``: pulse isodelay in [s].
+        * ``freq_offset``: frequency offset for each band in [Hz].
+        * ``b1rms``: root-mean-squared B1 for each band in [T].
+        
+    rf_main_lobe_profile : np.ndarray
+        Main lobe frequency profile (normalized to profile[f=0] = 1), interpolated to npts.
+    f_main_lobe : np.ndarray
+        Main lobe frequency axis in [Hz] (interpolated to npts).
+    rf_full_spectrum_profile : np.ndarray
+        Full RF spectrum (normalized to profile[f=0] = 1).
+    f_full_spectrum : np.ndarray
+        Full spectrum frequency axis in [Hz].
+        
     """
     try:
         rf_envelope = rf_envelope.clone().numpy()

@@ -7,17 +7,21 @@ __all__ = ["observe", "susceptibility", "t1sat"]
 
 import torch
 
-
 def observe(states, phi=None):
     """
     Store observable magnetization.
 
-    Args:
-        states (dict): input states matrix for free pools.
-        phi (torch.Tensor): effective phase for signal demodulation.
+    Parameters
+    ----------
+    states : dict
+        Input states matrix for free pools.
+    phi : torch.Tensor 
+         Effective phase for signal demodulation.
 
-    Returns:
-        (torch.Tensor): net observable magnetization at current timepoint.
+    Returns
+    -------
+    signal : torch.Tensor
+        Net observable magnetization at current timepoint.
 
     """
     # parse
@@ -37,16 +41,22 @@ def observe(states, phi=None):
 
 
 def susceptibility(signal, time, z):
-    """
+    r"""
     Apply static susceptibility effects (bulk decay and dephasing).
 
-    Args:
-        signal (torch.Tensor): net observable magnetization.
-        time (torch.Tensor): effective phase for signal demodulation.
-        z (torch.Tensor): complex field R2star + 1j deltaB0.
+    Parameters
+    ----------
+    signal : torch.Tensor
+        Net observable magnetization.
+    time : torch.Tensor
+        Effective phase for signal demodulation.
+    z torch.Tensor
+        Complex field ``R2* + 1j $\Delta$ B0``.
 
-    Returns:
-        (torch.Tensor): damped and dephased net observable magnetization.
+    Returns
+    -------
+    signal : torch.Tensor
+        Damped and dephased net observable magnetization.
 
     """
     if time.shape[-1] != 1:  # multiecho
@@ -64,13 +74,19 @@ def t1sat(signal, time, t1):
     """
     Apply t1 saturation effect.
 
-    Args:
-        signal (torch.Tensor): net observable magnetization.
-        time (torch.Tensor): effective phase for signal demodulation.
-        t1 (torch.Tensor): longitudinal magnetization time.
+    Parameters
+    ----------
+    signal : torch.Tensor
+        Net observable magnetization.
+    time : torch.Tensor 
+        Effective phase for signal demodulation.
+    t1 : torch.Tensor
+        Longitudinal magnetization time.
 
-    Returns:
-        (torch.Tensor): saturated net observable.
+    Returns
+    -------
+    signal : torch.Tensor
+        Saturated net observable magnetization.
 
     """
     if time.shape[-1] != 1:  # multiecho

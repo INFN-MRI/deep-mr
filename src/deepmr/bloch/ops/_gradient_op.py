@@ -4,22 +4,27 @@ EPG Gradient operators.
 Can be used to simulate dephasing due spoiling gradient
 and perfect crushing (i.e. after prep pulse or refocus pulse).
 """
+
 __all__ = ["Shift", "Spoil"]
 
 import torch
 
 from ._abstract_op import Operator
 
-
 class Shift(Operator):
     """
-    Perform shift operator the corresponds to a 2npi dephasing of the magnetization.
+    Perform shift operator corrsesponding to a 2npi dephasing of the magnetization.
 
-    Args:
-        states (dict): input states matrix for free pools.
+    Parameters
+    ----------
+    states : dict
+        Input states matrix for free pools.
 
-    Returns:
-        (dict): output states matrix for free pools.
+
+    Returns
+    -------
+    states : dict 
+        Output states matrix for free pools.
 
     """
 
@@ -42,11 +47,17 @@ class Spoil(Operator):
     """
     Non-physical spoiling operator that zeros all transverse states.
 
-    Args:
-        states (dict): input states matrix for free pools.
+    Parameters
+    ----------
+    states : dict
+        Input states matrix for free pools.
 
-    Returns:
-        (dict): output states matrix for free pools.
+
+    Returns
+    -------
+    states : dict 
+        Output states matrix for free pools.
+        
     """
 
     def apply(self, states):  # noqa
