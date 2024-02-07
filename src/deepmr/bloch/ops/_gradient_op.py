@@ -28,7 +28,8 @@ class Shift(Operator):
 
     """
 
-    def apply(self, states):  # noqa
+    def apply(self, states):
+        """Apply states shifting."""
         # parse
         F = states["F"]
 
@@ -60,7 +61,8 @@ class Spoil(Operator):
         
     """
 
-    def apply(self, states):  # noqa
+    def apply(self, states):
+        """Destroy transverse magnetization."""
         # parse
         F = states["F"]
 

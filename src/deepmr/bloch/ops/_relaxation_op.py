@@ -130,12 +130,12 @@ def _prepare_exchange(weight, k):
         k = torch.stack((k1, k2), axis=-2)
     else:  # BM-MT
         k0 = 0 * k[..., [0]]
-        k1 = torch.cat((k0, k[..., [0]] * weight[..., [1]], k0), axis=-1)
+        k1 = torch.cat((k0, k[..., [0]] * weight[..., [0]], k0), axis=-1)
         k2 = torch.cat(
-            (k[..., [0]] * weight[..., [0]], k0, k[..., [1]] * weight[..., [2]]),
+            (k[..., [0]] * weight[..., [1]], k0, k[..., [1]] * weight[..., [1]]),
             axis=-1,
         )
-        k3 = torch.cat((k0, k[..., [1]] * weight[..., [1]], k0), axis=-1)
+        k3 = torch.cat((k0, k[..., [1]] * weight[..., [2]], k0), axis=-1)
         k = torch.stack((k1, k2, k3), axis=-2)
 
     # finalize exchange

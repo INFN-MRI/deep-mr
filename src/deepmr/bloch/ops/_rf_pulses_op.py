@@ -108,7 +108,7 @@ class BasePulse(Operator):
             self.G = torch.atleast_1d(G)
 
         # initialize saturation
-        self.initialize_saturation()
+        self._initialize_saturation()
 
         # default slice profile
         slice_profile = torch.as_tensor(1.0, dtype=torch.float32, device=device)
@@ -222,7 +222,7 @@ class BasePulse(Operator):
             # actual calculation
             self.S = torch.exp(scale * self.WT)
 
-    def initialize_saturation(self):
+    def _initialize_saturation(self):
         # build operator
         try:
             # get parameters
@@ -237,7 +237,7 @@ class BasePulse(Operator):
         except:
             self.WT = None
 
-    def check_saturation_operator(self):
+    def _check_saturation_operator(self):
         if self.WT is None:
             missing = []
             msg = " - please provide tau and either pulse envelope or its b1rms and frequency offset."
