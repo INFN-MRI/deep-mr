@@ -430,7 +430,6 @@ def _remove_oversampling(data, head):
         data = _fft(data, -1)
         data = data[..., center - hwidth : center + hwidth]
         data = _fft(data, -1)
-        dt = np.diff(head.t)[0]
         head.t = np.linspace(0, head.t[-1], data.shape[-1])
 
     return data, head

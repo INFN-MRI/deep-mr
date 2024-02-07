@@ -14,7 +14,6 @@ except Exception:
     __GEHC_AVAILABLE__ = False
 
 from ..generic.pathlib import get_filepath
-from ..types import mrd
 from ..types.header import Header
 
 

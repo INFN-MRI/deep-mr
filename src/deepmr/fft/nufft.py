@@ -64,6 +64,9 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
+    # copy coord and switch to cpu
+    coord = coord.clone().cpu()
+    
     # get parameters
     ndim = coord.shape[-1]
 
@@ -73,9 +76,9 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         width = np.asarray(width, dtype=np.int16)
         
     if np.isscalar(oversamp):
-        oversamp = np.asarray([oversamp] * ndim, dtype=np.int16)
+        oversamp = np.asarray([oversamp] * ndim, dtype=np.float32)
     else:
-        oversamp = np.asarray(oversamp, dtype=np.int16)
+        oversamp = np.asarray(oversamp, dtype=np.float32)
 
     # calculate Kaiser-Bessel beta parameter
     beta = math.pi * (((width / oversamp) * (oversamp - 0.5))**2 - 0.8)**0.5

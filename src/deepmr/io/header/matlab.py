@@ -122,7 +122,7 @@ def _get_trajectory(matfile):
                     - ks[..., 2] * sintheta * cosphi,
                     -ks[..., 0] * costheta * sinphi
                     + ks[..., 1] * cosphi
-                    - ks[..., 2] * sintheta * sinphi,
+                    + ks[..., 2] * sintheta * sinphi,
                     ks[..., 0] * sintheta + ks[..., 2] * costheta,
                 ],
                 axis=-1,
@@ -207,10 +207,8 @@ def _get_sampling_time(matfile):
 def _get_shape(matfile, ndim):
     if "mtx" in matfile:
         shape = matfile["mtx"].squeeze()
-        shape = shape[::-1]
     elif "npix" in matfile:
         shape = matfile["npix"].squeeze()
-        shape = shape[::-1]
     elif "shape" in matfile:
         shape = matfile["shape"]
     else:
@@ -222,7 +220,7 @@ def _get_shape(matfile, ndim):
     else:
         shape = shape.astype(int)
 
-    return shape
+    return shape[::-1]
 
 
 def _get_resolution_and_spacing(matfile, shape, ndim):
@@ -231,14 +229,17 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
     else:
         if "fov" in matfile:
             fov = matfile["fov"].squeeze() * 1e3
-            fov = fov[::-1]
         else:
             raise RuntimeError("Field of View not found!")
 
         # expand scalar
         if np.isscalar(fov) or fov.size == 1:
             fov = [float(fov)] * ndim
+            
+        # reverse (x, y, z) -> (z, y, x)
+        fov = fov[::-1]
 
+        # calculate resolution
         resolution = (np.asarray(fov) / np.asarray(shape)).tolist()
 
     # get spacing
