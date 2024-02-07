@@ -6,7 +6,10 @@ and T1-T2 Shuffling and balanced / unbalanced MR Fingerprinting.
 
 References
 ----------
-[1] Malik, S.J., Teixeira, R.P.A.G. and Hajnal, J.V. (2018), 
+[1] Weigel, M. (2015), 
+Extended phase graphs: Dephasing, RF pulses, and echoes - pure and simple. 
+J. Magn. Reson. Imaging, 41: 266-295. https://doi.org/10.1002/jmri.24619
+[2] Malik, S.J., Teixeira, R.P.A.G. and Hajnal, J.V. (2018), 
 Extended phase graph formalism for systems with magnetization transfer and exchange. 
 Magn. Reson. Med., 80: 767-779. https://doi.org/10.1002/mrm.27040
     
