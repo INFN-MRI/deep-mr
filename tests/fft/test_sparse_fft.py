@@ -2,8 +2,11 @@
 
 import itertools
 import pytest
+import warnings
+
 
 import numpy.testing as npt
+from numba.core.errors import NumbaPerformanceWarning
 
 import torch
 import deepmr
@@ -18,6 +21,9 @@ if torch.cuda.is_available():
     
 # tolerance
 tol = 1e-4
+
+# suppress performance warnings
+warnings.simplefilter('ignore', category=NumbaPerformanceWarning)
 
 @pytest.mark.parametrize("ncontrasts, ncoils, nslices, device", list(itertools.product(*[[1, 2], ncoils, nslices, device])))
 def test_sparse_fft1(ncontrasts, ncoils, nslices, device, npix=4):
