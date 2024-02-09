@@ -188,7 +188,7 @@ def _get_dcf(matfile, k, filename, dcfname):
 
 def _get_sampling_time(matfile):
     if "t" in matfile:
-        t = np.atleast_2d(matfile["t"][0])
+        t = np.atleast_2d(matfile["t"][0]).squeeze()
     elif "ts" in matfile:
         t = matfile["ts"].squeeze()
     else:
@@ -416,7 +416,10 @@ def _reformat_trajectory(head, acq_type, reshape):
                     ndim -= 1
 
         # now reshape
-        ncontrasts = len(head.FA)
+        if np.isscalar(head.FA):
+            ncontrasts = 1
+        else:
+            ncontrasts = head.FA.size
         nviews = int(k.shape[0] / ncontrasts)
         k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
         k = k.astype(np.float32)
