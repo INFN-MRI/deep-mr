@@ -146,7 +146,6 @@ def write_nifti(
     if head is not None:
         head = copy.deepcopy(head)
         head.numpy()
-        # print(head)
 
     # anonymize
     if head is not None and anonymize:

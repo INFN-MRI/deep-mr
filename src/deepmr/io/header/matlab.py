@@ -264,7 +264,6 @@ def _get_schedule(head, matfile, filename, schedulename):
             schedule = matlab.read_matfile(schedulename)
             schedule = schedule["method"]
         except Exception:
-            raise
             schedule = None
 
     if schedule is not None:
