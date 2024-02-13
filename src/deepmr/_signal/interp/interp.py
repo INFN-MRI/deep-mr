@@ -26,7 +26,7 @@ def apply_interpolation(
         Pre-calculated interpolation coefficients in sparse COO format.
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).

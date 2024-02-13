@@ -66,7 +66,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
             This is the readout sampling time ``(0, t_read)`` in ``ms``.
             with shape (nsamples,).
         * traj (torch.Tensor):
-            This is the k-space trajectory normalized as ``(-0.5, 0.5)``
+            This is the k-space trajectory normalized as ``(-0.5 * shape, 0.5 * shape)``
             with shape ``(ncontrasts, nviews, nsamples, ndims)``.
         * dcf (torch.Tensor):
             This is the k-space sampling density compensation factor
@@ -98,7 +98,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
                 * slice_profile (torch.Tensor):
                     Flip angle scaling along slice profile of shape ``(nlocs,)``.
                 * basis (torch.Tensor):
-                    Low rank subspace basis for subspace reconstruction of shape ``(ncoeff, ncontrasts)``.
+                    Low rank subspace basis for subspace reconstruction of shape ``(ncontrasts, ncoeff)``.
         * affine (np.ndarray):
             Affine matrix describing image spacing, orientation and origin of shape ``(4, 4)``.
         * ref_dicom (pydicom.Dataset):

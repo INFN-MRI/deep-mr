@@ -24,7 +24,7 @@ def apply_sampling(data_in, mask, basis_adjoint=None, device=None, threadsperblo
         Pre-formatted sampling pattern in sparse COO format.
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).

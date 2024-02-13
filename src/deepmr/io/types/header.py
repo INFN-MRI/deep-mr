@@ -134,7 +134,7 @@ class Header:
             Computational device for internal attributes. The default is "cpu".
 
         """
-        self.shape = torch.as_tensor(self.shape, dtype=int, device=device)
+        self.shape = torch.as_tensor(self.shape.copy(), dtype=int, device=device)
         self.resolution = torch.as_tensor(self.resolution, dtype=float, device=device)
         if self.traj is not None:
             self.traj = torch.as_tensor(

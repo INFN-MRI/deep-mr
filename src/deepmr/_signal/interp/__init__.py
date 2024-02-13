@@ -37,7 +37,7 @@ def interpolate(
         The default is ``None`` (grid size equals to input data size, i.e. ``osf = 1``).
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``cpu``.
@@ -111,7 +111,7 @@ def gridding(
         If scalar, isotropic matrix is assumed.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
-        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``cpu``.

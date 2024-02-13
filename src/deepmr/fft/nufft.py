@@ -213,7 +213,7 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
         Pre-calculated NUFFT plan coefficients in sparse COO format.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
-        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).

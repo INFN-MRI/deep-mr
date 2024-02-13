@@ -364,7 +364,7 @@ def _get_basis(head, matfile):
         elif np.isreal(basis.imag + 1j * basis.real).all():
             basis = basis.imag
 
-        head.user["basis"] = basis.T
+        head.user["basis"] = basis
 
     return head
 

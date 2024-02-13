@@ -72,7 +72,7 @@ def apply_sparse_fft(image, sampling_mask, basis_adjoint=None, device=None, thre
         Pre-formatted sampling mask in sparse COO format.
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).
@@ -145,7 +145,7 @@ def apply_sparse_ifft(kspace, sampling_mask, basis=None, device=None, threadsper
         Pre-formatted sampling mask in sparse COO format.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
-        of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).
