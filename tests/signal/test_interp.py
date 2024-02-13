@@ -393,7 +393,7 @@ def _generate_coordinates(ndim, ncontrasts, npix):
         coord = torch.repeat_interleave(coord[None, ...], ncontrasts, axis=0)
         
     # normalize
-    coord = coord / npix
+    # coord = coord / npix
 
     # build dcf
     dcf = torch.ones(coord.shape[:-1], dtype=dtype)

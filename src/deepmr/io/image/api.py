@@ -169,7 +169,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         image, head = _dicom.read_dicom(filepath)
         done = True
     except Exception as e:
-        msg0 = e
+        msg0 = _get_error(e)
 
     # nifti
     if verbose == 2:
@@ -178,7 +178,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
         image, head = _nifti.read_nifti(filepath)
         done = True
     except Exception as e:
-        msg1 = e
+        msg1 = _get_error(e)
 
     if not (done):
         raise RuntimeError(
@@ -451,3 +451,17 @@ def write_image(
         raise RuntimeError(
             f"Data format = {dataformat} not recognized! Please use 'dicom' or 'nifti'"
         )
+
+# %% sub routines
+def _get_error(ex):
+    trace = []
+    tb = ex.__traceback__
+    while tb is not None:
+        trace.append({
+            "filename": tb.tb_frame.f_code.co_filename,
+            "name": tb.tb_frame.f_code.co_name,
+            "lineno": tb.tb_lineno
+        })
+        tb = tb.tb_next
+    
+    return str({'type': type(ex).__name__, 'message': str(ex), 'trace': trace})

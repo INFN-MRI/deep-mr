@@ -19,7 +19,7 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     ----------
     coord : torch.Tensor
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        Coordinates must be normalized between ``(-0.5, 0.5)``.
+        Coordinates must be normalized between ``(-0.5 * shape, 0.5 * shape)``.
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
@@ -79,6 +79,8 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     # expand
     if np.isscalar(shape):
         shape = ndim * [shape]
+    else:
+        shape = shape[-ndim:]
     if np.isscalar(width):
         width = ndim * [width]
     if np.isscalar(beta):
@@ -109,7 +111,7 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     # actual precomputation
     for i in range(-ndim, 0):  # (z, y, x)
         _do_prepare_interpolator(
-            value[i], index[i], coord[i] * shape[i], width[i], beta[i], shape[i]
+            value[i], index[i], coord[i], width[i], beta[i], shape[i]
         )
 
     # reformat for output

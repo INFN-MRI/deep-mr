@@ -139,7 +139,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
             head = _matlab.read_matlab_acqhead(filepath, *args, **kwargs)
             done = True
         except Exception as e:
-            msg1 = e
+            msg1 = _get_error(e)
     else:
         msg1 = ""
 
@@ -157,7 +157,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
             done = True
             head = _base.read_base_acqheader(filepath)
         except Exception as e:
-            msg2 = e
+            msg2 = _get_error(e)
     else:
         msg2 = ""
 
@@ -169,8 +169,10 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
 
     # normalize trajectory
     if head.traj is not None:
+        ndim = head.traj.shape[-1]
         traj_max = ((head.traj**2).sum(axis=-1) ** 0.5).max()
         head.traj = head.traj / (2 * traj_max)  # normalize to (-0.5, 0.5)
+        head.traj = head.traj * head.shape[-ndim:]
 
     # cast
     head.torch(device)
@@ -260,3 +262,18 @@ def write_acqheader(filename, head, filepath="./", dataformat="hdf5"):
         raise RuntimeError(
             f"Data format = {dataformat} not recognized! Please use 'mrd' or 'hdf5'"
         )
+
+
+# %% sub routines
+def _get_error(ex):
+    trace = []
+    tb = ex.__traceback__
+    while tb is not None:
+        trace.append({
+            "filename": tb.tb_frame.f_code.co_filename,
+            "name": tb.tb_frame.f_code.co_name,
+            "lineno": tb.tb_lineno
+        })
+        tb = tb.tb_next
+    
+    return str({'type': type(ex).__name__, 'message': str(ex), 'trace': trace})

@@ -260,16 +260,16 @@ class Header:
 
             # support saving of real data only for now
             self.ref_dicom.ImageType.append("M")
-            self.ref_dicom.Rows = self.shape[2]
-            self.ref_dicom.Columns = self.shape[1]
+            self.ref_dicom.Rows = self.shape[-1]
+            self.ref_dicom.Columns = self.shape[-2]
             self.ref_dicom.PixelSpacing = [
-                np.round(float(self.resolution[2]), 2),
-                np.round(float(self.resolution[1]), 2),
+                np.round(float(self.resolution[-1]), 2),
+                np.round(float(self.resolution[-2]), 2),
             ]
             self.ref_dicom.SliceThickness = np.round(self.resolution[0], 2)
             self.ref_dicom.SpacingBetweenSlices = np.round(self._spacing, 2)
             self.ref_dicom.ImageOrientationPatient = self._orientation
-            self.ref_dicom.AcquisitionMatrix = [self.shape[2], self.shape[1]]
+            self.ref_dicom.AcquisitionMatrix = [self.shape[-1], self.shape[-2]]
 
             # make sure SeriesInstanceUID is unique
             self.ref_dicom.SeriesInstanceUID = pydicom.uid.generate_uid()

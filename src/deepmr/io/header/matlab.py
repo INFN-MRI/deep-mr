@@ -61,7 +61,7 @@ def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=N
     head._adc = adc
 
     # get schedule file
-    head = _get_schedule(head, matfile, methodpath)
+    head = _get_schedule(head, matfile, filepath, methodpath)
 
     # reformat trajectory
     acq_type = _estimate_acq_type(k, shape)
@@ -98,7 +98,10 @@ def _get_trajectory(matfile):
         nviews = int(k.shape[1] / npts)
 
         # reshape
+        if np.iscomplexobj(k):
+            k = np.stack((k.real, k.imag), axis=-1)
         k = k.reshape(nviews, npts, -1)
+        
     elif "ks" in matfile and "phi" in matfile:
         ks = matfile["ks"]
         phi = matfile["phi"].T
@@ -219,7 +222,7 @@ def _get_shape(matfile, ndim):
         shape = [int(shape)] * ndim
     else:
         shape = shape.astype(int)
-
+        
     return shape[::-1]
 
 
@@ -251,18 +254,17 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
     return resolution, spacing
 
 
-def _get_schedule(head, matfile, schedulename):
+def _get_schedule(head, matfile, filename, schedulename):
     if "method" in matfile:
         schedule = matfile["method"]
     else:
         try:
             if schedulename is None:
-                schedulename = ".".join(
-                    schedulename.split(".")[-1].extend(["_method", "mat"])
-                )
+                schedulename = ".".join([filename.split(".")[0] + "_method", "mat"])
             schedule = matlab.read_matfile(schedulename)
             schedule = schedule["method"]
         except Exception:
+            raise
             schedule = None
 
     if schedule is not None:
@@ -415,11 +417,22 @@ def _reformat_trajectory(head, acq_type, reshape):
                     k = kseq[0]
                     ndim -= 1
 
-        # now reshape
+        # get number of contrasts
         if np.isscalar(head.FA):
             ncontrasts = 1
         else:
             ncontrasts = head.FA.size
+
+        # get number of views
+        nviews = k.shape[0]
+        
+        # if nviews < ncontrasts, continue looping from start
+        if nviews < ncontrasts:
+            nreps = int(np.ceil(ncontrasts / nviews))
+            k = np.apply_along_axis(np.tile, 0, k, nreps)[:ncontrasts]
+            dcf = np.apply_along_axis(np.tile, 0, dcf, nreps)[:ncontrasts]
+
+        # now reshape
         nviews = int(k.shape[0] / ncontrasts)
         k = k.reshape(nviews, ncontrasts, -1, ndim).swapaxes(0, 1)
         k = k.astype(np.float32)

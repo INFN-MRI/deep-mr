@@ -30,7 +30,7 @@ def interpolate(
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
     coord : torch.Tensor
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        Coordinates must be normalized between ``(-0.5, 0.5)``.
+        Coordinates must be normalized between ``(-0.5 * shape, 0.5 * shape)``.
     shape : int | Iterable[int], optional
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
@@ -105,7 +105,7 @@ def gridding(
         Input Non-Cartesian array of shape ``(..., ncontrasts, nviews, nsamples)``.
     coord : torch.Tensor
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        Coordinates must be normalized between ``(-0.5, 0.5)``.
+        Coordinates must be normalized between ``(-0.5 * shape, 0.5 * shape)``.
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.

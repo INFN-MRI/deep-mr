@@ -21,7 +21,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     ----------
     coord : torch.Tensor
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        Coordinates must be normalized between ``(-0.5, 0.5)``.
+        Coordinates must be normalized between ``(-0.5 * shape, 0.5 * shape)``.
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
@@ -65,7 +65,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
 
     """
     # copy coord and switch to cpu
-    coord = coord.clone().cpu()
+    coord = coord.clone().cpu().to(torch.float32)
     
     # get parameters
     ndim = coord.shape[-1]
@@ -85,7 +85,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     if np.isscalar(shape):
         shape = np.asarray([shape] * ndim, dtype=np.int16)
     else:
-        shape = np.asarray(shape, dtype=np.int16)
+        shape = np.asarray(shape, dtype=np.int16)[-ndim:]
         
     # check for Cartesian axes
     is_cart = [np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax])) for ax in range(ndim)]
@@ -97,6 +97,9 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
 
     # get oversampled grid shape
     os_shape = _get_oversamp_shape(shape, oversamp, ndim)
+    
+    # rescale trajectory
+    coord = _scale_coord(coord, shape, oversamp)
 
     # compute interpolator
     interpolator = _interp.plan_interpolator(coord, os_shape, width, beta, device)
@@ -169,30 +172,30 @@ def apply_nufft(image, nufft_plan, basis_adjoint=None, device=None, threadsperbl
     interpolator = nufft_plan.interpolator
     device = nufft_plan.device
 
-    # Copy input to avoid original data modification
+    # copy input to avoid original data modification
     image = image.clone()
 
-    # Original device
+    # original device
     odevice = image.device
 
-    # Offload to computational device
+    # offload to computational device
     image = image.to(device)
 
-    # Apodize
+    # apodize
     _apodize(image, ndim, oversamp, width, beta)
 
-    # Zero-pad
+    # zero-pad
     # image /= np.prod(image.shape[-ndim:])**0.5
     image = _resize(image, list(image.shape[:-ndim]) + list(os_shape))
 
     # FFT
     kspace = _fft.fft(image, axes=range(-ndim, 0), norm=None)
 
-    # Interpolate
+    # interpolate
     kspace = _interp.apply_interpolation(kspace, interpolator, basis_adjoint, device, threadsperblock)
     # kspace /= np.prod(width)
 
-    # Bring back to original device
+    # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
 
@@ -256,27 +259,27 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     interpolator = nufft_plan.interpolator
     device = nufft_plan.device
 
-    # Original device
+    # original device
     odevice = kspace.device
 
-    # Offload to computational device
+    # offload to computational device
     kspace = kspace.to(device)
 
-    # Gridding
+    # gridding
     kspace = _interp.apply_gridding(kspace, interpolator, basis, device, threadsperblock)
     # kspace /= np.prod(width)
 
     # IFFT
     image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
 
-    # Crop
+    # crop
     image = _resize(image, list(image.shape[:-ndim]) + list(shape))
     # image *= np.prod(os_shape[-ndim:]) / np.prod(shape[-ndim:])**0.5
 
-    # Apodize
+    # apodize
     _apodize(image, ndim, oversamp, width, beta)
 
-    # Bring back to original device
+    # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
 
@@ -310,6 +313,17 @@ class NUFFTPlan:
             
 def _get_oversamp_shape(shape, oversamp, ndim):
     return np.ceil(oversamp * shape).astype(np.int16)
+
+def _scale_coord(coord, shape,  oversamp):
+    ndim = coord.shape[-1]
+    output = coord.clone()
+    for i in range(-ndim, 0):
+        scale = np.ceil(oversamp[i] * shape[i]) / shape[i]
+        shift = np.ceil(oversamp[i] * shape[i]) // 2
+        output[..., i] *= scale
+        output[..., i] += shift
+
+    return output
 
 def _apodize(data_in, ndim, oversamp, width, beta):
     data_out = data_in

@@ -182,7 +182,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
         data, head = _mrd.read_mrd_rawdata(filepath)
         done = True
     except Exception as e:
-        msg0 = e
+        msg0 = _get_error(e)
 
     # gehc
     if not (done):
@@ -190,7 +190,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
             data, head = _gehc.read_gehc_rawdata(filepath, acqheader)
             done = True
         except Exception as e:
-            msg1 = e
+            msg1 = _get_error(e)
 
     # siemens
     # if not(done):
@@ -397,6 +397,20 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
 
 
 # %% sub routines
+def _get_error(ex):
+    trace = []
+    tb = ex.__traceback__
+    while tb is not None:
+        trace.append({
+            "filename": tb.tb_frame.f_code.co_filename,
+            "name": tb.tb_frame.f_code.co_name,
+            "lineno": tb.tb_lineno
+        })
+        tb = tb.tb_next
+    
+    return str({'type': type(ex).__name__, 'message': str(ex), 'trace': trace})
+
+
 def _select_readout(data, head):
     if head._adc is not None:
         if head._adc[-1] == data.shape[-1]:
@@ -415,7 +429,7 @@ def _fov_centering(data, head):
         dr = np.asarray(head._shift)[:ndim]
 
         # convert in units of voxels
-        dr /= head.resolution[::-1][:ndim]
+        dr = dr / head.resolution[::-1][:ndim] / head.shape[::-1][:ndim]
 
         # apply
         data *= np.exp(1j * 2 * math.pi * (head.traj * dr).sum(axis=-1))
@@ -441,3 +455,5 @@ def _fft(data, axis):
         torch.fft.fft(torch.fft.fftshift(tmp, dim=axis), dim=axis), dim=axis
     )
     return tmp.numpy()
+
+
