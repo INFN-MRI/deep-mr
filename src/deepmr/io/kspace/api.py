@@ -86,76 +86,77 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     -----
     The returned ``data`` tensor contains raw k-space data. Dimensions are defined as following:
 
-        * **2Dcart:** ``(nslices, ncoils, ncontrasts, ny, nx)``.
-        * **2Dnoncart:** ``(nslices, ncoils, ncontrasts, nviews, nsamples)``.
-        * **3Dcart:** ``(nx, ncoils, ncontrasts, nz, ny)``.
-        * **3Dnoncart:** ``(ncoils, ncontrasts, nviews, nsamples)``.
+    * **2Dcart:** ``(nslices, ncoils, ncontrasts, ny, nx)``.
+    * **2Dnoncart:** ``(nslices, ncoils, ncontrasts, nviews, nsamples)``.
+    * **3Dcart:** ``(nx, ncoils, ncontrasts, nz, ny)``.
+    * **3Dnoncart:** ``(ncoils, ncontrasts, nviews, nsamples)``.
 
     When possible, data are already pre-processed:
 
-        * For Cartesian data (2D and 3D) readout oversampling is removed if the number of samples along readout is larger than the number of rows in the image space (shape[-1]).
-        * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and isocenter info from the header.
-        * For separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), k-space is decoupled via FFT (along slice and readout axes, respectively).
+    * For Cartesian data (2D and 3D) readout oversampling is removed if the number of samples along readout is larger than the number of rows in the image space (shape[-1]).
+    * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and isocenter info from the header.
+    * For separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), k-space is decoupled via FFT (along slice and readout axes, respectively).
 
     The returned ``head`` (:func:`deepmr.io.Header`) is a structure with the following fields:
 
-        * shape (torch.Tensor):
-            This is the expected image size of shape ``(nz, ny, nx)``.
-        * resolution (torch.Tensor):
-            This is the expected image resolution in mm of shape ``(dz, dy, dx)``.
-        * t (torch.Tensor):
-            This is the readout sampling time ``(0, t_read)`` in ``ms``.
-            with shape ``(nsamples,)``.
-        * traj (torch.Tensor):
-            This is the k-space trajectory normalized as ``(-0.5, 0.5)``
-            with shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        * dcf (torch.Tensor):
-            This is the k-space sampling density compensation factor
-            with shape ``(ncontrasts, nviews, nsamples)``.
-        * FA (torch.Tensor, float):
-            This is either the acquisition flip angle in degrees or the list
-            of flip angles of shape ``(ncontrasts,)`` for each image in the series.
-        * TR (torch.Tensor, float):
-            This is either the repetition time in ms or the list
-            of repetition times of shape ``(ncontrasts,)`` for each image in the series.
-        * TE (torch.Tensor, float):
-            This is either the echo time in ms or the list
-            of echo times of shape ``(ncontrasts,)`` for each image in the series.
-        * TI (torch.Tensor, float):
-            This is either the inversion time in ms or the list
-            of inversion times of shape ``(ncontrasts,)`` for each image in the series.
-        * user (dict):
-            User parameters. Some examples are:
+    * shape (torch.Tensor):
+        This is the expected image size of shape ``(nz, ny, nx)``.
+    * resolution (torch.Tensor):
+        This is the expected image resolution in mm of shape ``(dz, dy, dx)``.
+    * t (torch.Tensor):
+        This is the readout sampling time ``(0, t_read)`` in ``ms``.
+        with shape ``(nsamples,)``.
+    * traj (torch.Tensor):
+        This is the k-space trajectory normalized as ``(-0.5, 0.5)``
+        with shape ``(ncontrasts, nviews, nsamples, ndims)``.
+    * dcf (torch.Tensor):
+        This is the k-space sampling density compensation factor
+        with shape ``(ncontrasts, nviews, nsamples)``.
+    * FA (torch.Tensor, float):
+        This is either the acquisition flip angle in degrees or the list
+        of flip angles of shape ``(ncontrasts,)`` for each image in the series.
+    * TR (torch.Tensor, float):
+        This is either the repetition time in ms or the list
+        of repetition times of shape ``(ncontrasts,)`` for each image in the series.
+    * TE (torch.Tensor, float):
+        This is either the echo time in ms or the list
+        of echo times of shape ``(ncontrasts,)`` for each image in the series.
+    * TI (torch.Tensor, float):
+        This is either the inversion time in ms or the list
+        of inversion times of shape ``(ncontrasts,)`` for each image in the series.
+    * user (dict):
+        User parameters. Some examples are:
 
-                * ordering (torch.Tensor):
-                    Indices for reordering (acquisition to reconstruction)
-                    of acquired k-space data, shaped ``(3, nslices * ncontrasts * nview)``, whose rows are
-                    ``contrast_index``, ``slice_index`` and ``view_index``, respectively.
-                * mode (str):
-                    Acquisition mode (``2Dcart``, ``3Dcart``, ``2Dnoncart``, ``3Dnoncart``).
-                * separable (bool):
-                    Whether the acquisition can be decoupled by fft along ``slice``/ ``readout`` directions
-                    (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
-                * slice_profile (torch.Tensor):
-                    Flip angle scaling along slice profile of shape ``(nlocs,)``.
-                * basis (torch.Tensor):
-                    Low rank subspace basis for subspace reconstruction of shape ``(ncoeff, ncontrasts)``.
-        * affine (np.ndarray):
-            Affine matrix describing image spacing, orientation and origin of shape ``(4, 4)``.
-        * ref_dicom (pydicom.Dataset):
-            Template dicom for image export.
-        * flip (list):
-            List of spatial axis to be flipped after image reconstruction.
-            The default is an empty list (no flipping).
-        * transpose (list):
-             Permutation of image dimensions after reconstruction, depending on acquisition mode:
+        * ordering (torch.Tensor):
+            Indices for reordering (acquisition to reconstruction)
+            of acquired k-space data, shaped ``(3, nslices * ncontrasts * nview)``, whose rows are
+            ``contrast_index``, ``slice_index`` and ``view_index``, respectively.
+        * mode (str):
+            Acquisition mode (``2Dcart``, ``3Dcart``, ``2Dnoncart``, ``3Dnoncart``).
+        * separable (bool):
+            Whether the acquisition can be decoupled by fft along ``slice``/ ``readout`` directions
+            (3D stack-of-noncartesian / 3D cartesian, respectively) or not (3D noncartesian and 2D acquisitions).
+        * slice_profile (torch.Tensor):
+            Flip angle scaling along slice profile of shape ``(nlocs,)``.
+        * basis (torch.Tensor):
+            Low rank subspace basis for subspace reconstruction of shape ``(ncoeff, ncontrasts)``.
+                
+    * affine (np.ndarray):
+        Affine matrix describing image spacing, orientation and origin of shape ``(4, 4)``.
+    * ref_dicom (pydicom.Dataset):
+        Template dicom for image export.
+    * flip (list):
+        List of spatial axis to be flipped after image reconstruction.
+        The default is an empty list (no flipping).
+    * transpose (list):
+         Permutation of image dimensions after reconstruction, depending on acquisition mode:
 
-                * **2Dcart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``
-                * **2Dnoncart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``
-                * **3Dcart:** reconstructed image has ``(ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3]``
-                * **3Dnoncart:** reconstructed image has ``(nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0]``
+        * **2Dcart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``
+        * **2Dnoncart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``
+        * **3Dcart:** reconstructed image has ``(ncontrasts, nz, ny, nx) -> transpose = [0, 1, 2, 3]``
+        * **3Dnoncart:** reconstructed image has ``(nx, ncontrasts, nz, ny) -> transpose = [1, 2, 3, 0]``
 
-            The default is an empty list (no transposition).
+        The default is an empty list (no transposition).
 
     References
     ----------

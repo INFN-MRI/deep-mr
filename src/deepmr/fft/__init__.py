@@ -2,9 +2,9 @@
 
 FFT routines include:
     
-    * centered n-dimensional FFT and iFFT;
-    * n-dimensional sparse uniform FFT/iFFT with embedded low rank subspace projection;
-    * n-dimensional NUFFT with embedded low rank subspace projection.
+* centered n-dimensional FFT and iFFT;
+* n-dimensional sparse uniform FFT/iFFT with embedded low rank subspace projection;
+* n-dimensional NUFFT with embedded low rank subspace projection.
 
 """
 
@@ -62,8 +62,8 @@ def sparse_fft(
     Indexes tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
 
-        * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
-        * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+    * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+    * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
     # get number of dimensions
@@ -124,8 +124,8 @@ def sparse_ifft(
     Sampled points indexes axes ordering is assumed to be ``(x, y)`` for 2D signals
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
 
-        * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
-        * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+    * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+    * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
     # plan interpolator

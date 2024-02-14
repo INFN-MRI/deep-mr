@@ -30,9 +30,9 @@ def tensor2patches(image, patch_shape, patch_stride=None):
     patches : torch.Tensor
         Tensor of (overlapping) patches of shape: 
         
-            * ``1D: (..., npatches_z, patch_size_x)``
-            * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
-            * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
+        * ``1D: (..., npatches_z, patch_size_x)``
+        * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
+        * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
           
     References
     ----------
@@ -106,9 +106,9 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     patches : torch.Tensor
         Tensor of (overlapping) patches of shapes:
             
-            * ``1D: (..., npatches_z, patch_size_x)``
-            * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
-            * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
+        * ``1D: (..., npatches_z, patch_size_x)``
+        * ``2D: (..., npatches_z, npatches_y, patch_size_y, patch_size_x)``
+        * ``3D: (..., npatches_z, npatches_y, npatches_x, patch_size_z, patch_size_y, patch_size_x)``
             
     shape : Iterable[int]
         Output shape of length ``ndim``.
