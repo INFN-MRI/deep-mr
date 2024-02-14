@@ -17,14 +17,14 @@ def resize(input, oshape):
     Parameters
     ----------
     input : torch.Tensor
-        Input tensor of shape (..., ishape).
+        Input tensor of shape ``(..., ishape)``.
     oshape : Iterable
         Output shape.
 
     Returns
     -------
     output : torch.Tensor
-        Zero-padded or cropped tensor of shape (..., oshape).
+        Zero-padded or cropped tensor of shape ``(..., oshape)``.
 
     Examples
     --------
@@ -100,11 +100,11 @@ def resample(input, oshape, filt=True, polysmooth=False):
     Parameters
     ----------
     input : torch.Tensor
-        Input tensor of shape (..., ishape).
+        Input tensor of shape ``(..., ishape)``.
     oshape : Iterable
         Output shape.
     filt : bool, optional
-        If True and signal is upsampled (i.e., any(oshape > ishape)),
+        If True and signal is upsampled (i.e., ``any(oshape > ishape)``),
         apply Fermi filter to limit ringing.
         The default is True.
     polysmooth : bool, optional
@@ -114,7 +114,7 @@ def resample(input, oshape, filt=True, polysmooth=False):
     Returns
     -------
     output : torch.Tensor
-        Resampled tensor of shape (..., oshape).
+        Resampled tensor of shape ``(..., oshape)``.
 
     """
     if isinstance(oshape, int):

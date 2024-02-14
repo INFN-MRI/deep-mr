@@ -10,7 +10,7 @@ from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **kwargs):
@@ -260,7 +260,7 @@ def fse(flip, phases, ESP, T1, T2, sliceprof=False, diff=None, device="cpu", **k
 spin_defaults = {"D": None, "v": None}
 
 
-class FSE(base.BaseSimulator):
+class FSE(epg.EPGSimulator):
     """Class to simulate Fast Spin Echo."""
 
     @staticmethod

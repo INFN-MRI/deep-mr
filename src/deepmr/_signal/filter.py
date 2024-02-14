@@ -17,17 +17,17 @@ def fermi(ndim, size, width=None):
     Parameters
     ----------
     ndim : int
-        Number of dimensions (e.g., 1=1D, 2=2D, 3=3D).
+        Number of dimensions (e.g., ``1=1D``, ``2=2D``, ``3=3D``).
     size : int
-        Support of the window. Filter size will be ndim * [size].
+        Support of the window. Filter size will be ``ndim * [size]``.
     width : int, optional
         Full width half maximum of the filter.
-        If "None", it is automatically set to "size". The default is "None".
+        If ``None``, it is automatically set to ``size``. The default is ``None``.
 
     Returns
     -------
     filt : torch.Tensor
-        Fermi window of shape ndim * [size] and FWHM = width.
+        Fermi window of shape ``ndim * [size]`` and ``FWHM = width``.
 
     Example
     -------

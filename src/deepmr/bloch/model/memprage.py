@@ -4,13 +4,14 @@ __all__ = ["memprage"]
 
 import warnings
 import numpy as np
+import torch
 
 import dacite
 from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def memprage(
@@ -311,7 +312,7 @@ def memprage(
 spin_defaults = {"T2star": None, "D": None, "v": None}
 
 
-class MEMPRAGE(base.BaseSimulator):
+class MEMPRAGE(epg.EPGSimulator):
     """Class to simulate inversion-prepared Multi-Echo Rapid Gradient Echo."""
 
     @staticmethod
@@ -376,4 +377,4 @@ class MEMPRAGE(base.BaseSimulator):
             # relax, recover and spoil
             states = XS(states)
 
-        return ops.susceptibility(signal, TE, df)
+        return ops.susceptibility(signal, ESP * torch.arange(nechoes, device=df.device, dtype=torch.float32), df)

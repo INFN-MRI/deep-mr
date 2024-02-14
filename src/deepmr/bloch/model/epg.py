@@ -1,6 +1,6 @@
-"""Base Simulation Class."""
+"""Base EPG simulation Class."""
 
-__all__ = ["BaseSimulator"]
+__all__ = ["EPGSimulator"]
 
 import math
 import gc
@@ -41,9 +41,9 @@ allowed = ("T1", "T2", "k", "weight", "chemshift", "D", "v", "B1", "df", "props"
 
 
 @dataclass
-class BaseSimulator:
+class EPGSimulator:
     """
-    Base class for all Bloch simulators.
+    Base class for all EPG-based Bloch simulators.
 
     Users can define a new simulator by subclassing this
     and overloading "sequence" method. Base class already handle spin parameters (e.g., T1, T2, ...)
@@ -61,7 +61,7 @@ class BaseSimulator:
     >>> from deepmr import bloch
     >>> from deepmr.bloch import ops
 
-    >>> class SSFP(bloch.BaseSimulator):
+    >>> class SSFP(bloch.EPGSimulator):
     >>>
     >>>     @staticmethod
     >>>     def signal(flip, TR, T1, T2, states, signal):

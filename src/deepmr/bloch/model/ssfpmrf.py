@@ -10,7 +10,7 @@ from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def ssfpmrf(
@@ -306,7 +306,7 @@ def ssfpmrf(
 spin_defaults = {"T2star": None, "D": None, "v": None}
 
 
-class SSFPMRF(base.BaseSimulator):
+class SSFPMRF(epg.EPGSimulator):
     """Class to simulate inversion-prepared (variable flip angle) SSFP."""
 
     @staticmethod

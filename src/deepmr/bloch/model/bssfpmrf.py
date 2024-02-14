@@ -10,7 +10,7 @@ from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def bssfpmrf(
@@ -251,7 +251,7 @@ def bssfpmrf(
 
 
 # %% utils
-class bSSFPMRF(base.BaseSimulator):
+class bSSFPMRF(epg.EPGSimulator):
     """Class to simulate inversion-prepared (variable flip angle) bSSFP."""
 
     @staticmethod

@@ -10,7 +10,7 @@ from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def mprage(
@@ -301,7 +301,7 @@ def mprage(
 spin_defaults = {"T2star": None, "D": None, "v": None}
 
 
-class MPRAGE(base.BaseSimulator):
+class MPRAGE(epg.EPGSimulator):
     """Class to simulate inversion-prepared Rapid Gradient Echo."""
 
     @staticmethod

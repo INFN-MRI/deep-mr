@@ -9,7 +9,7 @@ from dacite import Config
 
 from .. import blocks
 from .. import ops
-from . import base
+from . import epg
 
 
 def t1t2shuffling(
@@ -187,7 +187,7 @@ def t1t2shuffling(
 
 
 # %% utils
-class T1T2Shuffling(base.BaseSimulator):
+class T1T2Shuffling(epg.EPGSimulator):
     """Class to simulate T1-T2 Shuffling."""
 
     @staticmethod

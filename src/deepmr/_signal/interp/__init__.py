@@ -66,8 +66,8 @@ def interpolate(
     Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
 
-        * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
-        * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+    * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+    * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
     # get number of dimensions
@@ -141,8 +141,8 @@ def gridding(
     Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
 
-        * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
-        * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+    * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+    * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
     # plan interpolator
