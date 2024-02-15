@@ -131,7 +131,7 @@ To facilitate the development of signal models, we include basic sequence buildi
 	
 	deepmr.bloch.EPGstates
 	deepmr.bloch.RFPulse
-	deepmr.bloch.Adiabatic
+	deepmr.bloch.AdiabaticPulse
 	deepmr.bloch.Relaxation
 	deepmr.bloch.Shift
 	deepmr.bloch.Spoil
