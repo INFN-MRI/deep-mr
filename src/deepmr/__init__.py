@@ -12,6 +12,7 @@ from . import fft
 # from . import optim
 # from . import prox
 from .testdata import testdata
+from ._types import Header
 
 from . import _signal
 from . import _vobj
@@ -19,6 +20,6 @@ from . import _vobj
 from ._signal import *  # noqa
 from ._vobj import *  # noqa
 
-__all__ = [testdata]
+__all__ = ["testdata", "Header"]
 __all__.extend(_signal.__all__)
 __all__.extend(_vobj.__all__)

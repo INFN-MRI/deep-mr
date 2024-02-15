@@ -97,7 +97,7 @@ def read_rawdata(filepath, acqheader=None, device="cpu", verbose=0):
     * For Non-Cartesian (2D and 3D), fov is centered according to trajectory and isocenter info from the header.
     * For separable acquisitions (3D stack-of-Non-Cartesians and 3D Cartesians), k-space is decoupled via FFT (along slice and readout axes, respectively).
 
-    The returned ``head`` (:func:`deepmr.io.Header`) is a structure with the following fields:
+    The returned ``head`` (:func:`deepmr.Header`) is a structure with the following fields:
 
     * shape (torch.Tensor):
         This is the expected image size of shape ``(nz, ny, nx)``.

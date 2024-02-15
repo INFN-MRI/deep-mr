@@ -56,7 +56,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
 
     Notes
     -----
-    The returned ``head`` (:func:`deepmr.io.Header`) is a structure with the following fields:
+    The returned ``head`` (:func:`deepmr.Header`) is a structure with the following fields:
 
     * shape (torch.Tensor):
         This is the expected image size of shape ``(nz, ny, nx)``.
