@@ -44,9 +44,9 @@ def spiral(fov, shape, accel=1, nintl=1, **kwargs):
     variant : str
         Type of spiral. Allowed values are:
             
-            * ``center-out``: starts at the center of k-space and ends at the edge (default).
-            * ``reverse``: starts at the edge of k-space and ends at the center.
-            * ``in-out``: starts at the edge of k-space and ends on the opposite side (two 180° rotated arms back-to-back).
+        * ``center-out``: starts at the center of k-space and ends at the edge (default).
+        * ``reverse``: starts at the edge of k-space and ends at the center.
+        * ``in-out``: starts at the edge of k-space and ends on the opposite side (two 180° rotated arms back-to-back).
 
     Returns
     -------
