@@ -2,6 +2,8 @@
 
 __all__ = ["analytical_dcf", "voronoi", "angular_compensation"]
 
+import warnings
+
 import torch
 
 import numpy as np
@@ -12,6 +14,7 @@ from scipy.spatial import Voronoi
 from . import misc
 from . import tilt
 
+warnings.filterwarnings(category=nb.NumbaTypeSafetyWarning, action="ignore")
 
 def analytical_dcf(coord):
     """
@@ -98,6 +101,13 @@ def voronoi(coord, nshots=1, fix_edge=False, ratio=0.1):
         coord = tilt.projection(coord.T, rotmat).astype(np.float32)
         coord = coord.transpose(1, 2, 0)
         
+    # get index of k-space center
+    if nshots > 1:
+        cabs = (coord[0]**2).sum(axis=-1)**0.5
+    else:
+        cabs = (coord**2).sum(axis=-1)**0.5
+    k0_idx = np.argmin(cabs)
+
     # flatten
     ishape = coord.shape[:-1]
     coord = coord.reshape(-1, coord.shape[-1])
@@ -119,10 +129,7 @@ def voronoi(coord, nshots=1, fix_edge=False, ratio=0.1):
                 
     # correct for numerical errors
     wi = np.nan_to_num(wi, posinf=0.0, neginf=0.0)
-    
-    # normalize
-    wi /= np.sum(wi)
-    
+        
     # restore
     if istorch:
         wi = torch.as_tensor(wi, dtype=torch.float32, device=device)
@@ -133,10 +140,26 @@ def voronoi(coord, nshots=1, fix_edge=False, ratio=0.1):
     # get first interleaf
     if nshots > 1:
         wi = wi[0]
-
+        
+    # normalize
+    wi = _normalize_weight(wi)
+    
+    # impose that center of k-space weight is 1 / nshots
+    scale = 1 / wi[k0_idx] / nshots 
+    wi = scale * wi
+    
     return wi.squeeze()
 
 #%% local utils
+def _normalize_weight(weights):
+    """From MRI-NUFFT."""
+    sum_weights = np.sum(weights)
+    weights[np.isclose(weights, 0.0)] = 1.0
+    inv_weights = sum_weights / weights
+    inv_weights = inv_weights / np.sum(inv_weights)
+    inv_weights[np.isclose(inv_weights, 0.0)] = 1.0
+    return 1 / inv_weights
+
 def _repeated(input):
     """Find list of repeated points (e.g., k=(0,0,0))"""
     _, ind1, ind2, count = np.unique(input, return_index=True, return_inverse=True, return_counts=True, axis=0)
@@ -185,7 +208,7 @@ def _voronoi(coord, fix_edge, ratio):
     
     # calculate voronoi parcellation
     v, c = _voronoin(coord)
-    
+        
     # actual calculation
     vol(wi, v, c)
     
@@ -287,7 +310,7 @@ def _voronoin(input):
     v = vor.vertices
     
     # get indices
-    c = [np.asarray(vor.regions[vor.point_region[n]]) for n in range(input.shape[0])]
+    c = [np.asarray(vor.regions[vor.point_region[n]], dtype=np.int64) for n in range(input.shape[0])]
     
     # avoid error
     c = nb.typed.List(c)

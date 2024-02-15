@@ -83,7 +83,7 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
         batch_shape = data_in.shape[:-2]
     else:
         batch_shape = data_in.shape[:-3]
-    batch_size = np.prod(batch_shape)  # ncoils * nslices
+    batch_size = int(np.prod(batch_shape))  # ncoils * nslices
 
     # get number of coefficients
     if basis is not None:

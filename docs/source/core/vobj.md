@@ -14,3 +14,13 @@
 	deepmr.shepp_logan
 	deepmr.custom_phantom
 ```
+
+## Sampling
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.spiral
+```

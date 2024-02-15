@@ -64,6 +64,9 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
+    # make sure this is a tensor
+    coord = torch.as_tensor(coord)
+    
     # copy coord and switch to cpu
     coord = coord.clone().cpu().to(torch.float32)
     
