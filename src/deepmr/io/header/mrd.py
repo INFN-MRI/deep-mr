@@ -11,7 +11,7 @@ import numba as nb
 import ismrmrd
 
 from ..generic import mrd
-from ..types.mrd import _numpy_to_bytes
+from ..._types.mrd import _numpy_to_bytes
 
 
 def read_mrd_acqhead(filepath):

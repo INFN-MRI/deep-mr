@@ -14,7 +14,7 @@ except Exception:
     __GEHC_AVAILABLE__ = False
 
 from ..generic.pathlib import get_filepath
-from ..types.header import Header
+from ..._types.header import Header
 
 
 def read_gehc_rawdata(filepath, acqheader=None):

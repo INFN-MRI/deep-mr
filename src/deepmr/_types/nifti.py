@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 
-from ..._external.nii2dcm.dcm import DicomMRI
+from .._external.nii2dcm.dcm import DicomMRI
 
 from .common import _reorient, _get_plane_normal
 

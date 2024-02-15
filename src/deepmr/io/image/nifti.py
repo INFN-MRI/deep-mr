@@ -14,8 +14,8 @@ import nibabel as nib
 
 import torch
 
-from ..types import nifti
-from ..types.header import Header
+from ..._types import nifti
+from ..._types.header import Header
 
 from .common import _prepare_image, _anonymize
 

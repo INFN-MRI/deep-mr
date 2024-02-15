@@ -10,7 +10,7 @@ from dataclasses import asdict
 from ..generic import hdf5
 from ..generic.pathlib import get_filepath
 
-from ..types.header import Header
+from ..._types.header import Header
 
 
 def read_base_acqheader(filepath):

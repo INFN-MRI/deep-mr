@@ -5,7 +5,7 @@ __all__ = ["read_matlab_acqhead"]
 import numpy as np
 
 from ..generic import matlab
-from ..types.header import Header
+from ..._types.header import Header
 
 
 def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=None):

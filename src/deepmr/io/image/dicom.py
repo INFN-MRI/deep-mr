@@ -16,8 +16,8 @@ import torch
 
 import pydicom
 
-from ..types import dicom
-from ..types.header import Header
+from ..._types import dicom
+from ..._types.header import Header
 
 from .common import _prepare_image, _anonymize
 

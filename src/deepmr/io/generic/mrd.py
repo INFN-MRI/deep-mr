@@ -7,8 +7,8 @@ import numba as nb
 
 import ismrmrd
 
-from ..types import mrd
-from ..types.header import Header
+from ..._types import mrd
+from ..._types.header import Header
 
 from .pathlib import get_filepath
 

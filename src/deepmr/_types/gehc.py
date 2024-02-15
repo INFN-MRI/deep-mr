@@ -2,7 +2,7 @@
 
 import warnings
 
-from ..._external.nii2dcm.dcm import DicomMRI
+from .._external.nii2dcm.dcm import DicomMRI
 
 
 def _initialize_series_tag(head):
