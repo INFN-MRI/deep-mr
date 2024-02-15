@@ -147,10 +147,9 @@ def _interpolate1(noncart_data, cart_data, interp_value, interp_index):  # noqa
             idx = xindex[frame, point, i_x]
             val = xvalue[frame, point, i_x]
 
-            noncart_data[frame, batch, point] += (
-                val * cart_data[frame, batch, idx]
-            )
-                               
+            noncart_data[frame, batch, point] += val * cart_data[frame, batch, idx]
+
+
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate2(noncart_data, cart_data, interp_value, interp_index):  # noqa
     # get sizes
@@ -261,12 +260,10 @@ def _interpolate_lowrank1(
             # while gathering data
             for coeff in range(ncoeff):
                 noncart_data[frame, batch, point] += (
-                    val
-                    * basis_adjoint[frame, coeff]
-                    * cart_data[coeff, batch, idx]
+                    val * basis_adjoint[frame, coeff] * cart_data[coeff, batch, idx]
                 )
-                    
-                    
+
+
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interpolate_lowrank2(
     noncart_data, cart_data, interp_value, interp_index, basis_adjoint
@@ -374,8 +371,8 @@ def _do_interpolation1(data_out, data_in, value, index, basis_adjoint):
 
     data_out = backend.numba2pytorch(data_out)
     data_in = backend.numba2pytorch(data_in)
-    
-    
+
+
 def _do_interpolation2(data_out, data_in, value, index, basis_adjoint):
     """2D Interpolation routine wrapper."""
     data_out = backend.pytorch2numba(data_out)
@@ -413,7 +410,6 @@ do_interpolation = [_do_interpolation1, _do_interpolation2, _do_interpolation3]
 
 # %% CUDA
 if torch.cuda.is_available():
-
     from numba import cuda
 
     @cuda.jit(fastmath=True)  # pragma: no cover
@@ -443,11 +439,8 @@ if torch.cuda.is_available():
                 idx = xindex[frame, point, i_x]
                 val = xvalue[frame, point, i_x]
 
-                noncart_data[frame, batch, point] += (
-                    val * cart_data[frame, batch, idx]
-                )
-                    
-                    
+                noncart_data[frame, batch, point] += val * cart_data[frame, batch, idx]
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_cuda2(noncart_data, cart_data, interp_value, interp_index):
         # get sizes
@@ -559,11 +552,9 @@ if torch.cuda.is_available():
                 # while gathering data
                 for coeff in range(ncoeff):
                     noncart_data[frame, batch, point] += (
-                        val
-                        * basis_adjoint[frame, coeff]
-                        * cart_data[coeff, batch, idx]
+                        val * basis_adjoint[frame, coeff] * cart_data[coeff, batch, idx]
                     )
-                        
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interpolate_lowrank_cuda2(
         noncart_data, cart_data, interp_value, interp_index, basis_adjoint
@@ -687,7 +678,7 @@ if torch.cuda.is_available():
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
-        
+
     def _do_interpolation_cuda2(
         data_out, data_in, value, index, basis_adjoint, threadsperblock
     ):
@@ -751,4 +742,8 @@ if torch.cuda.is_available():
         data_in = backend.numba2pytorch(data_in)
 
     # main handle
-    do_interpolation_cuda = [_do_interpolation_cuda1, _do_interpolation_cuda2, _do_interpolation_cuda3]
+    do_interpolation_cuda = [
+        _do_interpolation_cuda1,
+        _do_interpolation_cuda2,
+        _do_interpolation_cuda3,
+    ]

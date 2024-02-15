@@ -6,7 +6,7 @@
 
 ## Phantoms
 ```{eval-rst}
-.. currentmodule:: deepmr 
+.. currentmodule:: deepmr
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
@@ -17,7 +17,7 @@
 
 ## Sampling
 ```{eval-rst}
-.. currentmodule:: deepmr 
+.. currentmodule:: deepmr
 .. autosummary::
 	:toctree: generated
 	:nosignatures:

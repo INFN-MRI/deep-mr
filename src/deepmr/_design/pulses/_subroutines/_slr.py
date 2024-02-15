@@ -3,15 +3,27 @@
 SLR algorithm simplifies the solution of the Bloch equations to the design of 2 polynomials.
 """
 
-__all__ = ["dzrf", "dzbeta", "ab2rf", "b2rf", "ab2ex", "ab2inv", "ab2sat", "ab2se", "ab2st", "abr"]
+__all__ = [
+    "dzrf",
+    "dzbeta",
+    "ab2rf",
+    "b2rf",
+    "ab2ex",
+    "ab2inv",
+    "ab2sat",
+    "ab2se",
+    "ab2st",
+    "abr",
+]
 
 import numpy as np
 import scipy.signal as signal
 
 from ._utils import dinf
 
-gamma_bar = 42.575 * 1e6 # MHz / T -> Hz / T
-gamma = 2 * np.pi * gamma_bar # rad / T / s
+gamma_bar = 42.575 * 1e6  # MHz / T -> Hz / T
+gamma = 2 * np.pi * gamma_bar  # rad / T / s
+
 
 def dzrf(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01, cancel_alpha_phs=False):
     """
@@ -47,7 +59,7 @@ def dzrf(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01, cancel_alpha_phs=
         [2] Barral, J., Pauly, J., and Nishimura, D. (2008). SLR RF Pulse
         Design for Arbitrarily-Shaped Excitation Profiles.
         Proc. Intl. Soc. Mag. Reson. Med. 16, 1323.
-    """  
+    """
     [bsf, d1, d2] = calc_ripples(ptype, d1, d2)
 
     if ftype == "ms":  # sinc
@@ -74,6 +86,7 @@ def dzrf(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01, cancel_alpha_phs=
         rf = b2rf(b)
 
     return rf
+
 
 def dzbeta(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01):
     """
@@ -109,7 +122,7 @@ def dzbeta(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01):
         [2] Barral, J., Pauly, J., and Nishimura, D. (2008). SLR RF Pulse
         Design for Arbitrarily-Shaped Excitation Profiles.
         Proc. Intl. Soc. Mag. Reson. Med. 16, 1323.
-    """    
+    """
     [bsf, d1, d2] = calc_ripples(ptype, d1, d2)
 
     if ftype == "ms":  # sinc
@@ -128,27 +141,27 @@ def dzbeta(n=64, tb=4, ptype="st", ftype="ls", d1=0.01, d2=0.01):
 
     if ptype != "ex":
         b = bsf * b
-        
+
     return b
 
 
-#%% local utils (i.e.m John Pauly rf_tools package)
-def calc_ripples(ptype='st', d1=0.01, d2=0.01):
-    if ptype == 'st':
+# %% local utils (i.e.m John Pauly rf_tools package)
+def calc_ripples(ptype="st", d1=0.01, d2=0.01):
+    if ptype == "st":
         bsf = 1
-    elif ptype == 'ex':
+    elif ptype == "ex":
         bsf = np.sqrt(1 / 2)
         d1 = np.sqrt(d1 / 2)
         d2 = d2 / np.sqrt(2)
-    elif ptype == 'se':
+    elif ptype == "se":
         bsf = 1
         d1 = d1 / 4
         d2 = np.sqrt(d2)
-    elif ptype == 'inv':
+    elif ptype == "inv":
         bsf = 1
         d1 = d1 / 8
         d2 = np.sqrt(d2 / 2)
-    elif ptype == 'sat':
+    elif ptype == "sat":
         bsf = np.sqrt(1 / 2)
         d1 = d1 / 2
         d2 = np.sqrt(d2)
@@ -156,6 +169,7 @@ def calc_ripples(ptype='st', d1=0.01, d2=0.01):
         raise Exception('Pulse type ("{}") is not recognized.'.format(ptype))
 
     return bsf, d1, d2
+
 
 # following functions are used to support dzrf
 def dzls(n=64, tb=4, d1=0.01, d2=0.01):
@@ -168,17 +182,24 @@ def dzls(n=64, tb=4, d1=0.01, d2=0.01):
 
     if n % 2 == 0:
         h = signal.firls(n + 1, f, m, w)
-    
+
         # shift the filter half a sample to make it symmetric, like in MATLAB
-        c = np.exp(1j * 2 * np.pi / (2 * (n + 1)) * np.concatenate([np.arange(0, n / 2 + 1, 1),  np.arange(-n / 2, 0, 1)]))
+        c = np.exp(
+            1j
+            * 2
+            * np.pi
+            / (2 * (n + 1))
+            * np.concatenate([np.arange(0, n / 2 + 1, 1), np.arange(-n / 2, 0, 1)])
+        )
         h = np.real(np.fft.ifft(np.multiply(np.fft.fft(h), c)))
-        
+
         # lop off extra sample
         h = h[:n]
     else:
         h = signal.firls(n, f, m, w)
 
     return h
+
 
 def dzmp(n=64, tb=4, d1=0.01, d2=0.01):
     n2 = 2 * n - 1
@@ -194,18 +215,20 @@ def dzmp(n=64, tb=4, d1=0.01, d2=0.01):
 
     return h
 
+
 def fmp(h):
     l = np.size(h)
     lp = 128 * np.exp(np.ceil(np.log(l) / np.log(2)) * np.log(2))
     padwidths = np.array([np.ceil((lp - l) / 2), np.floor((lp - l) / 2)])
-    hp = np.pad(h, padwidths.astype(int), 'constant')
+    hp = np.pad(h, padwidths.astype(int), "constant")
     hpf = np.fft.fftshift(np.fft.fft(np.fft.fftshift(hp)))
     hpfs = hpf - np.min(np.real(hpf)) * 1.000001
     hpfmp = mag2mp(np.sqrt(np.abs(hpfs)))
     hpmp = np.fft.ifft(np.fft.ifftshift(np.conj(hpfmp)))
-    hmp = hpmp[:int((l + 1) / 2)]
+    hmp = hpmp[: int((l + 1) / 2)]
 
     return hmp
+
 
 def dzlp(n=64, tb=4, d1=0.01, d2=0.01):
     di = dinf(d1, d2)
@@ -218,6 +241,7 @@ def dzlp(n=64, tb=4, d1=0.01, d2=0.01):
 
     return h
 
+
 def msinc(n=64, m=1) -> np.ndarray:
     x = np.arange(-n / 2, n / 2, 1) / (n / 2)
     snc = np.divide(np.sin(m * 2 * np.pi * x + 0.00001), (m * 2 * np.pi * x + 0.00001))
@@ -226,14 +250,18 @@ def msinc(n=64, m=1) -> np.ndarray:
 
     return ms
 
+
 def b2rf(b, cancel_alpha_phs=False):
     a = b2a(b)
     if cancel_alpha_phs:
-        b_a_phase = np.fft.fft(b,) * np.exp(-1j * np.angle(np.fft.fft(a[np.size(a)::-1])))
+        b_a_phase = np.fft.fft(
+            b,
+        ) * np.exp(-1j * np.angle(np.fft.fft(a[np.size(a) :: -1])))
         b = np.fft.ifft(b_a_phase)
     rf = ab2rf(a, b)
 
     return rf
+
 
 def b2a(b):
     n = np.size(b)
@@ -252,19 +280,21 @@ def b2a(b):
 
     return a
 
+
 def mag2mp(x):
     n = np.size(x)
     xl = np.log(np.abs(x))  # Log of mag spectrum
     xlf = np.fft.fft(xl)
     xlfp = xlf
     xlfp[0] = xlf[0]  # Keep DC the same
-    xlfp[1:(n // 2):1] = 2 * xlf[1:(n // 2):1]  # Double positive frequencies
+    xlfp[1 : (n // 2) : 1] = 2 * xlf[1 : (n // 2) : 1]  # Double positive frequencies
     xlfp[n // 2] = xlf[n // 2]  # keep half Nyquist the same
-    xlfp[n // 2 + 1:n:1] = 0  # zero negative frequencies
+    xlfp[n // 2 + 1 : n : 1] = 0  # zero negative frequencies
     xlaf = np.fft.ifft(xlfp)
     a = np.exp(xlaf)  # complex exponentiation
 
     return a
+
 
 def ab2rf(a, b):
     n = np.size(a)
@@ -274,7 +304,6 @@ def ab2rf(a, b):
     b = b.astype(complex)
 
     for ii in range(n - 1, -1, -1):
-
         cj = np.sqrt(1 / (1 + np.abs(b[ii] / a[ii]) ** 2))
         sj = np.conj(cj * b[ii] / a[ii])
         theta = np.arctan2(np.abs(sj), cj)
@@ -285,10 +314,11 @@ def ab2rf(a, b):
         if ii > 0:
             at = cj * a + sj * b
             bt = -np.conj(sj) * a + cj * b
-            a = at[1:ii + 1:1]
+            a = at[1 : ii + 1 : 1]
             b = bt[0:ii:1]
 
     return rf
+
 
 def ab2ex(a, b=None):
     if b is None:
@@ -298,6 +328,7 @@ def ab2ex(a, b=None):
     mxy = 2 * np.conj(a) * b
     return mxy
 
+
 def ab2inv(a, b=None):
     if b is None:
         b = a[1]
@@ -305,6 +336,7 @@ def ab2inv(a, b=None):
 
     mz = 1 - 2 * np.conj(b) * b
     return mz
+
 
 def ab2sat(a, b=None):
     if b is None:
@@ -314,6 +346,7 @@ def ab2sat(a, b=None):
     mz = 1 - 2 * np.conj(b) * b
     return mz
 
+
 def ab2se(a, b=None):
     if b is None:
         b = a[1]
@@ -322,6 +355,7 @@ def ab2se(a, b=None):
     mxy = 1j * b * b
     return mxy
 
+
 def ab2st(a, b=None):
     if b is not None:
         return 1j * a * a
@@ -329,6 +363,7 @@ def ab2st(a, b=None):
         return 1j * a[0] * a[0]
     else:
         raise ValueError("Invalid input")
+
 
 def abr(rf, g, x, y=None):
     l = len(rf)
@@ -342,15 +377,16 @@ def abr(rf, g, x, y=None):
         y = y * np.ones(x.shape)
     elif len(x) != len(y):
         raise ValueError("x and y must have the same length")
-    
+
     # move f grad on second dim
     if np.iscomplexobj(g):
         g = np.stack((g.real, g.imag), axis=-1)
-        
+
     a, b = abrx(rf, np.stack((x, y), axis=-1), g)
     b = -np.conj(b)
 
     return a, b
+
 
 def abrx(rf, x, g):
     r"""

@@ -120,7 +120,7 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
     else:
         data_out = data_out.swapaxes(0, 1)
         data_out = data_out.reshape(*batch_shape, ncoeff, *dshape)
-    
+
     return data_out / scale
 
 
@@ -138,8 +138,8 @@ def _do_gridding1(data_out, data_in, value, index, basis):
 
     data_out = backend.numba2pytorch(data_out)
     data_in = backend.numba2pytorch(data_in)
-    
-    
+
+
 def _do_gridding2(data_out, data_in, value, index, basis):
     """2D Gridding routine wrapper."""
     data_out = backend.pytorch2numba(data_out)
@@ -203,10 +203,9 @@ def _gridding1(cart_data, noncart_data, interp_value, interp_index):  # noqa
                 idx = xindex[frame, point, i_x]
                 val = xvalue[frame, point, i_x]
 
-                cart_data[frame, batch, idx] += (
-                    val * noncart_data[frame, batch, point]
-                )
-                    
+                cart_data[frame, batch, idx] += val * noncart_data[frame, batch, point]
+
+
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _gridding2(cart_data, noncart_data, interp_value, interp_index):  # noqa
     # get sizes
@@ -241,6 +240,7 @@ def _gridding2(cart_data, noncart_data, interp_value, interp_index):  # noqa
                     cart_data[frame, batch, idy, idx] += (
                         val * noncart_data[frame, batch, point]
                     )
+
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _gridding3(cart_data, noncart_data, interp_value, interp_index):  # noqa
@@ -282,6 +282,7 @@ def _gridding3(cart_data, noncart_data, interp_value, interp_index):  # noqa
                             val * noncart_data[frame, batch, point]
                         )
 
+
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _gridding_lowrank1(
     cart_data, noncart_data, interp_value, interp_index, basis
@@ -316,11 +317,10 @@ def _gridding_lowrank1(
                     # do adjoint low rank projection (low-rank subspace -> time domain)
                     # while spreading data
                     cart_data[coeff, batch, idx] += (
-                        val
-                        * basis[coeff, frame]
-                        * noncart_data[frame, batch, point]
+                        val * basis[coeff, frame] * noncart_data[frame, batch, point]
                     )
-                        
+
+
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _gridding_lowrank2(
     cart_data, noncart_data, interp_value, interp_index, basis
@@ -364,6 +364,7 @@ def _gridding_lowrank2(
                             * basis[coeff, frame]
                             * noncart_data[frame, batch, point]
                         )
+
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _gridding_lowrank3(
@@ -417,7 +418,6 @@ def _gridding_lowrank3(
 
 # %% CUDA
 if torch.cuda.is_available():
-
     from numba import cuda
 
     @cuda.jit(device=True, inline=True)  # pragma: no cover
@@ -428,10 +428,9 @@ if torch.cuda.is_available():
     def _update_complex(output, index, value):
         cuda.atomic.add(output.real, index, value.real)
         cuda.atomic.add(output.imag, index, value.imag)
-        
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda1_real(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -462,10 +461,9 @@ if torch.cuda.is_available():
                     (frame, batch, idx),
                     val * noncart_data[frame, batch, point],
                 )
-    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda2_real(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -504,7 +502,6 @@ if torch.cuda.is_available():
 
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda3_real(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _, _, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -550,19 +547,18 @@ if torch.cuda.is_available():
     def _gridding_lowrank_cuda1_real(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-    
         # get sizes
         ncoeff, batch_size, _ = cart_data.shape
         nframes = noncart_data.shape[0]
         npts = noncart_data.shape[-1]
-    
+
         # unpack interpolator
         xindex = interp_index[0]
         xvalue = interp_value[0]
-    
+
         # get interpolator width
         xwidth = xindex.shape[-1]
-    
+
         # parallelize over frames, batches and k-space points
         i = cuda.grid(1)  # pylint: disable=too-many-function-args
         if i < nframes * batch_size * npts:
@@ -571,28 +567,25 @@ if torch.cuda.is_available():
             tmp = i % (batch_size * npts)
             batch = tmp // npts
             point = tmp % npts
-    
+
             # spread data within kernel radius
             for i_x in range(xwidth):
                 idx = xindex[frame, point, i_x]
                 val = xvalue[frame, point, i_x]
-    
+
                 # do adjoint low rank projection (low-rank subspace -> time domain)
                 # while spreading data
                 for coeff in range(ncoeff):
                     _update_real(
                         cart_data,
                         (coeff, batch, idx),
-                        val
-                        * basis[coeff, frame]
-                        * noncart_data[frame, batch, point],
+                        val * basis[coeff, frame] * noncart_data[frame, batch, point],
                     )
-                    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_lowrank_cuda2_real(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-
         # get sizes
         ncoeff, batch_size, _, _ = cart_data.shape
         nframes = noncart_data.shape[0]
@@ -639,7 +632,6 @@ if torch.cuda.is_available():
     def _gridding_lowrank_cuda3_real(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-
         # get sizes
         ncoeff, batch_size, _, _, _ = cart_data.shape
         nframes = noncart_data.shape[0]
@@ -686,11 +678,9 @@ if torch.cuda.is_available():
                                 * basis[coeff, frame]
                                 * noncart_data[frame, batch, point],
                             )
-    
-    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda1_cplx(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -721,10 +711,9 @@ if torch.cuda.is_available():
                     (frame, batch, idx),
                     val * noncart_data[frame, batch, point],
                 )
-                
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda2_cplx(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -760,10 +749,9 @@ if torch.cuda.is_available():
                         (frame, batch, idy, idx),
                         val * noncart_data[frame, batch, point],
                     )
-                    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_cuda3_cplx(cart_data, noncart_data, interp_value, interp_index):
-
         # get sizes
         nframes, batch_size, _, _, _ = cart_data.shape
         npts = noncart_data.shape[-1]
@@ -809,7 +797,6 @@ if torch.cuda.is_available():
     def _gridding_lowrank_cuda1_cplx(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-
         # get sizes
         ncoeff, batch_size, _ = cart_data.shape
         nframes = noncart_data.shape[0]
@@ -842,16 +829,13 @@ if torch.cuda.is_available():
                     _update_complex(
                         cart_data,
                         (coeff, batch, idx),
-                        val
-                        * basis[coeff, frame]
-                        * noncart_data[frame, batch, point],
+                        val * basis[coeff, frame] * noncart_data[frame, batch, point],
                     )
-                    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _gridding_lowrank_cuda2_cplx(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-
         # get sizes
         ncoeff, batch_size, _, _ = cart_data.shape
         nframes = noncart_data.shape[0]
@@ -898,7 +882,6 @@ if torch.cuda.is_available():
     def _gridding_lowrank_cuda3_cplx(
         cart_data, noncart_data, interp_value, interp_index, basis
     ):
-
         # get sizes
         ncoeff, batch_size, _, _, _ = cart_data.shape
         nframes = noncart_data.shape[0]
@@ -945,42 +928,99 @@ if torch.cuda.is_available():
                                 * basis[coeff, frame]
                                 * noncart_data[frame, batch, point],
                             )
-    
-    def _gridding_cuda1(blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex):
+
+    def _gridding_cuda1(
+        blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex
+    ):
         if is_complex:
-            return _gridding_cuda1_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index)
+            return _gridding_cuda1_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
         else:
-            return _gridding_cuda1_real[blockspergrid, threadsperblock](data_out, data_in, value, index)
-                                
-    def _gridding_cuda2(blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex):
+            return _gridding_cuda1_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
+
+    def _gridding_cuda2(
+        blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex
+    ):
         if is_complex:
-            return _gridding_cuda2_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index)
+            return _gridding_cuda2_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
         else:
-            return _gridding_cuda2_real[blockspergrid, threadsperblock](data_out, data_in, value, index)
-    
-    def _gridding_cuda3(blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex):
+            return _gridding_cuda2_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
+
+    def _gridding_cuda3(
+        blockspergrid, threadsperblock, data_out, data_in, value, index, is_complex
+    ):
         if is_complex:
-            return _gridding_cuda3_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index)
+            return _gridding_cuda3_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
         else:
-            return _gridding_cuda3_real[blockspergrid, threadsperblock](data_out, data_in, value, index)
-    
-    def _gridding_lowrank_cuda1(blockspergrid, threadsperblock, data_out, data_in, value, index, basis, is_complex):
+            return _gridding_cuda3_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index
+            )
+
+    def _gridding_lowrank_cuda1(
+        blockspergrid,
+        threadsperblock,
+        data_out,
+        data_in,
+        value,
+        index,
+        basis,
+        is_complex,
+    ):
         if is_complex:
-            return _gridding_lowrank_cuda1_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
+            return _gridding_lowrank_cuda1_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
         else:
-            return _gridding_lowrank_cuda1_real[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
-        
-    def _gridding_lowrank_cuda2(blockspergrid, threadsperblock, data_out, data_in, value, index, basis, is_complex):
+            return _gridding_lowrank_cuda1_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
+
+    def _gridding_lowrank_cuda2(
+        blockspergrid,
+        threadsperblock,
+        data_out,
+        data_in,
+        value,
+        index,
+        basis,
+        is_complex,
+    ):
         if is_complex:
-            return _gridding_lowrank_cuda2_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
+            return _gridding_lowrank_cuda2_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
         else:
-            return _gridding_lowrank_cuda2_real[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
-    
-    def _gridding_lowrank_cuda3(blockspergrid, threadsperblock, data_out, data_in, value, index, basis, is_complex):
+            return _gridding_lowrank_cuda2_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
+
+    def _gridding_lowrank_cuda3(
+        blockspergrid,
+        threadsperblock,
+        data_out,
+        data_in,
+        value,
+        index,
+        basis,
+        is_complex,
+    ):
         if is_complex:
-            return _gridding_lowrank_cuda3_cplx[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
+            return _gridding_lowrank_cuda3_cplx[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
         else:
-            return _gridding_lowrank_cuda3_real[blockspergrid, threadsperblock](data_out, data_in, value, index, basis)
+            return _gridding_lowrank_cuda3_real[blockspergrid, threadsperblock](
+                data_out, data_in, value, index, basis
+            )
 
     def _do_gridding_cuda1(data_out, data_in, value, index, basis, threadsperblock):
         # get if function is complex
@@ -1003,19 +1043,32 @@ if torch.cuda.is_available():
 
         # run kernel
         if basis is None:
-            _gridding_cuda1(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, is_complex
+            _gridding_cuda1(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                is_complex,
             )
         else:
             basis = backend.pytorch2numba(basis)
-            _gridding_lowrank_cuda1(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, basis, is_complex
+            _gridding_lowrank_cuda1(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                basis,
+                is_complex,
             )
             basis = backend.numba2pytorch(basis)
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
-        
+
     def _do_gridding_cuda2(data_out, data_in, value, index, basis, threadsperblock):
         # get if function is complex
         is_complex = torch.is_complex(data_in)
@@ -1037,13 +1090,26 @@ if torch.cuda.is_available():
 
         # run kernel
         if basis is None:
-            _gridding_cuda2(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, is_complex
+            _gridding_cuda2(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                is_complex,
             )
         else:
             basis = backend.pytorch2numba(basis)
-            _gridding_lowrank_cuda2(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, basis, is_complex
+            _gridding_lowrank_cuda2(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                basis,
+                is_complex,
             )
             basis = backend.numba2pytorch(basis)
 
@@ -1052,11 +1118,11 @@ if torch.cuda.is_available():
 
     def _do_gridding_cuda3(data_out, data_in, value, index, basis, threadsperblock):
         # get if function is complex
-        is_complex = torch.is_complex(data_in)       
+        is_complex = torch.is_complex(data_in)
         if basis is not None:
             is_complex = is_complex or torch.is_complex(basis)
 
-         # calculate size
+        # calculate size
         _, batch_size, _, _, _ = data_out.shape
         nframes = data_in.shape[0]
         npts = data_in.shape[-1]
@@ -1071,13 +1137,26 @@ if torch.cuda.is_available():
 
         # run kernel
         if basis is None:
-            _gridding_cuda3(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, is_complex
+            _gridding_cuda3(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                is_complex,
             )
         else:
             basis = backend.pytorch2numba(basis)
-            _gridding_lowrank_cuda3(blockspergrid, threadsperblock,
-                data_out, data_in, value, index, basis, is_complex
+            _gridding_lowrank_cuda3(
+                blockspergrid,
+                threadsperblock,
+                data_out,
+                data_in,
+                value,
+                index,
+                basis,
+                is_complex,
             )
             basis = backend.numba2pytorch(basis)
 

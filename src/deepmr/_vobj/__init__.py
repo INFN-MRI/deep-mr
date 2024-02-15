@@ -10,7 +10,7 @@ from . import phantoms as _phantoms
 from . import sampling as _sampling
 
 from .phantoms import *  # noqa
-from .sampling import * # noqa
+from .sampling import *  # noqa
 
 __all__ = []
 __all__.extend(_phantoms.__all__)

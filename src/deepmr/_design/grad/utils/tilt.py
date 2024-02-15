@@ -1,10 +1,19 @@
 """Utils for waveform rotation."""
 
-__all__ = ["make_tilt", "broadcast_tilt", "projection", "angleaxis2rotmat", "tilt_increment"]
+__all__ = [
+    "make_tilt",
+    "broadcast_tilt",
+    "projection",
+    "angleaxis2rotmat",
+    "tilt_increment",
+]
 
 import numpy as np
 
-def make_tilt(tilt_type, nshots, accel=1, nframes=1, nechoes=1, tilt_echoes=False, dummy=False):
+
+def make_tilt(
+    tilt_type, nshots, accel=1, nframes=1, nechoes=1, tilt_echoes=False, dummy=False
+):
     """
     Generate list of tilt angles.
 
@@ -14,7 +23,7 @@ def make_tilt(tilt_type, nshots, accel=1, nframes=1, nechoes=1, tilt_echoes=Fals
         accel (int): In-plane acceleration factor (max to nshots).
         nframes (int): Number of frames for k-t acquisitions.
         nechoes (int): number of echoes.
-        tilt_echoes (bool): If True, rotate across echoes, otherwise keep same 
+        tilt_echoes (bool): If True, rotate across echoes, otherwise keep same
             trajectory for each echo (default to False).
 
     Returns:
@@ -22,22 +31,26 @@ def make_tilt(tilt_type, nshots, accel=1, nframes=1, nechoes=1, tilt_echoes=Fals
 
     Raises:
         NotImplementedError: If the tilt name is unknown.
-        
-    """   
+
+    """
     # initialize readout tilt
     if "golden" in tilt_type or tilt_type == "tgas":
         # initialize increments
         increment = tilt_increment(tilt_type, int(nshots / accel) * nframes)
     else:
         # initialize increments
-        increment = tilt_increment(tilt_type, min(int(nshots / accel) * nframes, nshots))
-    
+        increment = tilt_increment(
+            tilt_type, min(int(nshots / accel) * nframes, nshots)
+        )
+
     # get angles
     if tilt_echoes:
         angles = tilt_angles(increment, int(nshots / accel) * nframes * nechoes, dummy)
     else:
-        angles = tilt_angles((increment, 0.0), (int(nshots / accel) * nframes, nechoes), dummy)
-    
+        angles = tilt_angles(
+            (increment, 0.0), (int(nshots / accel) * nframes, nechoes), dummy
+        )
+
     return angles.sum(axis=0) % (2 * np.pi)
 
 
@@ -56,18 +69,21 @@ def broadcast_tilt(new_arr, *input, expand_input=False, loop_order="new-first"):
         (array): broadcasted version of 'new_array' (along outer axis).
 
     """
-    assert loop_order in ["new-first", "old-first"], f"Error! Valid loop_order are 'new-first' and 'old-first' (found {loop_order})."
-    
-    # parse sizes of a and b           
+    assert loop_order in [
+        "new-first",
+        "old-first",
+    ], f"Error! Valid loop_order are 'new-first' and 'old-first' (found {loop_order})."
+
+    # parse sizes of a and b
     asize = input[0].shape[0]
     bsize = new_arr.shape[0]
-    
+
     # perform expansion
-    if expand_input is False:   
+    if expand_input is False:
         # get output dim
         osize = asize
-        
-        # expand dims              
+
+        # expand dims
         if loop_order == "new-first":
             new_arr = np.apply_along_axis(np.tile, 0, new_arr, int(osize // bsize))
         else:
@@ -75,15 +91,15 @@ def broadcast_tilt(new_arr, *input, expand_input=False, loop_order="new-first"):
     else:
         # get output dim
         osize = asize * bsize
-        
-        # expand dims              
+
+        # expand dims
         if loop_order == "new-first":
             new_arr = np.apply_along_axis(np.tile, 0, new_arr, asize)
             input = [np.repeat(el, bsize, axis=1) for el in input]
         else:
             new_arr = np.repeat(new_arr, asize, axis=0)
             input = [np.apply_along_axis(np.tile, 0, el, bsize) for el in input]
-            
+
     # return
     return [new_arr] + list(input)
 
@@ -176,6 +192,7 @@ def tilt_angles(increments, nincrements, dummy=False):
     # return
     return np.stack(output_increments, axis=0)
 
+
 def projection(k, R):
     """
     Create a 2/3D ____ projection trajectory.
@@ -188,7 +205,7 @@ def projection(k, R):
         theta (array): plane rotation (around y axis), units: [rad]
     """
     ndim = k.shape[0]
-    if ndim == 2: # expand to 3D assuming we are in the xy plane
+    if ndim == 2:  # expand to 3D assuming we are in the xy plane
         k = np.stack((k[0], k[1], 0 * k[1]), axis=0)
     kout = np.einsum("bij,j...->bi...", R, k)
     kout = kout.swapaxes(0, 1)
@@ -200,7 +217,8 @@ def projection(k, R):
 
     # return kout
 
-#%% local utils
+
+# %% local utils
 # def _2d_rotation(input, phi):
 #     phi = phi[:, None]
 #     output = np.zeros(
@@ -215,7 +233,7 @@ def projection(k, R):
 # def _3d_rotation(input, phi, theta):
 #     phi = phi[:, None]
 #     theta = theta[:, None]
-    
+
 #     output = np.zeros(
 #         (input.shape[0], phi.shape[0], input.shape[-1]), dtype=input.dtype
 #     )
@@ -233,6 +251,7 @@ def projection(k, R):
 
 #     return output
 
+
 def angleaxis2rotmat(alpha, u):
     # Convert letter to vector
     if isinstance(u, str):
@@ -242,27 +261,33 @@ def angleaxis2rotmat(alpha, u):
             u = [0, 1, 0]
         if u == "z":
             u = [0, 0, 1]
-    
+
     # Do the work: =================================================================
     s = np.sin(alpha)
     c = np.cos(alpha)
-    
+
     # Normalized vector:
     u = np.asarray(u, dtype=np.float32)
     u = u / np.sqrt(u.T @ u)
-          
+
     # 3D rotation matrix:
-    x  = u[0]
-    y  = u[1]
-    z  = u[2]
+    x = u[0]
+    y = u[1]
+    z = u[2]
     mc = 1 - c
-    
+
     # build rows
-    R0 = np.stack((c + x * x * mc, x * y * mc - z * s, x * z * mc + y * s), axis=-1) # (nalpha, 3)
-    R1 = np.stack((x * y * mc + z * s,  c + y * y * mc, y * z * mc - x * s), axis=-1) # (nalpha, 3)
-    R2 = np.stack((x * z * mc - y * s,  y * z * mc + x * s,  c + z * z * mc), axis=-1) # (nalpha, 3)
+    R0 = np.stack(
+        (c + x * x * mc, x * y * mc - z * s, x * z * mc + y * s), axis=-1
+    )  # (nalpha, 3)
+    R1 = np.stack(
+        (x * y * mc + z * s, c + y * y * mc, y * z * mc - x * s), axis=-1
+    )  # (nalpha, 3)
+    R2 = np.stack(
+        (x * z * mc - y * s, y * z * mc + x * s, c + z * z * mc), axis=-1
+    )  # (nalpha, 3)
 
     # stack rows
-    R = np.stack((R0, R1, R2), axis=1) # (nalpha, 3, 3)
-             
+    R = np.stack((R0, R1, R2), axis=1)  # (nalpha, 3, 3)
+
     return R

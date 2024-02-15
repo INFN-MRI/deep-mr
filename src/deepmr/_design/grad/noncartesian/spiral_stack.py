@@ -8,6 +8,7 @@ from .spiral import spiral
 
 from .. import utils
 
+
 def spiral_stack(fov, shape, accel=1, nintl=1, **kwargs):
     r"""
     Design a dual or constant density stack-of-spirals.
@@ -18,7 +19,7 @@ def spiral_stack(fov, shape, accel=1, nintl=1, **kwargs):
         accel (tuple of ints): acceleration (Rplane, Rz, Pf). Ranges from (1, 1, 1) (fully sampled) to (nintl, nz, 0.75).
         nintl (int): number of interleaves to fully sample a plane. For dual density,
             inner spiral is single shot.
-    
+
     Kwargs:
         ordering (str): acquire partitions sequentially ("sequentially") or not ("interleaved") when nframes > 1.
             Default to "interleaved".
@@ -54,21 +55,23 @@ def spiral_stack(fov, shape, accel=1, nintl=1, **kwargs):
     """
     # parsing
     fov, shape, accel, kwargs, ordering = utils.config_stack(fov, shape, accel, kwargs)
-          
+
     # prepare phase encoding plan
-    act_traj, gpre, plan = utils.prep_1d_phase_plan(fov[1], shape[1], accel[1], ordering, **kwargs[1])
+    act_traj, gpre, plan = utils.prep_1d_phase_plan(
+        fov[1], shape[1], accel[1], ordering, **kwargs[1]
+    )
     grew = -np.flip(gpre)
-    
+
     # options
-    nslices = act_traj["kz"].shape[0] # actual number of z encodes after accelerations
-    
+    nslices = act_traj["kz"].shape[0]  # actual number of z encodes after accelerations
+
     # rotated vs non-rotated sos
-    if kwargs[1]["tilt"]: # rotate during z encodings (spiral caipirinha)
+    if kwargs[1]["tilt"]:  # rotate during z encodings (spiral caipirinha)
         shape[0][-1] *= nslices
-        
+
     # get in-plane trajectory
     traj, grad = spiral(fov[0], shape[0], accel[0], nintl, **kwargs[0])
-    
+
     # after this I have
     # rot = (nframes * nintl / R,) if tilt = (0, 0)
     # rot = (nechoes * nframes * nintl / R,) if tilt = (1, 0)
@@ -76,27 +79,29 @@ def spiral_stack(fov, shape, accel=1, nintl=1, **kwargs):
     # rot = (nechoes * nslices * nframes * nintl / R,) if tilt = (1, 1)
     # and
     # z = (nslices,) -> I need to expand z accordingly
-    
+
     # put together
     traj, plan = utils.make_stack(ordering, traj, act_traj["kz"], plan, kwargs[1])
-    if grad["pre"] is not None and grad["rew"] is not None: # in-out
-        grad["pre"], delta_te = utils.compose_gradients("before", gx=grad["pre"][0], gy=grad["pre"][1], gz=gpre, **kwargs[0])
-        grad["rew"], _ = utils.compose_gradients("after", gx=grad["rew"][0], gy=grad["rew"][1], gz=grew)
-    elif grad["pre"] is not None: # reverse
-        grad["pre"], delta_te = utils.compose_gradients("before", gx=grad["pre"][0], gy=grad["pre"][1], gz=gpre, **kwargs[0])
+    if grad["pre"] is not None and grad["rew"] is not None:  # in-out
+        grad["pre"], delta_te = utils.compose_gradients(
+            "before", gx=grad["pre"][0], gy=grad["pre"][1], gz=gpre, **kwargs[0]
+        )
+        grad["rew"], _ = utils.compose_gradients(
+            "after", gx=grad["rew"][0], gy=grad["rew"][1], gz=grew
+        )
+    elif grad["pre"] is not None:  # reverse
+        grad["pre"], delta_te = utils.compose_gradients(
+            "before", gx=grad["pre"][0], gy=grad["pre"][1], gz=gpre, **kwargs[0]
+        )
         grad["rew"], _ = utils.compose_gradients("before", gz=grew)
-    elif grad["rew"] is not None: # center-out
-        grad["pre"], delta_te = utils.compose_gradients("before", gz=gpre, **kwargs[0])    
-        grad["rew"], _ = utils.compose_gradients("after", gx=grad["rew"][0], gy=grad["rew"][1], gz=grew)
+    elif grad["rew"] is not None:  # center-out
+        grad["pre"], delta_te = utils.compose_gradients("before", gz=gpre, **kwargs[0])
+        grad["rew"], _ = utils.compose_gradients(
+            "after", gx=grad["rew"][0], gy=grad["rew"][1], gz=grew
+        )
     grad["amp"] = plan
-    
+
     # add te
     traj["te"] += delta_te
-    
+
     return traj, grad
-    
-
-        
-    
-    
-

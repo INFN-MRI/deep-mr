@@ -12,7 +12,7 @@ import numba as nb
 import numpy as np
 
 
-def partial_fourier(shape: int,  undersampling: float):
+def partial_fourier(shape: int, undersampling: float):
     """
     Generate sampling pattern for Partial Fourier accelerated acquisition.
 
@@ -31,7 +31,7 @@ def partial_fourier(shape: int,  undersampling: float):
             f" {undersampling}"
         )
     if undersampling == 1:
-        warnings.warn("Undersampling factor set to 1 - no acceleration")        
+        warnings.warn("Undersampling factor set to 1 - no acceleration")
     if undersampling < 0.7:
         warnings.warn(
             f"Undersampling factor = {undersampling} < 0.7 - phase errors will"
@@ -94,7 +94,7 @@ def parallel_imaging(
         if np.isscalar(accel):
             # assume acceleration along a single axis
             accel = [accel, 1]
-            
+
         # define elliptical grid
         nz, ny = shape
         z, y = np.mgrid[:nz, :ny]
@@ -153,10 +153,10 @@ def parallel_imaging(
             # broadcast
             if np.isscalar(calib):
                 calib = [calib, calib]
-                
+
             # reverse (cz, cy)
             calib.reverse()
-            
+
             mask[
                 shape[0] // 2 - calib[0] // 2 : shape[0] // 2 + calib[0] // 2,
                 shape[1] // 2 - calib[1] // 2 : shape[1] // 2 + calib[1] // 2,
@@ -194,11 +194,11 @@ def poisson_disk(
     determines how much they can deviate.
 
     Args:
-        shape (int or tuple of ints): image shape (ny, nz, nframes). 
-            If scalar, assume square matrix and nframes = 1. 
+        shape (int or tuple of ints): image shape (ny, nz, nframes).
+            If scalar, assume square matrix and nframes = 1.
             If len(shape) == 2, assume nframes = 1.
         accel (float): Target acceleration factor. Must be greater than 1.
-        calib (int or tuple of ints): length-2 calibration shape (cy, cz). 
+        calib (int or tuple of ints): length-2 calibration shape (cy, cz).
             For nframes > 1, assume squared calibration region shaped (max(cz, cy)).
         crop_corner (bool): Toggle whether to crop sampling corners.
         seed (int): Random seed.
@@ -225,19 +225,19 @@ def poisson_disk(
     if calib is not None:
         if np.isscalar(calib):
             calib = [calib, calib]
-            
+
         # find actual calibration size
         if shape[-1] > 1:
             calib = max(calib)
             calib = int(np.ceil(calib / shape[-1]) * shape[-1])
             calib = [calib, calib]
-        
+
         # reverse (cz, cy)
         calib.reverse()
 
     if accel <= 1:
         raise ValueError(f"accel must be greater than 1, got {accel}")
-        
+
     if seed is not None:
         rand_state = np.random.get_state()
 
@@ -261,11 +261,20 @@ def poisson_disk(
         radius_y = np.clip((1 + r * slope) * ny / max(ny, nz, nt), 1, None)
         radius_z = np.clip((1 + r * slope) * nz / max(ny, nz, nt), 1, None)
         radius_t = np.clip((1 + r * slope) * nt / max(ny, nz, nt), 1, None)
-        mask = _poisson(shape[0], shape[1], shape[2], radius_y, radius_z, radius_t, max_attempts, seed)
-        
+        mask = _poisson(
+            shape[0],
+            shape[1],
+            shape[2],
+            radius_y,
+            radius_z,
+            radius_t,
+            max_attempts,
+            seed,
+        )
+
         # re-insert calibration region
         mask = _insert_calibration(mask, calib)
-        
+
         if crop_corner:
             mask *= rdisk < 1
 
@@ -286,13 +295,14 @@ def poisson_disk(
 
     # prepare for output
     mask = mask.reshape(shape[2], shape[1], shape[0]).squeeze()
-    
+
     if seed is not None:
         np.random.set_state(rand_state)
 
     return mask, actual_accel
 
-#%% local utils
+
+# %% local utils
 @nb.njit(cache=True, fastmath=True)  # pragma: no cover
 def _poisson(ny, nz, nt, radius_z, radius_y, radius_t, max_attempts, seed=None):
     mask = np.zeros((nt, nz, ny), dtype=np.int32)
@@ -326,7 +336,7 @@ def _poisson(ny, nz, nt, radius_z, radius_y, radius_t, max_attempts, seed=None):
             v = (np.random.random() * 3 + 1) ** 0.5
             phi = 2 * np.pi * np.random.random()
             theta = np.arccos(np.random.random() * 2 - 1)
-            
+
             qy = py + v * ry * np.cos(phi) * np.sin(theta)
             qz = pz + v * rz * np.sin(phi) * np.sin(theta)
             qt = pt + v * rt * np.cos(theta)
@@ -370,24 +380,26 @@ def _poisson(ny, nz, nt, radius_z, radius_y, radius_t, max_attempts, seed=None):
 
     return mask
 
+
 def _insert_calibration(mask, calib):
     shape = mask.shape
     if calib is not None:
         calib_mask = np.zeros(shape[1:], dtype=int)
-        
+
         # find center and edges
         y0, z0 = shape[1] // 2, shape[2] // 2
         dy, dz = calib[0] // 2, calib[1] // 2
-        calib_mask[y0-dy:y0+dy, z0-dz:z0+dz] = 1
-        
+        calib_mask[y0 - dy : y0 + dy, z0 - dz : z0 + dz] = 1
+
         # find indices and fill mask
         idx = np.where(calib_mask)
         idx = [i.reshape(shape[0], int(i.shape[0] / shape[0])) for i in idx]
         idx = nb.typed.List(idx)
         _fill_mask(mask, idx)
-        
+
     return mask
-        
+
+
 @nb.njit(cache=True)
 def _fill_mask(mask, idx):
     nframes = mask.shape[0]
@@ -395,7 +407,3 @@ def _fill_mask(mask, idx):
     for n in range(nframes):
         for i in range(npts):
             mask[n, idx[0][n, i], idx[1][n, i]] = 1
-    
-            
-        
-                

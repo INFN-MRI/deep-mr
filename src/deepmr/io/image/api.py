@@ -146,7 +146,7 @@ def read_image(filepath, acqheader=None, device="cpu", verbose=0):
             Flip angle scaling along slice profile of shape ``(nlocs,)``.
         * basis (torch.Tensor):
             Low rank subspace basis for subspace reconstruction of shape ``(ncoeff, ncontrasts)``.
-                
+
     * affine (np.ndarray):
         Affine matrix describing image spacing, orientation and origin of shape ``(4, 4)``.
     * ref_dicom (pydicom.Dataset):
@@ -453,16 +453,19 @@ def write_image(
             f"Data format = {dataformat} not recognized! Please use 'dicom' or 'nifti'"
         )
 
+
 # %% sub routines
 def _get_error(ex):
     trace = []
     tb = ex.__traceback__
     while tb is not None:
-        trace.append({
-            "filename": tb.tb_frame.f_code.co_filename,
-            "name": tb.tb_frame.f_code.co_name,
-            "lineno": tb.tb_lineno
-        })
+        trace.append(
+            {
+                "filename": tb.tb_frame.f_code.co_filename,
+                "name": tb.tb_frame.f_code.co_name,
+                "lineno": tb.tb_lineno,
+            }
+        )
         tb = tb.tb_next
-    
-    return str({'type': type(ex).__name__, 'message': str(ex), 'trace': trace})
+
+    return str({"type": type(ex).__name__, "message": str(ex), "trace": trace})

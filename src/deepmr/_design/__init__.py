@@ -14,4 +14,3 @@ __all__ = []
 __all__.extend(_grad.__all__)
 __all__.extend(_pulses.__all__)
 __all__.extend(["crusher", "projection", "angleaxis2rotmat"])
-

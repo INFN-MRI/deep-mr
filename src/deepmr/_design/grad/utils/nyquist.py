@@ -4,6 +4,7 @@ __all__ = ["squared_fov", "cubic_fov", "radial_fov", "cylindrical_fov", "spheric
 
 import numpy as np
 
+
 # Cartesian
 def squared_fov(fov, resolution):
     """Calculate Nyquist criterion for a squared FOV."""
@@ -16,6 +17,7 @@ def squared_fov(fov, resolution):
 
     return (nx, dkx), (ny, dky)
 
+
 def cubic_fov(fov, resolution):
     """Calculate Nyquist criterion for a cubic FOV."""
     # calculate
@@ -26,6 +28,7 @@ def cubic_fov(fov, resolution):
     dkx, dky, dkz = dk
 
     return (nx, dkx), (ny, dky), (nz, dkz)
+
 
 # Non Cartesian
 def radial_fov(fov, resolution):
@@ -46,6 +49,7 @@ def radial_fov(fov, resolution):
     dktheta = np.pi / ntheta
 
     return (nr, dkr), (int(ntheta), dktheta)
+
 
 def cylindrical_fov(fov, resolution):
     """Calculate Nyquist criterion for a cylindrical FOV."""
@@ -74,6 +78,7 @@ def cylindrical_fov(fov, resolution):
 
     return (nr, dkr), (int(ntheta), dktheta), (nz, dkz)
 
+
 def spherical_fov(fov, resolution):
     """Calculate Nyquist criterion for a spherical FOV."""
     assert np.isscalar(
@@ -97,7 +102,8 @@ def spherical_fov(fov, resolution):
 
     return (nr, dkr), (int(ntheta), dktheta), (int(nphi), dkphi)
 
-#%% local utils
+
+# %% local utils
 def _nyquist(fov, resolution, ndim):
     # process args
     if ndim > 1:

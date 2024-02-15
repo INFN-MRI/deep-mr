@@ -69,7 +69,7 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
 
     while len(ishape) < 3:
         ishape = [1] + ishape
-        
+
     nframes = ishape[0]
     ishape = ishape[1:]
 

@@ -6,7 +6,10 @@ from .rosette import rosette
 
 from .. import utils
 
-def rosette_proj(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, **kwargs):
+
+def rosette_proj(
+    fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, **kwargs
+):
     r"""
     Design a 3D rosette projection trajectory.
 
@@ -18,7 +21,7 @@ def rosette_proj(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1
         npetals (int): number of petals. By default, satisfy Nyquist criterion.
         bending_factor (float): 0 for radial-like trajectory, increase for maximum coverage per shot. In real world, must account for hardware and safety limitations.
         osf (float): radial oversampling factor.
-        
+
     Kwargs:
         dummy (bool): If true, add a dummy repetition for driven equilibrium (defaults to True).
         ordering (str): acquire planes sequentially ("sequentially"), interleaved ("interleaved"), shuffled ("shuffle") or
@@ -48,24 +51,21 @@ def rosette_proj(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1
 
     """
     # parsing
-    fov, shape, accel, kwargs, ordering = utils.config_projection(fov, shape, accel, kwargs)
-                  
+    fov, shape, accel, kwargs, ordering = utils.config_projection(
+        fov, shape, accel, kwargs
+    )
+
     # get in-plane trajectory (single frame, 1 echo, )
-    traj, grad = rosette(fov, shape[0], esp, 1, npetals, bending_factor, osf, **kwargs[0])
-    
+    traj, grad = rosette(
+        fov, shape[0], esp, 1, npetals, bending_factor, osf, **kwargs[0]
+    )
+
     # get actual number of interleaves
     npetals = traj["kr"].shape[0]
 
     # put together
-    traj = utils.make_projection(ordering, traj["compressed"], [npetals] + shape[1], accel, kwargs[1])
-    
+    traj = utils.make_projection(
+        ordering, traj["compressed"], [npetals] + shape[1], accel, kwargs[1]
+    )
+
     return traj, grad
-    
-
-
-
-        
-    
-    
-
-

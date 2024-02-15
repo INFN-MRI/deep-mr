@@ -123,73 +123,73 @@ class EPGSimulator:
     T2 : float | np.ndarray | torch.Tensor
         Transverse relaxation time for main pool in ``[ms]``.
     diff : str | tuple[str], optional
-        String or tuple of strings, saying which arguments 
-        to get the signal derivative with respect to. 
+        String or tuple of strings, saying which arguments
+        to get the signal derivative with respect to.
         Defaults to ``None`` (no differentation).
     device : str
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
     B1 : float | np.ndarray | torch.Tensor , optional
-        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Flip angle scaling factor (``1.0 := nominal flip angle``).
         Defaults to ``None``.
-    B0 : float | np.ndarray | torch.Tensor , optional 
+    B0 : float | np.ndarray | torch.Tensor , optional
         Bulk off-resonance in [Hz]. Defaults to ``None``
 
     Other Parameters
     ----------------
-    nstates : int, optional 
-        Maximum number of EPG states to be retained during simulation. 
-        High numbers improve accuracy but decrease performance. 
+    nstates : int, optional
+        Maximum number of EPG states to be retained during simulation.
+        High numbers improve accuracy but decrease performance.
         Defaults to ``10``.
     max_chunk_size : int, optional
-        Maximum number of atoms to be simulated in parallel. 
-        High numbers increase speed and memory footprint. 
+        Maximum number of atoms to be simulated in parallel.
+        High numbers increase speed and memory footprint.
         Defaults to ``natoms``.
     nlocs : int, optional
-        Number of spatial locations to be simulated (i.e., for slice profile effects). 
+        Number of spatial locations to be simulated (i.e., for slice profile effects).
         Defaults to ``1``.
     T2star : float | np.ndarray | torch.Tensor
-        Effective relaxation time for main pool in ``[ms]``. 
+        Effective relaxation time for main pool in ``[ms]``.
         Defaults to ``None``.
     D : float | np.ndarray | torch.Tensor
-        Apparent diffusion coefficient in ``[um**2 / ms]``. 
+        Apparent diffusion coefficient in ``[um**2 / ms]``.
         Defaults to ``None``.
     v : float | np.ndarray | torch.Tensor
         Spin velocity ``[cm / s]``. Defaults to ``None``.
-    moving : bool, optional 
-        If True, simulate an in-flowing spin pool. 
+    moving : bool, optional
+        If True, simulate an in-flowing spin pool.
         Defaults to ``False``.
-    chemshift  : float | np.ndarray | torch.Tensor 
-        Chemical shift for main pool in ``[Hz]``. 
+    chemshift  : float | np.ndarray | torch.Tensor
+        Chemical shift for main pool in ``[Hz]``.
         Defaults to ``None``.
     T1bm : float | np.ndarray | torch.Tensor
-        Longitudinal relaxation time for secondary pool in ``[ms]``. 
+        Longitudinal relaxation time for secondary pool in ``[ms]``.
         Defaults to ``None``.
     T2bm : float | np.ndarray | torch.Tensor
-        Transverse relaxation time for main secondary in ``[ms]``. 
+        Transverse relaxation time for main secondary in ``[ms]``.
         Defaults to ``None``.
-    kbm : float | np.ndarray | torch.Tensor 
-        Nondirectional exchange between main and secondary pool in ``[Hz]``. 
+    kbm : float | np.ndarray | torch.Tensor
+        Nondirectional exchange between main and secondary pool in ``[Hz]``.
         Defaults to ``None``.
     weight_bm  : float | np.ndarray | torch.Tensor
-        Relative secondary pool fraction. 
+        Relative secondary pool fraction.
         Defaults to ``None``.
     chemshift_bm : float | np.ndarray | torch.Tensor
-        Chemical shift for secondary pool in ``[Hz]``. 
+        Chemical shift for secondary pool in ``[Hz]``.
         Defaults to ``None``.
-    kmt : float | np.ndarray | torch.Tensor 
+    kmt : float | np.ndarray | torch.Tensor
         Nondirectional exchange between free and bound pool in ``[Hz]``.
-        If secondary pool is defined, exchange is between secondary and bound pools 
-        (i.e., myelin water and macromolecular), otherwise exchange 
-        is between main and bound pools. 
+        If secondary pool is defined, exchange is between secondary and bound pools
+        (i.e., myelin water and macromolecular), otherwise exchange
+        is between main and bound pools.
         Defaults to ``None``.
     weight_mt : float | np.ndarray | torch.Tensor
-        Relative bound pool fraction. 
+        Relative bound pool fraction.
         Defaults to ``None``.
-    B1Tx2 : float | np.ndarray | torch.Tensor 
-        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+    B1Tx2 : float | np.ndarray | torch.Tensor
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``).
         Defaults to ``None``.
     B1phase : float | np.ndarray | torch.Tensor
-        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``).
         Defaults to ``None``.
 
     """
@@ -554,6 +554,7 @@ class EPGSimulator:
 def inspect_signature(input):
     return list(inspect.signature(input).parameters)
 
+
 def jacadapt(func):
     @wraps(func)
     def wrapper(*args):
@@ -569,6 +570,7 @@ def jacadapt(func):
         return complex2real(output)
 
     return wrapper
+
 
 def real2complex(input, what):
     if what == "signal":
@@ -591,8 +593,10 @@ def real2complex(input, what):
 
         return out
 
+
 def complex2real(input):
     return torch.stack((input.real, input.imag), dim=-1)
+
 
 def _sort_signature(input, reference):
     out = {k: input[k] for k in reference if k in input}

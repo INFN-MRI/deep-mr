@@ -15,6 +15,7 @@ import torch
 from ._abstract_op import Operator
 from ._utils import matrix_exp
 
+
 class Relaxation(Operator):
     """
     The "decay operator" applying relaxation and "regrowth" of the magnetization components.
@@ -27,7 +28,7 @@ class Relaxation(Operator):
         Time step in ``[ms]``.
     T1 : torch.Tensor
         Longitudinal relaxation time in ``[ms]`` of shape ``(npools,)``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         Transverse relaxation time in ``[ms]`` of shape ``(npools,)``.
     weight : torch.Tensor, optional
         Relative pool fractions of shape ``(npools,)``.
@@ -97,12 +98,12 @@ class Relaxation(Operator):
         Parameters
         ----------
         states : dict
-            Input states matrix for free pools 
+            Input states matrix for free pools
             and, optionally, for bound pools.
 
         Returns
         -------
-        states : dict 
+        states : dict
             Output states matrix for free pools
             and, optionally, for bound pools.
 

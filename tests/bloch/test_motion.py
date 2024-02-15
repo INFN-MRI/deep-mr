@@ -30,15 +30,17 @@ if torch.cuda.is_available():
     "device, time, nlocations, npools, direction",
     list(itertools.product(*[device, time, nlocations, npools, direction])),
 )
-def test_diffusion_damping_totdephasing_and_voxelsize(device, time, nlocations, npools, direction):
+def test_diffusion_damping_totdephasing_and_voxelsize(
+    device, time, nlocations, npools, direction
+):
     """
     Test diffusion damping
     """
     # define
     nstates = 2
-    D = 1.0 # [um**2 ms**-1]
-    total_dephasing = 16 * torch.pi # [rad]
-    voxelsize = [1.0, 1.0, 2.5] # [mm]
+    D = 1.0  # [um**2 ms**-1]
+    total_dephasing = 16 * torch.pi  # [rad]
+    voxelsize = [1.0, 1.0, 2.5]  # [mm]
 
     # initialize
     states = EPGstates(device, 1, nstates, nlocations, 1, npools)["states"]
@@ -46,7 +48,15 @@ def test_diffusion_damping_totdephasing_and_voxelsize(device, time, nlocations, 
     states["Z"] = states["Z"]["real"][0] + 1j * states["Z"]["imag"][0]
     pulse = ops.RFPulse(device, alpha=30.0)
     grad = ops.Shift()
-    diff = ops.DiffusionDamping(device, time, D, nstates, total_dephasing=total_dephasing, voxelsize=voxelsize, grad_direction=direction)
+    diff = ops.DiffusionDamping(
+        device,
+        time,
+        D,
+        nstates,
+        total_dephasing=total_dephasing,
+        voxelsize=voxelsize,
+        grad_direction=direction,
+    )
 
     # prepare
     states = pulse(states)
@@ -59,7 +69,9 @@ def test_diffusion_damping_totdephasing_and_voxelsize(device, time, nlocations, 
     else:
         value = 0.4995
 
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     if time == 1.0:
         F[1, ..., 0] = -1j * value
     elif time == 0.0:
@@ -72,6 +84,7 @@ def test_diffusion_damping_totdephasing_and_voxelsize(device, time, nlocations, 
     assert torch.allclose(states["F"], F, atol=1e-4)
     assert torch.allclose(states["Z"], Z, atol=1e-4)
 
+
 @pytest.mark.parametrize(
     "device, time, nlocations, npools",
     list(itertools.product(*[device, time, nlocations, npools])),
@@ -82,8 +95,8 @@ def test_diffusion_damping_grad_specs(device, time, nlocations, npools):
     """
     # define
     nstates = 2
-    D = 1.0 # [um**2 ms**-1]
-    grad_amp = 75 # [mT / m]
+    D = 1.0  # [um**2 ms**-1]
+    grad_amp = 75  # [mT / m]
 
     # initialize
     states = EPGstates(device, 1, nstates, nlocations, 1, npools)["states"]
@@ -99,7 +112,9 @@ def test_diffusion_damping_grad_specs(device, time, nlocations, npools):
     states = diff(states)
 
     # expected
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     if time == 1.0:
         F[1, ..., 0] = -1j * 0.4995
     elif time == 0.0:
@@ -112,26 +127,37 @@ def test_diffusion_damping_grad_specs(device, time, nlocations, npools):
     assert torch.allclose(states["F"], F, atol=1e-4)
     assert torch.allclose(states["Z"], Z, atol=1e-4)
 
+
 @pytest.mark.parametrize(
     "device, time, nlocations, npools, direction",
     list(itertools.product(*[device, time, nlocations, npools, direction])),
 )
-def test_flow_dephasing_totdephasing_and_voxelsize(device, time, nlocations, npools, direction):
+def test_flow_dephasing_totdephasing_and_voxelsize(
+    device, time, nlocations, npools, direction
+):
     """
     Test flow dephasing
     """
     # define
     nstates = 1
-    v = 100.0 # [cm s**-1]
-    total_dephasing = 2 * torch.pi # [rad]
-    voxelsize = [2.5, 2.5, 5.0] # [mm]
+    v = 100.0  # [cm s**-1]
+    total_dephasing = 2 * torch.pi  # [rad]
+    voxelsize = [2.5, 2.5, 5.0]  # [mm]
 
     # initialize
     states = EPGstates(device, 1, nstates, nlocations, 1, npools)["states"]
     states["F"] = states["F"]["real"][0] + 1j * states["F"]["imag"][0]
     states["Z"] = states["Z"]["real"][0] + 1j * states["Z"]["imag"][0]
     pulse = ops.RFPulse(device, alpha=30.0)
-    dphase = ops.FlowDephasing(device, time, v, nstates, total_dephasing=total_dephasing, voxelsize=voxelsize, grad_direction=direction)
+    dphase = ops.FlowDephasing(
+        device,
+        time,
+        v,
+        nstates,
+        total_dephasing=total_dephasing,
+        voxelsize=voxelsize,
+        grad_direction=direction,
+    )
 
     # prepare
     states = pulse(states)
@@ -139,11 +165,13 @@ def test_flow_dephasing_totdephasing_and_voxelsize(device, time, nlocations, npo
 
     # expected
     if direction == "x" or direction == "y":
-        value = -0.4755-0.1545j
+        value = -0.4755 - 0.1545j
     else:
-        value = -0.2939-0.4045j
+        value = -0.2939 - 0.4045j
 
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     if time == 1.0:
         F[0, ..., 0] = value
         F[0, ..., 1] = np.conj(value)
@@ -169,8 +197,8 @@ def test_flow_dephasing_grad_specs(device, time, nlocations, npools):
     """
     # define
     nstates = 1
-    v = 100.0 # [cm s**-1]
-    grad_amp = 10.0 # [mT / m]
+    v = 100.0  # [cm s**-1]
+    grad_amp = 10.0  # [mT / m]
 
     # initialize
     states = EPGstates(device, 1, nstates, nlocations, 1, npools)["states"]
@@ -184,10 +212,12 @@ def test_flow_dephasing_grad_specs(device, time, nlocations, npools):
     states = dphase(states)
 
     # expected
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     if time == 1.0:
-        F[0, ..., 0] = -0.4865-0.1155j
-        F[0, ..., 1] = -0.4865+0.1155j
+        F[0, ..., 0] = -0.4865 - 0.1155j
+        F[0, ..., 1] = -0.4865 + 0.1155j
     elif time == 0.0:
         F[0, ..., 0] = -1j * 0.5000
         F[0, ..., 1] = 1j * 0.5000
@@ -202,15 +232,19 @@ def test_flow_dephasing_grad_specs(device, time, nlocations, npools):
 
 @pytest.mark.parametrize(
     "device, time, nlocations, npools, direction",
-    list(itertools.product(*[device, [0.0, 1.0, 1000000.0], nlocations, npools, direction])),
+    list(
+        itertools.product(
+            *[device, [0.0, 1.0, 1000000.0], nlocations, npools, direction]
+        )
+    ),
 )
 def test_magnetization_replacement(device, time, nlocations, npools, direction):
     """
     Test magnetization replacement due to spin wash-out / inflow.
     """
     nstates = 2
-    v = 100.0 # [cm s**-1]
-    voxelsize = [2.5, 2.5, 5.0] # [mm]
+    v = 100.0  # [cm s**-1]
+    voxelsize = [2.5, 2.5, 5.0]  # [mm]
 
     # initialize
     states = EPGstates(device, 1, nstates, nlocations, 1, npools, moving=True)["states"]
@@ -237,7 +271,9 @@ def test_magnetization_replacement(device, time, nlocations, npools, direction):
         fvalue = -0.4000j
         zvalue = 0.8928
 
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     Z = torch.zeros((nstates, nlocations, npools), dtype=torch.complex64, device=device)
     if time == 1.0:
         F[0, ..., 0] = fvalue
@@ -250,8 +286,12 @@ def test_magnetization_replacement(device, time, nlocations, npools, direction):
     else:
         Z[0, ...] = 1.0
 
-    Fmoving = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
-    Zmoving = torch.zeros((nstates, nlocations, npools), dtype=torch.complex64, device=device)
+    Fmoving = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
+    Zmoving = torch.zeros(
+        (nstates, nlocations, npools), dtype=torch.complex64, device=device
+    )
     Zmoving[0, :, :] = 1
 
     # assertions

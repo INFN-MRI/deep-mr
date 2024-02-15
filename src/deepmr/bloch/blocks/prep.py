@@ -15,20 +15,20 @@ def InversionPrep(TI, T1, T2, weight, k, inv_props):
     ----------
     TI : torch.Tensor
         Inversion time in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
     prep_props : dict
         Extra pulse parameters.
 
     Returns
     -------
-    PrepPulse : deepmr.bloch.Operator 
+    PrepPulse : deepmr.bloch.Operator
         Adiabatic Inversion pulse operator, including crusher.
 
     """
@@ -59,22 +59,22 @@ def T2Prep(Tprep, T1, T2, weight, k, prep_props):
 
     Parameters
     ----------
-    Tprep : torch.Tensor 
+    Tprep : torch.Tensor
         T2 preparation time in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
     prep_props : dict
         Extra pulse parameters.
 
     Returns
     -------
-    PrepPulse : deepmr.bloch.Operator 
+    PrepPulse : deepmr.bloch.Operator
         Adiabatic T2prep pulse operator, including crusher.
 
     """

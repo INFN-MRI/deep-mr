@@ -99,7 +99,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
             Flip angle scaling along slice profile of shape ``(nlocs,)``.
         * basis (torch.Tensor):
             Low rank subspace basis for subspace reconstruction of shape ``(ncontrasts, ncoeff)``.
-                
+
     * affine (np.ndarray):
         Affine matrix describing image spacing, orientation and origin of shape ``(4, 4)``.
     * ref_dicom (pydicom.Dataset):
@@ -270,11 +270,13 @@ def _get_error(ex):
     trace = []
     tb = ex.__traceback__
     while tb is not None:
-        trace.append({
-            "filename": tb.tb_frame.f_code.co_filename,
-            "name": tb.tb_frame.f_code.co_name,
-            "lineno": tb.tb_lineno
-        })
+        trace.append(
+            {
+                "filename": tb.tb_frame.f_code.co_filename,
+                "name": tb.tb_frame.f_code.co_name,
+                "lineno": tb.tb_lineno,
+            }
+        )
         tb = tb.tb_next
-    
-    return str({'type': type(ex).__name__, 'message': str(ex), 'trace': trace})
+
+    return str({"type": type(ex).__name__, "message": str(ex), "trace": trace})

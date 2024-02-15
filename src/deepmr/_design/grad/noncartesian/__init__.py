@@ -30,4 +30,3 @@ __all__.extend(_rosette_proj.__all__)
 __all__.extend(_spiral.__all__)
 __all__.extend(_spiral_stack.__all__)
 __all__.extend(_spiral_proj.__all__)
-

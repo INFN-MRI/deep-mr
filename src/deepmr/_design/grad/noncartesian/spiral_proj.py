@@ -6,6 +6,7 @@ from .spiral import spiral
 
 from .. import utils
 
+
 def spiral_proj(fov, shape, accel=1, nintl=1, **kwargs):
     r"""
     Design a 3D dual or constant density spiral projection trajectory.
@@ -16,7 +17,7 @@ def spiral_proj(fov, shape, accel=1, nintl=1, **kwargs):
         accel (tuple of ints): acceleration (Rplane, Rangular). Ranges from (1, 1) (fully sampled) to (nintl, nplanes).
         nintl (int): number of interleaves to fully sample a plane. For dual density,
             inner spiral is single shot.
-    
+
     Kwargs:
         dummy (bool): If true, add a dummy repetition for driven equilibrium (defaults to True).
         ordering (str): acquire planes sequentially ("sequentially"), interleaved ("interleaved"), shuffled ("shuffle") or
@@ -52,24 +53,19 @@ def spiral_proj(fov, shape, accel=1, nintl=1, **kwargs):
 
     """
     # parsing
-    fov, shape, accel, kwargs, ordering = utils.config_projection(fov, shape, accel, kwargs)
-                  
+    fov, shape, accel, kwargs, ordering = utils.config_projection(
+        fov, shape, accel, kwargs
+    )
+
     # get in-plane trajectory (single frame, 1 echo, )
     traj, grad = spiral(fov, shape[0], 1, nintl, **kwargs[0])
-    
+
     # get actual number of interleaves
     nintl = traj["kr"].shape[0]
 
     # put together
-    traj = utils.make_projection(ordering, traj["compressed"], [nintl] + shape[1], accel, kwargs[1])
-    
+    traj = utils.make_projection(
+        ordering, traj["compressed"], [nintl] + shape[1], accel, kwargs[1]
+    )
+
     return traj, grad
-    
-
-
-
-        
-    
-    
-
-

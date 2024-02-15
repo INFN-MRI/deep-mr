@@ -58,7 +58,7 @@ def plan_sampling(indexes, shape, device="cpu"):
     # expand singleton dimensions
     ishape = list(indexes.shape[:-1])
     ndim = indexes.shape[-1]
-    
+
     while len(ishape) < 3:
         ishape = [1] + ishape
 
@@ -88,6 +88,7 @@ def plan_sampling(indexes, shape, device="cpu"):
     ishape = tuple(ishape)
 
     return Sampling(index, dshape, ishape, ndim, device)
+
 
 # %% subroutines
 @dataclass

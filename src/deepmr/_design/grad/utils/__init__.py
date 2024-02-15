@@ -76,10 +76,10 @@ from . import timing as _timing
 
 from .config import *  # noqa
 from .dcf import *  # noqa
-from .defaults import * # noqa
+from .defaults import *  # noqa
 from .designer import *  # noqa
-from .encodeplans import * # noqa
-from .expansions import * # noqa
+from .encodeplans import *  # noqa
+from .expansions import *  # noqa
 from .mask import *  # noqa
 from .misc import *  # noqa
 from .nyquist import *  # noqa

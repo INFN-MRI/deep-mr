@@ -22,20 +22,36 @@ from .ss_grad import grad_mintrap
 from .ss_verse import ss_verse
 from .ss_verse import ss_b1verse
 
-def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, f_off, dbg, sg=None):
-    
+
+def ss_ep(
+    ang,
+    z_thk,
+    z_tb,
+    z_d,
+    f,
+    a,
+    d,
+    fs,
+    ptype,
+    z_ftype,
+    s_ftype,
+    ss_type,
+    f_off,
+    dbg,
+    sg=None,
+):
     # global options
     if sg is None:
         sg = ss_globals()
 
     # Check if ss_type contains 'Half'
-    sym_flag = 1 if 'Half' in ss_type else 0
+    sym_flag = 1 if "Half" in ss_type else 0
 
     # Alias the input parameters
     f_a, a_a, d_a, f_off = ss_alias(f, a, d, f_off, fs, sym_flag)
 
     if f_a.size == 0:
-        raise ValueError('Strange: this frequency should be ok')
+        raise ValueError("Strange: this frequency should be ok")
 
     # Calculate cycles/cm required
     kz_max = z_tb / z_thk  # cycles/cm
@@ -43,7 +59,9 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
 
     # Calculate SS bipolars
     nsamp = int(round(2 / (fs * sg.SS_TS)))
-    gpos, gneg, g1, g2, g3 = grad_ss(kz_area, nsamp, sg.SS_VERSE_FRAC, sg.SS_MXG, sg.SS_MXS, sg.SS_TS, 1)
+    gpos, gneg, g1, g2, g3 = grad_ss(
+        kz_area, nsamp, sg.SS_VERSE_FRAC, sg.SS_MXG, sg.SS_MXS, sg.SS_TS, 1
+    )
     ng1 = len(g1)
     ng2 = len(g2)
     ng3 = len(g3)
@@ -63,24 +81,26 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
     else:
         use_max = 1
 
-    if s_ftype == 'min':
+    if s_ftype == "min":
         s_b, status = fir_minphase_power(max_lobe, f_a, a_dup, d_a, use_max, dbg)
-    elif s_ftype == 'max':
+    elif s_ftype == "max":
         s_b, status = fir_minphase_power(max_lobe, f_a, a_dup, d_a, use_max, dbg)
         s_b = np.conj(s_b[::-1])
-    elif s_ftype == 'lin':
+    elif s_ftype == "lin":
         if use_max:
             if max_lobe % 2 == 0:
                 max_lobe += 1
             s_b, status = fir_qprog(max_lobe, f_a, a_dup, d_a, dbg)
         else:
             odd_or_even = 0
-            s_b, status = fir_min_order_qprog(max_lobe, f_a, a_dup, d_a, odd_or_even, dbg)
+            s_b, status = fir_min_order_qprog(
+                max_lobe, f_a, a_dup, d_a, odd_or_even, dbg
+            )
 
-    if status == 'Solved':
+    if status == "Solved":
         # Get Z RF pulse
         z_np = len(g2)
-        z_b = dzbeta(z_np, z_tb, 'st', z_ftype, z_d[0], z_d[1])
+        z_b = dzbeta(z_np, z_tb, "st", z_ftype, z_d[0], z_d[1])
 
         if sg.SS_SLR_FLAG == 1:
             oversamp = 4
@@ -89,10 +109,10 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
             Z_b = fftf(z_b, nZ2)  # column transform, unit magnitude
 
             if sg.SS_SPECT_CORRECT_FLAG:
-                print('Spectral Correction not supported for EP pulses with SLR')
+                print("Spectral Correction not supported for EP pulses with SLR")
 
             if dbg:
-                print('Doing SLR in F...')
+                print("Doing SLR in F...")
 
             s_rfm = np.zeros((nZ2, 0), dtype=complex)
             bsf = np.sin(ang / 2) * Z_b
@@ -105,7 +125,7 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
             z_rfm = np.zeros((0, z_np), dtype=complex)
 
             if dbg:
-                print('Doing SLR in Z...')
+                print("Doing SLR in Z...")
 
             for idx in range(z_bm.shape[0]):
                 tmp_z_rf = np.conj(b2rf(z_bm[idx, :]))
@@ -119,12 +139,21 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
 
             if sg.SS_VERSE_B1:
                 if dbg:
-                    print('Versing RF with B1 minimization...')
+                    print("Versing RF with B1 minimization...")
 
                 z_rfmax = np.max(np.abs(z_rfm))
                 z_rfvmax1 = ss_verse(g2, z_rfmax)
-                z_rfvmax, g2v = ss_b1verse(g2, z_rfvmax1, sg.SS_MAX_B1, sg.SS_MXG, sg.SS_MXS, sg.SS_TS, sg.SS_GAMMA,
-                                           sg.SS_SLEW_PENALTY, dbg)
+                z_rfvmax, g2v = ss_b1verse(
+                    g2,
+                    z_rfvmax1,
+                    sg.SS_MAX_B1,
+                    sg.SS_MXG,
+                    sg.SS_MXS,
+                    sg.SS_TS,
+                    sg.SS_GAMMA,
+                    sg.SS_SLEW_PENALTY,
+                    dbg,
+                )
 
                 if z_rfvmax.size == 0:
                     rf = np.array([], dtype=complex)
@@ -148,8 +177,8 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
                 gneg = np.concatenate((-g1, -g2v[::-1], -g3))
             else:
                 if dbg:
-                    print('Versing RF...')
-                
+                    print("Versing RF...")
+
                 for idx in range(nlobe):
                     if idx % 2 == 1:
                         z_rfmod = z_rfm[idx, :] * rfmod
@@ -169,26 +198,48 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
             bsf = np.sin(ang / 2) * np.ones(len(Noff))
 
             if sg.SS_SPECT_CORRECT_FLAG:
-                print('Spectral Correction not supported for EP pulses with SLR')
+                print("Spectral Correction not supported for EP pulses with SLR")
 
             s_rfm = np.conj(s_b) * np.ones((len(Noff), ng2))
         fpass_mid = 0
-        z_bmod_for = z_b * np.exp(1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid)
+        z_bmod_for = z_b * np.exp(
+            1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid
+        )
         z_b_rev = np.flip(z_b)
-        z_bmod_rev = z_b_rev * np.exp(1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid)
+        z_bmod_rev = z_b_rev * np.exp(
+            1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid
+        )
 
         if sg.SS_VERSE_B1:
             if dbg:
-                print('Versing RF with B1 minimization...')
+                print("Versing RF with B1 minimization...")
 
             b1max_sc = np.max(np.abs(s_rfm), axis=0)
             z_bvmod1 = ss_verse(g2, z_bmod_for)
-            z_bvmod_for, g2v_for = ss_b1verse(g2, z_bvmod1, sg.SS_MAX_B1 / b1max_sc, sg.SS_MXG, sg.SS_MXS, sg.SS_TS, sg.SS_GAMMA,
-                                             sg.SS_SLEW_PENALTY, dbg)
+            z_bvmod_for, g2v_for = ss_b1verse(
+                g2,
+                z_bvmod1,
+                sg.SS_MAX_B1 / b1max_sc,
+                sg.SS_MXG,
+                sg.SS_MXS,
+                sg.SS_TS,
+                sg.SS_GAMMA,
+                sg.SS_SLEW_PENALTY,
+                dbg,
+            )
 
             z_bvmod1 = ss_verse(g2, z_bmod_rev)
-            z_bvmod_rev, g2v_rev = ss_b1verse(g2, z_bvmod1, sg.SS_MAX_B1 / np.flip(b1max_sc), sg.SS_MXG, sg.SS_MXS, sg.SS_TS, sg.SS_GAMMA,
-                                             sg.SS_SLEW_PENALTY, dbg)
+            z_bvmod_rev, g2v_rev = ss_b1verse(
+                g2,
+                z_bvmod1,
+                sg.SS_MAX_B1 / np.flip(b1max_sc),
+                sg.SS_MXG,
+                sg.SS_MXS,
+                sg.SS_TS,
+                sg.SS_GAMMA,
+                sg.SS_SLEW_PENALTY,
+                dbg,
+            )
 
             if z_bvmod_for.size == 0 or z_bvmod_rev.size == 0:
                 rf = np.array([], dtype=complex)
@@ -198,14 +249,18 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
             g2v = np.minimum(g2v_for, np.flip(g2v_rev))
 
             z_bvmod_for = ss_verse(g2v, z_bmod_for)
-            z_bv_for = z_bvmod_for * np.exp(-1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid)
+            z_bv_for = z_bvmod_for * np.exp(
+                -1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid
+            )
             z_bv_rev = z_bv_for[::-1]
 
             gpos = np.concatenate((g1, g2v, g3))
             gneg = np.concatenate((-g1, -g2v[::-1], -g3))
         else:
             z_bvmod_for = ss_verse(g2, z_bmod_for)
-            z_bv_for = z_bvmod_for * np.exp(-1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid)
+            z_bv_for = z_bvmod_for * np.exp(
+                -1j * 2 * np.pi * np.arange(z_np) * sg.SS_TS * fpass_mid
+            )
             z_bv_rev = z_bv_for[::-1]
 
         nlobe = len(s_b)
@@ -239,7 +294,7 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
     rf = rf / (2 * np.pi * sg.SS_GAMMA * sg.SS_TS)
 
     # Calculate refocusing lobe
-    if ptype == 'ex' or ptype == 'se':
+    if ptype == "ex" or ptype == "se":
         fmid = (f[0::2] + f[1::2]) / 2
         idx_pass = np.where(a > 0)[0]
         fpass = fmid[idx_pass]
@@ -251,9 +306,9 @@ def ss_ep(ang, z_thk, z_tb, z_d, f, a, d, fs, ptype, z_ftype, s_ftype, ss_type, 
         gfrot = 2 * np.pi * sg.SS_TS * np.ones(len(g))
         rrot = 2 * np.pi * sg.SS_GAMMA * sg.SS_TS * rf
 
-        if ptype == 'ex':
+        if ptype == "ex":
             mxy = ab2ex(abr(rrot, gzrot + 1j * gfrot, z, fpass))
-        elif ptype == 'se':
+        elif ptype == "se":
             mxy = ab2se(abr(rrot, gzrot + 1j * gfrot, z, fpass))
     else:
         return None, None

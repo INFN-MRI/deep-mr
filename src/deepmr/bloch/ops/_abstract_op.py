@@ -74,9 +74,9 @@ class CompositeOperator(Operator):
 
         Returns
         -------
-        epg_dash : EPGMatrix 
+        epg_dash : EPGMatrix
             EPG after operator application.
-            
+
         """
         epg_dash = epg
 
@@ -102,5 +102,5 @@ class CompositeOperator(Operator):
 
 class Identity(Operator):
     """Dummy operator."""
-    
+
     pass

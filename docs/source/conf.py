@@ -4,6 +4,12 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+
+for x in os.walk('../../src'):
+  sys.path.insert(0, os.path.abspath(x[0]))
+
 # -- Project information -----------------------------------------------------
 
 project = "deepmr"
@@ -17,7 +23,7 @@ author = "Matteo Cencini"
 # ones.
 extensions = [
     "myst_nb",
-	"matplotlib.sphinxext.plot_directive",
+    "matplotlib.sphinxext.plot_directive",
     #    "autoapi.extension",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",

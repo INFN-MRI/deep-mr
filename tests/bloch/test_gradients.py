@@ -22,6 +22,7 @@ npools = [1, 2]
 if torch.cuda.is_available():
     device += ["cuda:0"]
 
+
 @pytest.mark.parametrize(
     "device, nlocations, npools",
     list(itertools.product(*[device, nlocations, npools])),
@@ -45,7 +46,9 @@ def test_epg_shift(device, nlocations, npools):
     states = grad(states)
 
     # expected
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     F[1, ..., 0] = -1j * 0.5000
 
     Z = torch.zeros((nstates, nlocations, npools), dtype=torch.complex64, device=device)
@@ -79,7 +82,9 @@ def test_spoil(device, nlocations, npools):
     states = crusher(states)
 
     # expected
-    F = torch.zeros((nstates, nlocations, npools, 2), dtype=torch.complex64, device=device)
+    F = torch.zeros(
+        (nstates, nlocations, npools, 2), dtype=torch.complex64, device=device
+    )
     Z = torch.zeros((nstates, nlocations, npools), dtype=torch.complex64, device=device)
     Z[0, ...] = 0.8660
 

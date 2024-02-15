@@ -4,6 +4,7 @@ __all__ = ["rf_phase_cycle"]
 
 import numpy as np
 
+
 def rf_phase_cycle(n, arg2):
     """
     Calculate phase cycling pattern (for acquisition and simulation).
@@ -14,7 +15,7 @@ def rf_phase_cycle(n, arg2):
 
     Returns:
         (array): phase list.
-    
+
     Ported from:
      Shaihan Malik July 2017
 
@@ -27,9 +28,9 @@ def rf_phase_cycle(n, arg2):
         spgr = False
 
     if spgr:
-        # quadratic 
+        # quadratic
         p = np.arange(n)
-        phi = p * (p+1) / 2 * Phi0
+        phi = p * (p + 1) / 2 * Phi0
     else:
         # balanced case
         if n % 2 == 0:
@@ -37,5 +38,5 @@ def rf_phase_cycle(n, arg2):
         else:
             phi = np.tile(np.asarray([0, np.pi]), int(np.floor(n / 2)))
             phi = np.concatenate((phi, [0]))
-    
+
     return phi

@@ -43,9 +43,7 @@ def bir4(n, beta, kappa, theta, dw0):
 
     om1 = dw0 * np.tan(kappa * 4 * t[: n // 4]) / np.tan(kappa)
     om2 = dw0 * np.tan(kappa * (4 * t[n // 4 : n // 2] - 2)) / np.tan(kappa)
-    om3 = (
-        dw0 * np.tan(kappa * (4 * t[n // 2 : 3 * n // 4] - 2)) / np.tan(kappa)
-    )
+    om3 = dw0 * np.tan(kappa * (4 * t[n // 2 : 3 * n // 4] - 2)) / np.tan(kappa)
     om4 = dw0 * np.tan(kappa * (4 * t[3 * n // 4 :] - 4)) / np.tan(kappa)
 
     om = np.concatenate((om1, om2, om3, om4))
@@ -105,13 +103,13 @@ def hypsec_n(n=500, beta=8, a_max=12000, pwr=8):
         Tannus, A. and Garwood, M. 'Improved performance
         of frequency-swept pulses using offset-independent
         adiabaticity'. J. Magn. Reson. A 120, 133-137 (1996).
-     """
+    """
 
     t = 2 * np.arange(-n // 2, n // 2) / n
-    dt = t[1]-t[0]
+    dt = t[1] - t[0]
 
-    am_sechn = np.cosh(beta * t ** pwr) ** -1
-    f2_sechn = np.cumsum(am_sechn ** 2) * dt
+    am_sechn = np.cosh(beta * t**pwr) ** -1
+    f2_sechn = np.cumsum(am_sechn**2) * dt
     fm_sechn = -2 * a_max * (f2_sechn / np.max(f2_sechn) - 1 / 2)
 
     return am_sechn, fm_sechn
@@ -188,9 +186,7 @@ def goia_wurst(n=512, dur=3.5e-3, f=0.9, n_b1=16, m_grad=4, b1_max=817, bw=20000
     return a, om, g
 
 
-def bloch_siegert_fm(
-    n=512, dur=2e-3, b1p=20.0, k=42.0, gamma=2 * np.pi * 42.58
-):
+def bloch_siegert_fm(n=512, dur=2e-3, b1p=20.0, k=42.0, gamma=2 * np.pi * 42.58):
     r"""
     U-shaped FM waveform for adiabatic Bloch-Siegert :math:`B_1^{+}` mapping
     and spatial encoding.

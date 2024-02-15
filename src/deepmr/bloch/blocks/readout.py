@@ -20,7 +20,7 @@ def ExcPulse(states, B1, rf_props):
 
     Returns
     -------
-    RFPulse : deepmr.bloch.Operator 
+    RFPulse : deepmr.bloch.Operator
         RF pulse rotation operator.
 
     """
@@ -58,28 +58,28 @@ def FSEStep(
         EPG states matrix.
     ESP : float
         Echo Spacing in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
-    chemshift : torch.Tensor  
+    chemshift : torch.Tensor
         Chemical shift of each pool of shape ``(npools,).
-    D : torch.Tensor  
+    D : torch.Tensor
         Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
-    v : torch.Tensor  
+    v : torch.Tensor
         Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
     grad_props : dict
         Extra parameters.
 
     Returns
     -------
-    TEop : deepmr.bloch.Operator 
+    TEop : deepmr.bloch.Operator
         Propagator until TE. If TE=0, this is the Identity.
-    TETRop : deepmr.bloch.Operator  
+    TETRop : deepmr.bloch.Operator
         Propagator until next TR.
 
     """
@@ -108,28 +108,28 @@ def bSSFPStep(states, TE, TR, T1, T2, weight=None, k=None, chemshift=None):
         Echo Time in ``[ms]``.
     TR : float
         Repetition Time in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
-    chemshift : torch.Tensor  
+    chemshift : torch.Tensor
         Chemical shift of each pool of shape ``(npools,).
-    D : torch.Tensor  
+    D : torch.Tensor
         Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
-    v : torch.Tensor  
+    v : torch.Tensor
         Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
     grad_props : dict
         Extra parameters.
 
     Returns
     -------
-    TEop : deepmr.bloch.Operator 
+    TEop : deepmr.bloch.Operator
         Propagator until TE. If TE=0, this is the Identity.
-    TETRop : deepmr.bloch.Operator  
+    TETRop : deepmr.bloch.Operator
         Propagator until next TR.
 
     """
@@ -166,28 +166,28 @@ def SSFPFidStep(
         Echo Time in ``[ms]``.
     TR : float
         Repetition Time in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
-    chemshift : torch.Tensor  
+    chemshift : torch.Tensor
         Chemical shift of each pool of shape ``(npools,).
-    D : torch.Tensor  
+    D : torch.Tensor
         Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
-    v : torch.Tensor  
+    v : torch.Tensor
         Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
     grad_props : dict
         Extra parameters.
 
     Returns
     -------
-    TEop : deepmr.bloch.Operator 
+    TEop : deepmr.bloch.Operator
         Propagator until TE. If TE=0, this is the Identity.
-    TETRop : deepmr.bloch.Operator  
+    TETRop : deepmr.bloch.Operator
         Propagator until next TR.
 
     """
@@ -224,28 +224,28 @@ def SSFPEchoStep(
         Echo Time in ``[ms]``.
     TR : float
         Repetition Time in ``[ms]``.
-    T1 : torch.Tensor 
+    T1 : torch.Tensor
         T1 relaxation time of shape ``(..., npools) in ``[ms]``.
-    T2 : torch.Tensor 
+    T2 : torch.Tensor
         T2 relaxation time of shape ``(..., npools) in ``[ms]``.
-    weight : torch.Tensor  
+    weight : torch.Tensor
         Pool relative fraction.
-    k : torch.Tensor 
+    k : torch.Tensor
         Chemical exchange matrix ``(...., npools, npools)`` in ``[Hz]``.
-    chemshift : torch.Tensor  
+    chemshift : torch.Tensor
         Chemical shift of each pool of shape ``(npools,).
-    D : torch.Tensor  
+    D : torch.Tensor
         Apparent diffusion coefficient of shape ``(...,)`` in ``[um**2/ms]``. Assume same coefficient for each pool.
-    v : torch.Tensor  
+    v : torch.Tensor
         Spin velocity of shape ``(...,)`` in ``[cm/s]``. Assume same coefficient for each pool.
     grad_props : dict
         Extra parameters.
 
     Returns
     -------
-    TEop : deepmr.bloch.Operator 
+    TEop : deepmr.bloch.Operator
         Propagator until TE. If TE=0, this is the Identity.
-    TETRop : deepmr.bloch.Operator  
+    TETRop : deepmr.bloch.Operator
         Propagator until next TR.
 
     """

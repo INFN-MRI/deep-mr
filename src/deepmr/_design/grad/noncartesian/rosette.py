@@ -8,10 +8,13 @@ import numpy as np
 
 from .. import utils
 
-gamma_bar = 42.575 * 1e6 # MHz / T -> Hz / T
-gamma = 2 * np.pi * gamma_bar # rad / T / s
+gamma_bar = 42.575 * 1e6  # MHz / T -> Hz / T
+gamma = 2 * np.pi * gamma_bar  # rad / T / s
 
-def rosette(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, **kwargs):
+
+def rosette(
+    fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, **kwargs
+):
     r"""
     Design a rosette trajectory.
 
@@ -23,7 +26,7 @@ def rosette(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, *
         npetals (int): number of petals. By default, satisfy Nyquist criterion.
         bending_factor (float): 0 for radial-like trajectory, increase for maximum coverage per shot. In real world, must account for hardware and safety limitations.
         osf (float): radial oversampling factor.
-    
+
     Kwargs:
         tilt_type (str): tilt of the shots.
         tilt (bool): if True, keep rotating the petals through echo train. If false, keep same spoke for each echo (defaults to False).
@@ -51,19 +54,23 @@ def rosette(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, *
     """
     # parse defaults
     gmax, smax, gdt, rew_derate, fid, acs_shape, _ = utils.get_noncart_defaults(kwargs)
-    
+
     # build base interleaf and rotation angles
-    kr, phi, shape, acs_shape, npetals = _make_rosette_interleave(fov, shape, accel, esp, npetals, bending_factor, osf, kwargs)
-    
+    kr, phi, shape, acs_shape, npetals = _make_rosette_interleave(
+        fov, shape, accel, esp, npetals, bending_factor, osf, kwargs
+    )
+
     # get nframes and nechoes for clarity
     mtx, nechoes, nframes = shape[0], shape[1], shape[2]
-    
+
     # optionally, enforce system constraint (and design base interleaf waveform)
-    kr, grad, adc, echo_idx = _make_rosette_gradient(kr, gmax, smax, gdt, rew_derate, fid)
-            
+    kr, grad, adc, echo_idx = _make_rosette_gradient(
+        kr, gmax, smax, gdt, rew_derate, fid
+    )
+
     # compute density compensation factor
     dcf = utils.voronoi(kr.T, npetals)
-    
+
     # compute timing
     if grad is not None:
         te, t = utils.calculate_timing(nechoes, echo_idx, gdt, kr, grad["read"])
@@ -73,26 +80,48 @@ def rosette(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, *
     # compute loop indexes (kt, kecho)
     kt, phi = utils.broadcast_tilt(np.arange(nframes), phi, loop_order="new-first")
     kecho, phi = utils.broadcast_tilt(np.arange(nechoes), phi, loop_order="old-first")
-            
+
     # prepare acs
     acs = utils.extract_acs(kr, dcf, shape, acs_shape)
-    
+
     # prepare grad struct
     if grad is None:
         grad = {"read": None, "rew": None, "pre": None, "rot": None}
     else:
         grad["rot"] = phi
-    
+
     # prepare compressed structure
     R = utils.angleaxis2rotmat(phi, [0, 0, 1])
-    compressed = {"kr": utils.scale_traj(kr), "kecho": kecho, "kt": kt, "rot": R, "t": t, "te": te, "mtx": [mtx, mtx], "dcf": dcf, "adc": adc, "acs": copy.deepcopy(acs)}
-    
+    compressed = {
+        "kr": utils.scale_traj(kr),
+        "kecho": kecho,
+        "kt": kt,
+        "rot": R,
+        "t": t,
+        "te": te,
+        "mtx": [mtx, mtx],
+        "dcf": dcf,
+        "adc": adc,
+        "acs": copy.deepcopy(acs),
+    }
+
     # expand
     kr = utils.projection(kr, R).astype(np.float32).transpose(1, 2, 0)
     acs["kr"] = utils.projection(acs["kr"], R).astype(np.float32).transpose(1, 2, 0)
-    
+
     # prepare trajectory structure
-    traj = {"kr": utils.scale_traj(kr), "kecho": kecho, "kt": kt, "t": t, "te": te, "mtx": [mtx, mtx], "dcf": dcf, "adc": adc, "acs": acs, "compressed": compressed}
+    traj = {
+        "kr": utils.scale_traj(kr),
+        "kecho": kecho,
+        "kt": kt,
+        "t": t,
+        "te": te,
+        "mtx": [mtx, mtx],
+        "dcf": dcf,
+        "adc": adc,
+        "acs": acs,
+        "compressed": compressed,
+    }
     if nechoes == 1:
         traj.pop("kecho", None)
         traj["compressed"].pop("kecho", None)
@@ -105,12 +134,15 @@ def rosette(fov, shape, esp, accel=1, npetals=None, bending_factor=1, osf=1.0, *
 
     # plot reports
     # TODO
-    
-    # return traj, grad, prot 
+
+    # return traj, grad, prot
     return traj, grad
-      
-#%% local utils
-def _make_rosette_interleave(fov, shape, accel, esp, npetals, bending_factor, osf, kwargs):
+
+
+# %% local utils
+def _make_rosette_interleave(
+    fov, shape, accel, esp, npetals, bending_factor, osf, kwargs
+):
     if "tilt_type" in kwargs:
         tilt_type = kwargs["tilt_type"]
     else:
@@ -119,30 +151,30 @@ def _make_rosette_interleave(fov, shape, accel, esp, npetals, bending_factor, os
         acs_shape = kwargs["acs_shape"]
     else:
         acs_shape = None
-            
+
     # shape
-    tmp = [None, 1, 1] # (mtx, nechoes, nframes)
+    tmp = [None, 1, 1]  # (mtx, nechoes, nframes)
     if np.isscalar(shape):
         shape = [shape]
     for n in range(len(shape)):
         tmp[n] = shape[n]
     shape = tmp
-        
+
     # get nframes and nechoes
     mtx, nechoes, nframes = shape
-    
+
     # transform to array
     mtx = np.array(mtx)
 
     # cast dimensions
     fov *= 1e-3  # mm -> m
-    
+
     # get resolution
     res = fov / mtx
 
     # calculate Nyquist sampling
     pr, ptheta = utils.radial_fov(fov, res)
-    
+
     # unpack Nyquist params
     nr, _ = pr
     ntheta, _ = ptheta
@@ -166,22 +198,21 @@ def _make_rosette_interleave(fov, shape, accel, esp, npetals, bending_factor, os
         npetals_design = int(ntheta / (1 + 3 * bending_factor**2) ** 0.5)
     else:
         npetals_design = int(ntheta / (3 + bending_factor**2) ** 0.5)
-        
+
     # set default spokes if not provided
     if npetals is None:
         npetals = npetals_design
-        
-    # generate angles      
+
+    # generate angles
     angles = utils.make_tilt(tilt_type, npetals, accel, nframes, nechoes)
 
     return base_k, angles, shape, acs_shape, npetals
 
+
 def _make_rosette_gradient(kr, gmax, smax, gdt, rew_derate, fid):
     # build gradient
-    kr, grad, adc, _ = utils.make_arbitrary_gradient(kr, gmax, smax, gdt, rew_derate, balance=False)
-                
+    kr, grad, adc, _ = utils.make_arbitrary_gradient(
+        kr, gmax, smax, gdt, rew_derate, balance=False
+    )
+
     return kr, grad, adc, np.asarray([0])
-        
-    
-        
-        

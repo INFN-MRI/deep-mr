@@ -36,13 +36,13 @@ def memprage(
     ----------
     nshots : int
         Number of pulse in the ``Inversion`` block.
-    nechoes : int 
+    nechoes : int
         Number of echoes in the ``SPGR`` block.
     flip : float | np.ndarray | torch.Tensor
         Flip angle in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
     ESP : float
-        Echo spacing in [ms].      
-    TR : float 
+        Echo spacing in [ms].
+    TR : float
         Repetition time in [ms].
     T1 : float | np.ndarray | torch.Tensor
         Longitudinal relaxation time for main pool in ``[ms]``.
@@ -51,101 +51,101 @@ def memprage(
     sliceprof : float | np.ndarray | torch.Tensor
         Excitation slice profile (i.e., flip angle scaling across slice).
         If ``False``, pulse are non selective. If ``True``, pulses are selective but ideal profile is assumed.
-        If array, flip angle scaling along slice is simulated. Defaults to ``False``.  
-    spoil_inc : float, optional 
-        RF spoiling increment in ``[deg]``. Defaults to ``117°``.      
+        If array, flip angle scaling along slice is simulated. Defaults to ``False``.
+    spoil_inc : float, optional
+        RF spoiling increment in ``[deg]``. Defaults to ``117°``.
     diff : str | tuple[str], optional
-        String or tuple of strings, saying which arguments 
-        to get the signal derivative with respect to. 
+        String or tuple of strings, saying which arguments
+        to get the signal derivative with respect to.
         Defaults to ``None`` (no differentation).
     device : str
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
         Defaults to ``cpu``.
-    TI : float  
-        Inversion time in ``[ms]``. 
+    TI : float
+        Inversion time in ``[ms]``.
         Defaults to ``None`` (no preparation).
 
     Other Parameters
     ----------------
-    nstates : int, optional 
-        Maximum number of EPG states to be retained during simulation. 
-        High numbers improve accuracy but decrease performance. 
+    nstates : int, optional
+        Maximum number of EPG states to be retained during simulation.
+        High numbers improve accuracy but decrease performance.
         Defaults to ``10``.
     max_chunk_size : int, optional
-        Maximum number of atoms to be simulated in parallel. 
-        High numbers increase speed and memory footprint. 
+        Maximum number of atoms to be simulated in parallel.
+        High numbers increase speed and memory footprint.
         Defaults to ``natoms``.
     verbose : bool, optional
         If ``True``, prints execution time for signal (and gradient) calculations.
         Defaults to ``False``.
-    B1sqrdTau : float, optional 
+    B1sqrdTau : float, optional
         Pulse energies in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
-    global_inversion : bool, optional 
-        Assume nonselective (``True``) or selective (``False``) inversion. 
+    global_inversion : bool, optional
+        Assume nonselective (``True``) or selective (``False``) inversion.
         Defaults to ``True``.
-    inv_B1sqrdTau : float, optional  
+    inv_B1sqrdTau : float, optional
         Inversion pulse energy in ``[uT**2 * ms]`` when ``flip = 1.0 [deg]``.
     grad_tau : float, optional
         Gradient lobe duration in ``[ms]``.
     grad_amplitude : float, optional
         Gradient amplitude along unbalanced direction in ``[mT / m]``.
         If total_dephasing is not provided, this is used to compute diffusion and flow effects.
-    grad_dephasing : float, optional 
+    grad_dephasing : float, optional
         Total gradient-induced dephasing across a voxel (in grad direction).
         If gradient_amplitude is not provided, this is used to compute diffusion and flow effects.
-    voxelsize : str | list | tuple | np.ndarray | torch.Tensor, optional  
-        Voxel size (``dx``, ``dy``, ``dz``) in ``[mm]``. 
+    voxelsize : str | list | tuple | np.ndarray | torch.Tensor, optional
+        Voxel size (``dx``, ``dy``, ``dz``) in ``[mm]``.
         If scalar, assume isotropic voxel. Defaults to ``None``.
-    grad_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
+    grad_orient : str | list | tuple | np.ndarray | torch.Tensor, optional
         Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``). Defaults to ``"z"``.
-    slice_orient : str | list | tuple | np.ndarray | torch.Tensor, optional 
+    slice_orient : str | list | tuple | np.ndarray | torch.Tensor, optional
         Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
         Ignored if pulses are non-selective. Defaults to ``"z"``.
     B1 : float | np.ndarray | torch.Tensor , optional
-        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Flip angle scaling factor (``1.0 := nominal flip angle``).
         Defaults to ``None``.
-    B0 : float | np.ndarray | torch.Tensor , optional 
+    B0 : float | np.ndarray | torch.Tensor , optional
         Bulk off-resonance in [Hz]. Defaults to ``None``
-    B1Tx2 : float | np.ndarray | torch.Tensor 
-        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+    B1Tx2 : float | np.ndarray | torch.Tensor
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``).
         Defaults to ``None``.
     B1phase : float | np.ndarray | torch.Tensor
-        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
-        Defaults to ``None``.      
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``).
+        Defaults to ``None``.
     T2star : float | np.ndarray | torch.Tensor
-        Effective relaxation time for main pool in ``[ms]``. 
+        Effective relaxation time for main pool in ``[ms]``.
         Defaults to ``None``.
     D : float | np.ndarray | torch.Tensor
-        Apparent diffusion coefficient in ``[um**2 / ms]``. 
+        Apparent diffusion coefficient in ``[um**2 / ms]``.
         Defaults to ``None``.
     v : float | np.ndarray | torch.Tensor
-        Spin velocity ``[cm / s]``. Defaults to ``None``.  
-    chemshift : float | np.ndarray | torch.Tensor 
-        Chemical shift for main pool in ``[Hz]``. 
+        Spin velocity ``[cm / s]``. Defaults to ``None``.
+    chemshift : float | np.ndarray | torch.Tensor
+        Chemical shift for main pool in ``[Hz]``.
         Defaults to ``None``.
     T1bm : float | np.ndarray | torch.Tensor
-        Longitudinal relaxation time for secondary pool in ``[ms]``. 
+        Longitudinal relaxation time for secondary pool in ``[ms]``.
         Defaults to ``None``.
     T2bm : float | np.ndarray | torch.Tensor
-        Transverse relaxation time for main secondary in ``[ms]``. 
+        Transverse relaxation time for main secondary in ``[ms]``.
         Defaults to ``None``.
-    kbm  : float | np.ndarray | torch.Tensor 
-        Nondirectional exchange between main and secondary pool in ``[Hz]``. 
+    kbm  : float | np.ndarray | torch.Tensor
+        Nondirectional exchange between main and secondary pool in ``[Hz]``.
         Defaults to ``None``.
     weight_bm  : float | np.ndarray | torch.Tensor
-        Relative secondary pool fraction. 
+        Relative secondary pool fraction.
         Defaults to ``None``.
     chemshift_bm : float | np.ndarray | torch.Tensor
-        Chemical shift for secondary pool in ``[Hz]``. 
+        Chemical shift for secondary pool in ``[Hz]``.
         Defaults to ``None``.
-    kmt : float | np.ndarray | torch.Tensor 
+    kmt : float | np.ndarray | torch.Tensor
         Nondirectional exchange between free and bound pool in ``[Hz]``.
-        If secondary pool is defined, exchange is between secondary and bound pools 
-        (i.e., myelin water and macromolecular), otherwise exchange 
-        is between main and bound pools. 
+        If secondary pool is defined, exchange is between secondary and bound pools
+        (i.e., myelin water and macromolecular), otherwise exchange
+        is between main and bound pools.
         Defaults to ``None``.
     weight_mt : float | np.ndarray | torch.Tensor
-        Relative bound pool fraction. 
+        Relative bound pool fraction.
         Defaults to ``None``.
 
     """
@@ -377,4 +377,8 @@ class MEMPRAGE(epg.EPGSimulator):
             # relax, recover and spoil
             states = XS(states)
 
-        return ops.susceptibility(signal, ESP * torch.arange(nechoes, device=df.device, dtype=torch.float32), df)
+        return ops.susceptibility(
+            signal,
+            ESP * torch.arange(nechoes, device=df.device, dtype=torch.float32),
+            df,
+        )

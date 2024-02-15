@@ -207,7 +207,7 @@ def test_ideal_pulse_mt(device, nstates, npools, nmodes):
     alpha = [90.0, 0.0]
 
     # pulse stats
-    b1rms = 13 / (torch.pi / 180.0 * alpha[0]) # uT / deg
+    b1rms = 13 / (torch.pi / 180.0 * alpha[0])  # uT / deg
     duration = torch.pi / 180.0 * alpha[0] / (267.5221 * 1e-3 * 13)  # [ms]
 
     # initialize

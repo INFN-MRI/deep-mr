@@ -4,10 +4,11 @@ __all__ = ["fft", "ifft"]
 
 import torch
 
+
 def fft(input, axes, norm="ortho"):
     """
     Centered Fast Fourier Transform.
-    
+
     Adapted from [1].
 
     Parameters
@@ -21,23 +22,23 @@ def fft(input, axes, norm="ortho"):
     -------
     output : torch.Tensor
         Output signal.
-        
+
     Examples
     --------
     >>> import torch
     >>> import deepmr
-    
+
     First, create test image:
-        
+
     >>> image = torch.zeros(32, 32, dtype=torch.complex64)
     >>> image = image[16, 16] = 1.0
-    
+
     We now perform a 2D FFT:
-    
+
     >>> kspace = deepmr.fft.fft(image)
-    
+
     We can visualize the data:
-        
+
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots(1, 2)
     >>> im = ax[0].imshow(abs(image))
@@ -51,7 +52,7 @@ def fft(input, axes, norm="ortho"):
     >>> ax[1].set_alpha(0.0)
     >>> fig.colorbar(ksp, ax=ax[1], shrink=0.5)
     >>> plt.show()
-    
+
     References
     ----------
     [1] https://github.com/mikgroup/sigpy
@@ -66,7 +67,7 @@ def fft(input, axes, norm="ortho"):
 def ifft(input, axes, norm="ortho"):
     """
     Centered inverse Fast Fourier Transform.
-    
+
     Adapted from [1].
 
     Parameters
@@ -80,22 +81,22 @@ def ifft(input, axes, norm="ortho"):
     -------
     output : torch.Tensor
         Output signal.
-        
+
     Examples
     --------
     >>> import torch
     >>> import deepmr
-    
+
     First, create test image:
-        
+
     >>> kspace = torch.ones(32, 32, dtype=torch.complex64)
-    
+
     We now perform a 2D iFFT:
-    
+
     >>> image = deepmr.fft.ifft(kspace)
-    
+
     We can visualize the data:
-        
+
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots(1, 2)
     >>> ksp = ax[1].imshow(abs(kspace))
@@ -109,7 +110,7 @@ def ifft(input, axes, norm="ortho"):
     >>> ax[1].set_alpha(0.0)
     >>> fig.colorbar(im, ax=ax[1], shrink=0.5)
     >>> plt.show()
-    
+
     References
     ----------
     [1] https://github.com/mikgroup/sigpy
@@ -121,7 +122,7 @@ def ifft(input, axes, norm="ortho"):
     )
 
 
-#%% local subroutines
+# %% local subroutines
 def _normalize_axes(axes, ndim):
     if axes is None:
         return tuple(range(ndim))

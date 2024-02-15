@@ -15,15 +15,16 @@ from scipy.signal import freqz
 from .ss_fourier import fftf
 from .ss_fourier import fftr
 
+
 def fir_minphase_power(n, f, a, d, use_max=0, dbg=0):
     if use_max is None:
         use_max = 0
 
     if dbg is None:
         dbg = 1
-        
+
     hn = []
-    status = 'Failed'
+    status = "Failed"
 
     d2 = np.stack([d, d], axis=1)
     d2 = d2.ravel()
@@ -44,10 +45,10 @@ def fir_minphase_power(n, f, a, d, use_max=0, dbg=0):
         r, status = fir_min_order(n_max, f, a_sqr, d_sqr, odd_only, ztol, dbg)
     else:
         r, status = fir_pm(n_max, f, a_sqr, d_sqr, ztol, dbg)
-        
-    if status == 'Failed':
+
+    if status == "Failed":
         if dbg:
-            print('Failed to get filter')
+            print("Failed to get filter")
         return hn, status
 
     Rok = False
@@ -68,51 +69,55 @@ def fir_minphase_power(n, f, a, d, use_max=0, dbg=0):
 
             if np.min(R) < -Rtol:
                 if dbg:
-                    print('Autocorrelation has negative value')
-                    print(f'Tol ({int(Rtol_perc * 100)}% stopband): {Rtol}  Actual: {-min(R)}')
+                    print("Autocorrelation has negative value")
+                    print(
+                        f"Tol ({int(Rtol_perc * 100)}% stopband): {Rtol}  Actual: {-min(R)}"
+                    )
 
                 # test spectral factorization
                 rn = rn + Rtol
                 hn = spectral_fact(rn)
                 hn = np.conj(hn[::-1])
 
-                # Get squared frequency response and check 
+                # Get squared frequency response and check
                 # against specs
                 H = np.abs(fftf(hn[:, None], int(m2))).squeeze()
                 freq = np.arange(-m2 / 2, m2 / 2) / m2 * 2
-                
-                H2 = abs(H)**2
+
+                H2 = abs(H) ** 2
                 nband = len(f) // 2
                 atol = 0.05
                 Rok = True
                 for band in range(nband):
-                    idx = np.where((freq >= f[2*band]) & (freq <= f[2*band+1]))[0]
-                    amax = (1+atol) * (a_sqr[2*band] + d_sqr[band] + Rtol)
-                    amin = (1-atol) * (a_sqr[2*band] - d_sqr[band])
+                    idx = np.where((freq >= f[2 * band]) & (freq <= f[2 * band + 1]))[0]
+                    amax = (1 + atol) * (a_sqr[2 * band] + d_sqr[band] + Rtol)
+                    amin = (1 - atol) * (a_sqr[2 * band] - d_sqr[band])
                     fail = np.where(np.logical_or(H2[idx] > amax, H2[idx] < amin))[0]
                     if fail.size > 0:
                         if dbg:
-                            print('Spectral factorization doesn''t meet specs')
-                            print(f'Increase number of taps to: {len(r) + 2}')
-                            print('\r          \r')
+                            print("Spectral factorization doesn" "t meet specs")
+                            print(f"Increase number of taps to: {len(r) + 2}")
+                            print("\r          \r")
                         ncurrent = ncurrent + 2
                         Rok = 0
                         break
             else:
                 if dbg:
-                    print('Autocorrelation has negative value, but within tol')
-                    print(f'Tol ({int(Rtol_perc * 100)}% stopband): {Rtol}  Actual: {-min(R)}')
+                    print("Autocorrelation has negative value, but within tol")
+                    print(
+                        f"Tol ({int(Rtol_perc * 100)}% stopband): {Rtol}  Actual: {-min(R)}"
+                    )
 
                 rn = rn - min(R)
                 Rok = 1
-        elif status == 'Failed':
+        elif status == "Failed":
             if dbg:
-                print('\r          \r')
+                print("\r          \r")
             ncurrent = ncurrent + 2
             Rok = False
         else:
             if dbg:
-                print('Autocorrelation OK')
+                print("Autocorrelation OK")
             Rok = True
 
     rn = np.asarray(rn)
@@ -121,8 +126,8 @@ def fir_minphase_power(n, f, a, d, use_max=0, dbg=0):
 
     return hn, status
 
-def fir_qprog(n, f, a, d, dbg=0):
 
+def fir_qprog(n, f, a, d, dbg=0):
     # Determine if real or complex coefficients
     f = np.array(f) * np.pi  # Scale to +/- pi
     if np.min(f) < 0:
@@ -178,7 +183,9 @@ def fir_qprog(n, f, a, d, dbg=0):
         idx = np.where((w >= f[2 * band]) & (w <= f[2 * band + 1]))
         idx_band.extend(idx[0])
 
-        amp = np.interp(w[idx], [f[2 * band], f[2 * band + 1]], [a[2 * band], a[2 * band + 1]])
+        amp = np.interp(
+            w[idx], [f[2 * band], f[2 * band + 1]], [a[2 * band], a[2 * band + 1]]
+        )
         U_band.extend(amp + d[band])
         L_band.extend(amp - d[band])
 
@@ -260,11 +267,25 @@ def fir_qprog(n, f, a, d, dbg=0):
     # Call the minimization routine
     x0 = None
     if real_filter:
-        res = linprog(c=fmin, A_ub=A_b, b_ub=b, bounds=[(-np.inf, np.inf)] * nx, x0=x0,
-                      method='interior-point', options={'disp': False})
+        res = linprog(
+            c=fmin,
+            A_ub=A_b,
+            b_ub=b,
+            bounds=[(-np.inf, np.inf)] * nx,
+            x0=x0,
+            method="interior-point",
+            options={"disp": False},
+        )
     else:
-        res = linprog(c=fmin, A_ub=A_b, b_ub=b, bounds=[(-np.inf, np.inf)] * nx, x0=x0,
-                      method='interior-point', options={'disp': False, 'tol': 1e-8})
+        res = linprog(
+            c=fmin,
+            A_ub=A_b,
+            b_ub=b,
+            bounds=[(-np.inf, np.inf)] * nx,
+            x0=x0,
+            method="interior-point",
+            options={"disp": False, "tol": 1e-8},
+        )
 
     if res.status == 1:  # Feasible
         h = fill_h(res.x, nhalf, real_filter, odd_filter)
@@ -274,6 +295,7 @@ def fir_qprog(n, f, a, d, dbg=0):
         status = "Failed"
 
     return h, status
+
 
 def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
     if even_odd not in [1, 2]:
@@ -298,22 +320,22 @@ def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
         n_cur = n_top
 
         if dbg:
-            print('Testing odd length filters...')
+            print("Testing odd length filters...")
 
-        while (n_top - n_bot > 1):
-            n_tap = (n_cur * 2 - 1)
+        while n_top - n_bot > 1:
+            n_tap = n_cur * 2 - 1
 
             if dbg:
-                print(f'{n_tap:4d} taps: ...', end='')
+                print(f"{n_tap:4d} taps: ...", end="")
 
             h, status = fir_qprog(n_tap, f, a, d, dbg)
 
-            if status == 'Solved':
+            if status == "Solved":
                 # feasible
                 hbest_odd = h
 
                 if dbg:
-                    print('Feasible')
+                    print("Feasible")
 
                 if dbg >= 2:
                     # figure(filt_fig)
@@ -327,7 +349,7 @@ def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
                     n_cur = (n_top + n_bot) // 2
             else:
                 if dbg:
-                    print('Infeasible')
+                    print("Infeasible")
 
                 n_bot = n_cur
                 n_cur = (n_bot + n_top) // 2
@@ -344,22 +366,22 @@ def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
             n_cur = n_top
 
         if dbg:
-            print('Testing even length filters...')
+            print("Testing even length filters...")
 
-        while (n_top - n_bot > 1):
+        while n_top - n_bot > 1:
             n_tap = n_cur * 2
 
             if dbg:
-                print(f'{n_tap:4d} taps: ...', end='')
+                print(f"{n_tap:4d} taps: ...", end="")
 
             h, status = fir_qprog(n_tap, f, a, d, dbg)
 
-            if status == 'Solved':
+            if status == "Solved":
                 # feasible
                 hbest_even = h
 
                 if dbg:
-                    print('Feasible')
+                    print("Feasible")
 
                 if dbg >= 2:
                     # figure(filt_fig)
@@ -373,19 +395,19 @@ def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
                     n_cur = (n_top + n_bot) // 2
             else:
                 if dbg:
-                    print('Infeasible')
+                    print("Infeasible")
 
                 n_bot = n_cur
                 n_cur = (n_bot + n_top) // 2
 
     if not hbest_odd and not hbest_even:
-        status = 'Failed'
+        status = "Failed"
         h = []
 
         if dbg:
-            print('\nFailed to achieve specs')
+            print("\nFailed to achieve specs")
     else:
-        status = 'Solved'
+        status = "Solved"
 
         if not hbest_odd:
             h = hbest_even
@@ -397,11 +419,12 @@ def fir_min_order_qprog(n, f, a, d, even_odd=0, dbg=0):
             h = hbest_even
 
         if dbg:
-            print(f'\nOptimum number of filter taps is: {len(h)}.')
+            print(f"\nOptimum number of filter taps is: {len(h)}.")
 
     return h, status
 
-#%% local utils
+
+# %% local utils
 def spectral_fact(r):
     # Length of the impulse response sequence
     nr = len(r)
@@ -417,13 +440,13 @@ def spectral_fact(r):
 
     # Compute 1/2 * ln(R(w))
     w = 2 * np.pi * np.arange(m) / m
-    R = np.exp(-1j * np.kron(w[:, None], -np.arange(-(n-1), n)[None, :])) @ r
+    R = np.exp(-1j * np.kron(w[:, None], -np.arange(-(n - 1), n)[None, :])) @ r
     R = np.abs(np.real(R))  # Remove numerical noise from the imaginary part
-    alpha = 1/2 * np.log(R)
+    alpha = 1 / 2 * np.log(R)
 
     # Find the Hilbert transform
     alphatmp = np.fft.fft(alpha)
-    alphatmp[m // 2:] = -alphatmp[m // 2:]
+    alphatmp[m // 2 :] = -alphatmp[m // 2 :]
     alphatmp[0] = 0
     alphatmp[m // 2] = 0
     phi = np.real(np.fft.ifft(1j * alphatmp))
@@ -437,6 +460,7 @@ def spectral_fact(r):
     h = np.fft.ifft(np.exp(alpha1 + 1j * phi1), n)
 
     return h
+
 
 def fir_min_order(n, f, a, d, even_odd=0, a_min=None, dbg=0):
     if even_odd not in (1, 2):
@@ -460,7 +484,7 @@ def fir_min_order(n, f, a, d, even_odd=0, a_min=None, dbg=0):
 
     if dbg:
         print("Testing odd length filters...")
-    
+
     while n_top - n_bot > 1:
         n_tap = n_cur * 2 - 1
         if dbg:
@@ -522,7 +546,7 @@ def fir_min_order(n, f, a, d, even_odd=0, a_min=None, dbg=0):
                 n_bot = n_cur
                 n_cur = (n_bot + n_top) // 2
 
-    if len(hbest_odd) == 0 and len(hbest_even) == 0 :
+    if len(hbest_odd) == 0 and len(hbest_even) == 0:
         status = "Failed"
         h = []
 
@@ -537,8 +561,8 @@ def fir_min_order(n, f, a, d, even_odd=0, a_min=None, dbg=0):
 
     return h, status
 
+
 def fir_pm(n, f, a, d, a_min=None, dbg=0):
-        
     d2 = np.stack([d, d], axis=1)
     d2 = d2.ravel()
 
@@ -551,22 +575,22 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
     # determine if real or complex coefficients
     f = f * np.pi
     real_filter = 1 if np.min(f) >= 0 else 0
-    
+
     # determine if filter has odd or even number of taps
     odd_filter = 1 if n & 1 else 0
-    
+
     # if the frequency specification has a non-zero point ad +/- 1, then order mut be even.
     # A warning is printed and a failure returned if this is the case
     if not odd_filter:
         idx = np.where(np.abs(f) != 0)
         if np.any(a[idx] != 0):
-            warnings.warn('n odd and frequency spec non-zero at fs/2')
-            status = 'Failed'
+            warnings.warn("n odd and frequency spec non-zero at fs/2")
+            status = "Failed"
             return None, status
-        
+
     # oversampling on frequency to determine transition bands
     oversamp = 8
-    
+
     # get first pass on w
     if real_filter:
         m = oversamp * n
@@ -580,7 +604,7 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
     lb_tran = a_min
     amp_tran = (ub_tran + lb_tran) / 2
     ripple_tran = (ub_tran - lb_tran) / 2
-    
+
     # find indices of transition bands, build up new frequency spec
     nband = len(f) // 2
     ntran = nband + 1
@@ -590,21 +614,21 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
 
     for tran in range(1, ntran + 1):
         if tran == 1:
-            f_l = np.min(w) # avoid sample at -pi
+            f_l = np.min(w)  # avoid sample at -pi
             rband = tran
             f_r = f[2 * rband - 2]
         elif tran == ntran:
             lband = tran - 1
             f_l = f[2 * lband - 1]
-            f_r = np.pi # avoid sample at pi
+            f_r = np.pi  # avoid sample at pi
         else:
             lband = tran - 1
             f_l = f[2 * lband - 1]
             rband = tran
             f_r = f[2 * rband - 2]
-        
+
         idx_tran = np.where((w > f_l) & (w < f_r))[0]
-        
+
         # cfirpm seems to choke sometimes -- I hypothesize this is because the transition edges are too close to the actual passbands,
         # so don't take the immediately adjacent points
         nskip = 1
@@ -613,15 +637,15 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
             a_tran = []
             d_tran = []
         else:
-            idx_tran = idx_tran[1 + nskip:-nskip]
+            idx_tran = idx_tran[1 + nskip : -nskip]
             f_tran = [np.min(w[idx_tran]), np.max(w[idx_tran])]
             a_tran = [amp_tran, amp_tran]
             d_tran = [ripple_tran]
-            
+
         fn.extend(f_tran)
         an.extend(a_tran)
         dn.extend(d_tran)
-        
+
         if tran < ntran:
             fn.extend([f[2 * tran - 2], f[2 * tran - 1]])
             an.extend([a[2 * tran - 2], a[2 * tran - 1]])
@@ -629,17 +653,17 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
 
     # determine error weigths, then call firpm
     w = np.max(dn) / dn
-    lgrid = 31 # oversample, default 25
-        
+    lgrid = 31  # oversample, default 25
+
     try:
         fn = np.asarray(fn)
         an = np.asarray(an)
-        w = np.asarray(w)    
+        w = np.asarray(w)
         h, d_opt, opt = cfirpm(n - 1, fn / np.pi, an, w, lgrid)
     except:
         h = []
-            
-    # check frequency response at extremal frequencies 
+
+    # check frequency response at extremal frequencies
     # that are within specified bands
     try:
         resp_ok = check_response(f / np.pi, a, d, opt.fgrid, np.abs(opt.H))
@@ -647,19 +671,19 @@ def fir_pm(n, f, a, d, a_min=None, dbg=0):
         resp_ok = False
 
     if not resp_ok:
-        status = 'Failed'
+        status = "Failed"
         h = []
     else:
         h = h.ravel(order="F")
-        status = 'Solved'
-        
+        status = "Solved"
+
     return h, status
 
+
 def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
-    
     d2 = np.stack([d, d], axis=1)
     d2 = d2.ravel()
-    
+
     if a_min is None or a_min == []:
         a_min = min(0, np.min(a - d2))
 
@@ -678,11 +702,11 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
         if not odd_filter:
             idx = np.where(np.abs(f) != 0)
             if np.any(a[idx] != 0):
-                print('Warning: n odd and frequency spec non-zero at fs/2')
-                status = 'Failed'
+                print("Warning: n odd and frequency spec non-zero at fs/2")
+                status = "Failed"
                 h = []
                 return h, status
-            
+
         oversamp = 16
         if real_filter:
             m = oversamp * n
@@ -698,26 +722,26 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
 
         nband = len(f) // 2
         ntran = nband + 1
-        
+
         fn = []
         an = []
         dn = []
-        
+
         for tran in range(1, ntran + 1):
             if tran == 1:
-                f_l = np.min(w) # avoid sample at -pi
+                f_l = np.min(w)  # avoid sample at -pi
                 rband = tran
                 f_r = f[2 * rband - 2]
             elif tran == ntran:
                 lband = tran - 1
                 f_l = f[2 * lband - 1]
-                f_r = np.pi # avoid sample at pi
+                f_r = np.pi  # avoid sample at pi
             else:
                 lband = tran - 1
                 f_l = f[2 * lband - 1]
                 rband = tran
                 f_r = f[2 * rband - 2]
-                
+
             idx_tran = np.where((w > f_l) & (w < f_r))[0]
             nskip = 1
             if len(idx_tran) <= 1 + 2 * nskip:
@@ -725,7 +749,7 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
                 a_tran = []
                 d_tran = []
             else:
-                idx_tran = idx_tran[1 + nskip:-nskip]
+                idx_tran = idx_tran[1 + nskip : -nskip]
                 f_tran = [np.min(w[idx_tran]), np.max(w[idx_tran])]
                 a_tran = [amp_tran, amp_tran]
                 d_tran = [ripple_tran]
@@ -733,68 +757,71 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
             fn.extend(f_tran)
             an.extend(a_tran)
             dn.extend(d_tran)
-            
+
             if tran < ntran:
                 fn.extend([f[2 * tran - 2], f[2 * tran - 1]])
                 an.extend([a[2 * tran - 2], a[2 * tran - 1]])
                 dn.extend([d[tran - 1]])
-                
+
         wt = np.max(dn) / dn
         lgrid = 31
-        
+
         try:
             fn = np.asarray(fn)
             an = np.asarray(an)
-            w = np.asarray(w)  
-            h, d_opt, opt = cfirpm(n-1, fn/np.pi, an, wt, lgrid)
+            w = np.asarray(w)
+            h, d_opt, opt = cfirpm(n - 1, fn / np.pi, an, wt, lgrid)
         except:
             h = []
 
         resp_ok = 0
         if len(h) != 0:
-            resp_ok = check_response(fn/np.pi, an, dn, opt.fgrid, np.abs(opt.H))
+            resp_ok = check_response(fn / np.pi, an, dn, opt.fgrid, np.abs(opt.H))
         if not resp_ok:
-            status = 'Failed'
+            status = "Failed"
             h = []
             return h, status
 
         if dbg:
-            print('Getting linear filter based on PM design')
-        
-                
+            print("Getting linear filter based on PM design")
+
         hlin, _ = fir_linprog(n, f / np.pi, a, d, h, dbg)
         _, Hlin = freqz(hlin, 1, w / np.pi, fs=2.0)
-        
+
         fn = []
         an = []
         dn = []
-        
+
         for tran in range(1, ntran + 1):
             if tran == 1:
-                f_l = np.min(w) # avoid sample at -pi
+                f_l = np.min(w)  # avoid sample at -pi
                 rband = tran
                 f_r = f[2 * rband - 2]
             elif tran == ntran:
                 lband = tran - 1
                 f_l = f[2 * lband - 1]
-                f_r = np.pi # avoid sample at pi
+                f_r = np.pi  # avoid sample at pi
             else:
                 lband = tran - 1
                 f_l = f[2 * lband - 1]
                 rband = tran
                 f_r = f[2 * rband - 2]
-                
+
             idx_tran = np.where((w > f_l) & (w < f_r))[0]
             nskip = 1
             ntran_pts = oversamp * 2
             ntran_region = np.max([1, round((len(idx_tran) - nskip) / ntran_pts)])
             ntran_pts = (len(idx_tran) - nskip) / ntran_region
             idx_region_st = nskip + 1 + np.round(np.arange(0, ntran_region) * ntran_pts)
-            idx_region_end = np.concatenate([idx_region_st[1:], [len(idx_tran) - nskip + 1]]) - 1
-            
+            idx_region_end = (
+                np.concatenate([idx_region_st[1:], [len(idx_tran) - nskip + 1]]) - 1
+            )
+
             for reg in range(len(idx_region_st)):
-                idx_tran_reg = idx_tran[int(idx_region_st[reg]):int(idx_region_end[reg])]
-                
+                idx_tran_reg = idx_tran[
+                    int(idx_region_st[reg]) : int(idx_region_end[reg])
+                ]
+
                 if len(idx_tran_reg) == 0:
                     f_tran = []
                     a_tran = []
@@ -810,24 +837,24 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
                     ripple_tran = (max_H - min_H) / 2
                     a_tran = [amp_tran, amp_tran]
                     d_tran = [ripple_tran]
-                    
+
                 fn.extend(f_tran)
                 an.extend(a_tran)
                 dn.extend(d_tran)
-                
+
             if tran < ntran:
                 fn.extend([f[2 * tran - 2], f[2 * tran - 1]])
                 an.extend([a[2 * tran - 2], a[2 * tran - 1]])
                 dn.extend([d[tran - 1]])
-        
+
         wt = np.max(dn) / dn
         lgrid = 31
-        
+
         try:
             fn = np.asarray(fn)
             an = np.asarray(an)
-            w = np.asarray(w)  
-            h, d_opt, opt = cfirpm(n-1, fn / np.pi, an, wt, lgrid)
+            w = np.asarray(w)
+            h, d_opt, opt = cfirpm(n - 1, fn / np.pi, an, wt, lgrid)
         except:
             h = []
 
@@ -836,14 +863,14 @@ def fir_pm_minpow(n, f, a, d, a_min=None, dbg=0):
             resp_ok = check_response(fn / np.pi, an, dn, opt.fgrid, np.abs(opt.H))
 
         if not resp_ok:
-            print('*** Failed to get min energy pulse ***')
-            status = 'Failed'
+            print("*** Failed to get min energy pulse ***")
+            status = "Failed"
             h = []
         else:
-            status = 'Solved'
-            
+            status = "Solved"
+
     return h, status
-    
+
 
 def fir_linprog(n, f, a, d, h0=None, dbg=0):
     f = f * np.pi
@@ -853,8 +880,8 @@ def fir_linprog(n, f, a, d, h0=None, dbg=0):
     if not odd_filter:
         idx = np.where(np.abs(f) != 0)
         if np.any(a[idx] != 0):
-            print('n odd and frequency spec non-zero at fs/2')
-            status = 'Failed'
+            print("n odd and frequency spec non-zero at fs/2")
+            status = "Failed"
             h = []
             return
 
@@ -868,7 +895,7 @@ def fir_linprog(n, f, a, d, h0=None, dbg=0):
 
     oversamp = 15
     undersamp_tran = 1
-    
+
     if real_filter:
         m = oversamp * n
         w = np.linspace(0, np.pi, m)
@@ -889,10 +916,12 @@ def fir_linprog(n, f, a, d, h0=None, dbg=0):
         if f[band * 2] == f[band * 2 + 1]:
             amp = a[band * 2]
         else:
-            amp = a[band * 2] + (a[band * 2 + 1] - a[band * 2]) * ((w[idx] - f[band * 2]) / (f[band * 2 + 1] - f[band * 2]))
+            amp = a[band * 2] + (a[band * 2 + 1] - a[band * 2]) * (
+                (w[idx] - f[band * 2]) / (f[band * 2 + 1] - f[band * 2])
+            )
         U_band.extend(amp + d[band])
         L_band.extend(amp - d[band])
-        
+
     U_band = np.asarray(U_band)
     L_band = np.asarray(L_band)
 
@@ -916,8 +945,7 @@ def fir_linprog(n, f, a, d, h0=None, dbg=0):
     U_tran = U_amp_tran * np.ones(len(idx_tran))
     L_amp_tran = min(0, min(L_band))
     L_tran = L_amp_tran * np.ones(len(idx_tran))
-    
-    
+
     wband = w[idx_band]
     idx_band = np.arange(wband.shape[0])
     wtran = w[idx_tran]
@@ -927,50 +955,76 @@ def fir_linprog(n, f, a, d, h0=None, dbg=0):
 
     if real_filter:
         if odd_filter:
-            Acos = np.concatenate((np.ones((m, 1)), 2 * np.cos(np.kron(w[:, None], np.arange(1, nhalf)[None, :]))), axis=-1)
+            Acos = np.concatenate(
+                (
+                    np.ones((m, 1)),
+                    2 * np.cos(np.kron(w[:, None], np.arange(1, nhalf)[None, :])),
+                ),
+                axis=-1,
+            )
         else:
-            Acos = 2 * np.cos(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
+            Acos = (
+                2
+                * np.cos(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
+            )
         Asin = None
     else:
         if odd_filter:
-            Acos = np.concatenate((np.ones((m, 1)), 2 * np.cos(np.kron(w[:, None], np.arange(1, nhalf)[None, :]))), axis=-1)
-            Asin = 2 * np.sin(np.kron(w[:, None], np.arange(1, nhalf)[None, :]))[:, None]
+            Acos = np.concatenate(
+                (
+                    np.ones((m, 1)),
+                    2 * np.cos(np.kron(w[:, None], np.arange(1, nhalf)[None, :])),
+                ),
+                axis=-1,
+            )
+            Asin = (
+                2 * np.sin(np.kron(w[:, None], np.arange(1, nhalf)[None, :]))[:, None]
+            )
         else:
-            Acos = 2 * np.cos(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
-            Asin = 2 * np.sin(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
+            Acos = (
+                2
+                * np.cos(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
+            )
+            Asin = (
+                2
+                * np.sin(np.kron(w[:, None], np.arange(nhalf)[None, :] + 0.5))[:, None]
+            )
 
     if Asin is not None:
         A = np.concatenate((Acos, Asin), axis=-1)
     else:
         A = Acos
-        
+
     A_U = np.concatenate((A[idx_band], A[idx_tran]), axis=0)
     U_b = np.concatenate((U_band, U_tran), axis=0)
-    
+
     A_L = np.concatenate((A[idx_band], A[idx_tran]), axis=0)
     L_b = np.concatenate((L_band, L_tran), axis=0)
-    
+
     A_b = np.concatenate((A_U, -A_L), axis=0)
     b = np.concatenate((U_b, -L_b), axis=0)
-    
+
     fmin = np.sum(A[idx_tran], axis=0)
-    
-    options = {'disp': False}
+
+    options = {"disp": False}
     # x, fval, exitflag, output = linprog(fmin, A_ub=A_b, b_ub=b, options=options) # x0 is deprecated for modern scipy
-    res = linprog(fmin, A_b, b, bounds=(None, None), options=options) # x0 is deprecated for modern scipy
-    
+    res = linprog(
+        fmin, A_b, b, bounds=(None, None), options=options
+    )  # x0 is deprecated for modern scipy
+
     # get output
     x = res.x
     exitflag = res.success
 
     if exitflag:
         h = fill_h(x, int(nhalf), real_filter, odd_filter)
-        status = 'Solved'
+        status = "Solved"
     else:
         h = []
-        status = 'Failed'
+        status = "Failed"
 
     return h, status
+
 
 def fill_h(x, nhalf, real_filter, odd_filter):
     x = x.flatten()
@@ -990,9 +1044,10 @@ def fill_h(x, nhalf, real_filter, odd_filter):
             h = np.concatenate((np.conj(h[-1::-1]), h))
     return h
 
+
 def fill_opt_param(h0, nx, real_filter, odd_filter, lb_resp):
     x0 = np.zeros(nx)
-    
+
     if real_filter:
         nx_half = nx
     else:
@@ -1000,7 +1055,7 @@ def fill_opt_param(h0, nx, real_filter, odd_filter, lb_resp):
             nx_half = nx // 2
         else:
             nx_half = nx - 1 // 2
-            
+
     fft_init = 0
 
     if len(h0) == 0:
@@ -1021,16 +1076,28 @@ def fill_opt_param(h0, nx, real_filter, odd_filter, lb_resp):
 
     if odd_filter:
         if real_filter:
-            x0[:min(nx_half, nh_half)+1] = np.real(h0[nh_half:nh_half + min(nx_half, nh_half)+1])
+            x0[: min(nx_half, nh_half) + 1] = np.real(
+                h0[nh_half : nh_half + min(nx_half, nh_half) + 1]
+            )
         else:
-            x0[:min(nx_half, nh_half)+1] = np.real(h0[nh_half:nh_half + min(nx_half, nh_half)+1])
-            x0[nx_half+1:nx_half + min(nx_half, nh_half)+2] = np.imag(h0[nh_half+1:nh_half + min(nx_half, nh_half)+2])
+            x0[: min(nx_half, nh_half) + 1] = np.real(
+                h0[nh_half : nh_half + min(nx_half, nh_half) + 1]
+            )
+            x0[nx_half + 1 : nx_half + min(nx_half, nh_half) + 2] = np.imag(
+                h0[nh_half + 1 : nh_half + min(nx_half, nh_half) + 2]
+            )
     else:
         if real_filter:
-            x0[:min(nx_half, nh_half)+1] = np.real(h0[nh_half:nh_half + min(nx_half, nh_half)+1])
+            x0[: min(nx_half, nh_half) + 1] = np.real(
+                h0[nh_half : nh_half + min(nx_half, nh_half) + 1]
+            )
         else:
-            x0[:min(nx_half, nh_half)+1] = np.real(h0[nh_half:nh_half + min(nx_half, nh_half)+1])
-            x0[nx_half+1:nx_half + min(nx_half, nh_half)+2] = np.imag(h0[nh_half+1:nh_half + min(nx_half, nh_half)+2])
+            x0[: min(nx_half, nh_half) + 1] = np.real(
+                h0[nh_half : nh_half + min(nx_half, nh_half) + 1]
+            )
+            x0[nx_half + 1 : nx_half + min(nx_half, nh_half) + 2] = np.imag(
+                h0[nh_half + 1 : nh_half + min(nx_half, nh_half) + 2]
+            )
     return x0
 
 
@@ -1044,7 +1111,9 @@ def check_response(f, a, d, ftest, htest):
             break
 
         f_off = ftest[idx] - f[2 * band - 2]
-        a_test = a[2 * band - 2] + (a[2 * band - 1] - a[2 * band - 2]) * f_off / (f[2 * band - 1] - f[2 * band - 2])
+        a_test = a[2 * band - 2] + (a[2 * band - 1] - a[2 * band - 2]) * f_off / (
+            f[2 * band - 1] - f[2 * band - 2]
+        )
         a_hi = a_test + d[band - 1]
         a_lo = a_test - d[band - 1]
 
@@ -1054,7 +1123,8 @@ def check_response(f, a, d, ftest, htest):
 
     return status
 
-#%% MATLAB utils
+
+# %% MATLAB utils
 def cfirpm(n, f, a, w=None, grid_density=25):
     """
     Adaptation of MATLAB cfirpm.
@@ -1072,8 +1142,8 @@ def cfirpm(n, f, a, w=None, grid_density=25):
             (F(k+1),A(k+1)) for odd k.
         w (array[float], optional): vector of real, positive weights, one per band, for use during
             optimization.  W is optional; if not specified, it is set to unity.
-        grid_density (array[int], optional): Density of frequency grid. 
-            The frequency grid has roughly 2**nextpow2(lgrid*n) frequency points. 
+        grid_density (array[int], optional): Density of frequency grid.
+            The frequency grid has roughly 2**nextpow2(lgrid*n) frequency points.
             Defaults to 25.
 
     Returns:
@@ -1089,7 +1159,7 @@ def cfirpm(n, f, a, w=None, grid_density=25):
             RES.error: error at each point on the frequency grid.
             RES.iextr: vector of indices into fgrid of extremal frequencies.
             RES.fextr: vector of extremal frequencies.
-            
+
     Example:
         Design a 31-tap, complex multiband filter.
             b, _, _ = cfirpm(30, [-1 -.5 -.4 .7 .8 1], [0 0 1 2 0 0])
@@ -1100,10 +1170,10 @@ def cfirpm(n, f, a, w=None, grid_density=25):
     edges = f
     filt_str = a
     wgts = w
-    
+
     # hardcoded
-    h_sym = 'unspecified'
-    
+    h_sym = "unspecified"
+
     # Declare globals
     globvars = SimpleNamespace()
     globvars.DES_CRMZ = None
@@ -1117,12 +1187,12 @@ def cfirpm(n, f, a, w=None, grid_density=25):
 
     # cast to enforce Precision rules
     M = float(M)
-    edges = np.array(edges, dtype=float) 
-    
+    edges = np.array(edges, dtype=float)
+
     L = M + 1
     edges /= 2
     num_bands = len(edges) // 2
-    
+
     # some quick checks on band edge vector
     if num_bands != int(num_bands):
         raise ValueError("Number of bands must be even.")
@@ -1132,91 +1202,148 @@ def cfirpm(n, f, a, w=None, grid_density=25):
     # assign default parameter values
     if wgts is None:
         wgts = np.ones(num_bands)
-        
+
     # determine symmetry options
     h_sym = h_sym.lower()
     if any(edges < 0):
-        h_sym = 'none'
+        h_sym = "none"
     else:
         try:
-            h_sym = multiband("defaults", [M, 2*edges, None, wgts, a])
+            h_sym = multiband("defaults", [M, 2 * edges, None, wgts, a])
             if not isinstance(h_sym, str):
-                h_sym = 'none'
+                h_sym = "none"
         except:
-            print("Symmetry not specified, and default value could not be determined. Using 'none'.")
-            h_sym = 'none'
+            print(
+                "Symmetry not specified, and default value could not be determined. Using 'none'."
+            )
+            h_sym = "none"
 
-    if h_sym in ['real', 'none']:
-        fdomain = 'whole'
+    if h_sym in ["real", "none"]:
+        fdomain = "whole"
         sym = 0
     else:
-        fdomain = 'half'
-        sym = 1 if 'even' in h_sym else 2
-        
+        fdomain = "half"
+        sym = 1 if "even" in h_sym else 2
+
     # check domain before generating frequency grid
-    if fdomain == 'whole':
+    if fdomain == "whole":
         # domain is [-1, +1) for user input, [-0.5, 0.5) internally
         if np.any(edges < -0.5) or np.any(edges > 0.5):
-            raise ValueError("Frequency band edges must be specified over the entire interval [-1, +1) for designs with SYM='real'.")
+            raise ValueError(
+                "Frequency band edges must be specified over the entire interval [-1, +1) for designs with SYM='real'."
+            )
     else:
         # domain is [0, +1] for user input, [0, .5] internally
         if np.any(edges < 0) or np.any(edges > 0.5):
-            raise ValueError("Frequency band edges must be specified over the entire interval [0, 0.5] for designs with SYM='real'.")
+            raise ValueError(
+                "Frequency band edges must be specified over the entire interval [0, 0.5] for designs with SYM='real'."
+            )
 
-    Lfft, indx_edges, _, globvars = eval_grid(globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, [a])
-    
+    Lfft, indx_edges, _, globvars = eval_grid(
+        globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, [a]
+    )
+
     # check for odd order with zero at f = +-0.5
     if M % 2 == 1:
         sk1 = np.where(np.abs(globvars.GRID_CRMZ - 0.5) < np.finfo(float).eps)[0]
         sk2 = np.where(np.abs(globvars.GRID_CRMZ + 0.5) < np.finfo(float).eps)[0]
         sk = np.concatenate((sk1, sk2))
         if np.any(np.abs(globvars.DES_CRMZ[sk]) > np.sqrt(np.finfo(float).eps)):
-            warnings.warn('Odd order FIR filters must have a gain of zero at +- the Nyquist frequency. The order is being increased by one.')
+            warnings.warn(
+                "Odd order FIR filters must have a gain of zero at +- the Nyquist frequency. The order is being increased by one."
+            )
             M = M + 1
             L = M + 1
-            Lfft, indx_edges, _, globvars = eval_grid(globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, [a])
+            Lfft, indx_edges, _, globvars = eval_grid(
+                globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, [a]
+            )
 
-    # check for zero at DC for odd-symmetric filters    
-    if 'odd' in h_sym:
+    # check for zero at DC for odd-symmetric filters
+    if "odd" in h_sym:
         sk = np.where(np.abs(globvars.GRID_CRMZ) < 1e-15)
         if np.any(np.abs(globvars.DES_CRMZ[sk]) > np.sqrt(1e-15)):
             raise ValueError("Odd-symmetric filters must have a gain of zero at DC.")
 
-    if 'real' in h_sym and (edges >= 0).all():
+    if "real" in h_sym and (edges >= 0).all():
         # make DES and WT conjugate symmetric
-        
+
         # crmz_grid moved the band edge grid points, so do the same
         # when constructing symmetric spectrum
         len_grid = len(globvars.TGRID_CRMZ)
 
         # if the DC term is included in the band edges, remove id
         if len(indx_edges) > 0 and indx_edges[0] == len_grid // 2 + 1:
-            indx_edges = np.delete(indx_edges, 0) # throw away DC point
-        
+            indx_edges = np.delete(indx_edges, 0)  # throw away DC point
+
         q = len_grid + 2 - np.flip(indx_edges, axis=0)
-        globvars.TGRID_CRMZ[np.flip(indx_edges, axis=0)] = -globvars.TGRID_CRMZ[indx_edges]
-        
+        globvars.TGRID_CRMZ[np.flip(indx_edges, axis=0)] = -globvars.TGRID_CRMZ[
+            indx_edges
+        ]
+
         # adjust other grid vectors accordingly
         indx_edges = np.concatenate((q, indx_edges), axis=0)
-        globvars.IFGRD_CRMZ = np.concatenate((len_grid + 2 - np.flip(globvars.IFGRD_CRMZ, axis=1), globvars.IFGRD_CRMZ), axis=1)        
+        globvars.IFGRD_CRMZ = np.concatenate(
+            (len_grid + 2 - np.flip(globvars.IFGRD_CRMZ, axis=1), globvars.IFGRD_CRMZ),
+            axis=1,
+        )
         globvars.GRID_CRMZ = globvars.TGRID_CRMZ[globvars.IFGRD_CRMZ]
-        
+
         # now, impose conjugate simmetry
-        globvars.DES_CRMZ = np.concatenate((np.conj(np.flip(globvars.DES_CRMZ), axis=0), globvars.DES_CRMZ), axis=0)
-        globvars.WT_CRMZ = np.concatenate((np.conj(np.flip(globvars.WT_CRMZ), axis=0), globvars.WT_CRMZ), axis=0)
+        globvars.DES_CRMZ = np.concatenate(
+            (np.conj(np.flip(globvars.DES_CRMZ), axis=0), globvars.DES_CRMZ), axis=0
+        )
+        globvars.WT_CRMZ = np.concatenate(
+            (np.conj(np.flip(globvars.WT_CRMZ), axis=0), globvars.WT_CRMZ), axis=0
+        )
 
     # complex Remez Stage
-    h, a, delta, not_optimal, iext, HH, EE, M_str, HH_str, h_str, Lf, Lb, Ls, Lc, A, globvars = crmz(globvars, L, sym, Lfft, indx_edges)
+    (
+        h,
+        a,
+        delta,
+        not_optimal,
+        iext,
+        HH,
+        EE,
+        M_str,
+        HH_str,
+        h_str,
+        Lf,
+        Lb,
+        Ls,
+        Lc,
+        A,
+        globvars,
+    ) = crmz(globvars, L, sym, Lfft, indx_edges)
 
     # cast to enforce Precision rules
     h = h.astype(complex)
     a = a.astype(complex)
     delta = delta.astype(complex)
-    
+
     if not_optimal:
         # ascent-descent Stage:
-        h, a, delta, HH, EE, globvars = adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M_str, HH_str, h_str, A, delta)
-        
+        h, a, delta, HH, EE, globvars = adesc(
+            globvars,
+            L,
+            Lf,
+            Lb,
+            Ls,
+            Lc,
+            sym,
+            Lfft,
+            indx_edges,
+            iext,
+            HH,
+            EE,
+            a,
+            M_str,
+            HH_str,
+            h_str,
+            A,
+            delta,
+        )
+
     # Return a row-vector, and remove imag part if it's small:
     h = h.squeeze()
     if np.iscomplexobj(h) and np.linalg.norm(h.imag) < 1e-12 * np.linalg.norm(h.real):
@@ -1226,56 +1353,65 @@ def cfirpm(n, f, a, w=None, grid_density=25):
     # % The optimization is done in the complex domain, even if 'real' was specified.
     # % Remove the imaginary part that was caused by roundoff errors during optimization
     # % Similar argument for 'even' and 'odd'
-    if h_sym != 'none':
+    if h_sym != "none":
         h = h.real
 
     # prepare output
-    result = SimpleNamespace()    
+    result = SimpleNamespace()
     result.fgrid = 2 * globvars.GRID_CRMZ.astype(np.float32)
-    result.des   = globvars.DES_CRMZ.astype(np.complex64)
-    result.wt    = globvars.WT_CRMZ.astype(np.float32)
-    result.H     = HH[globvars.IFGRD_CRMZ].astype(np.complex64)
+    result.des = globvars.DES_CRMZ.astype(np.complex64)
+    result.wt = globvars.WT_CRMZ.astype(np.float32)
+    result.H = HH[globvars.IFGRD_CRMZ].astype(np.complex64)
     result.error = EE.astype(np.complex64)
     result.iextr = iext.astype(np.float32)
     result.fextr = 2 * globvars.GRID_CRMZ[iext].astype(np.float32)
 
     return h, delta, result
 
+
 def multiband(N, F, GF=None, W=None, mags=None, delay=0):
     # Support query by CFIRPM for the default symmetry option
-    if isinstance(N, str) and N == 'defaults':
+    if isinstance(N, str) and N == "defaults":
         num_args = len(F)
         if num_args < 6:
             delay = 0
         else:
             delay = F[5]
-        
+
         # Use delay arg to base symmetry decision
         if delay == 0:
-            return 'even'
+            return "even"
         else:
-            return 'real'
-    
+            return "real"
+
     # Standard call
     assert GF is not None, "Invalid number of parameters"
     assert W is not None, "Invalid number of parameters"
     assert mags is not None, "Invalid number of parameters"
-    
+
     delay += N / 2  # adjust for linear phase
     W = np.tile(W[None, :], (2, 1))
-    DH = interp1d(F, mags, kind='linear')(GF) * np.exp(-1j * np.pi * GF * delay)
-    DW = interp1d(F, W.flatten(order="F"), kind='linear')(GF)
-    
+    DH = interp1d(F, mags, kind="linear")(GF) * np.exp(-1j * np.pi * GF * delay)
+    DW = interp1d(F, W.flatten(order="F"), kind="linear")(GF)
+
     return DH, DW
 
-def eval_grid(globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, other_params):
+
+def eval_grid(
+    globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, other_params
+):
     # Generate frequency grid:
     edge_pairs = np.array(edges).reshape(num_bands, 2)
 
     tgrid, Lfft, vec_edges, indx_edges = crmz_grid(edge_pairs, L, fdomain, grid_density)
 
     # Generate IFGRD_CRMZ:
-    globvars.IFGRD_CRMZ = np.concatenate([np.arange(indx_edges[jj], indx_edges[jj + 1] + 1, dtype=int) for jj in range(0, len(indx_edges), 2)])
+    globvars.IFGRD_CRMZ = np.concatenate(
+        [
+            np.arange(indx_edges[jj], indx_edges[jj + 1] + 1, dtype=int)
+            for jj in range(0, len(indx_edges), 2)
+        ]
+    )
 
     # Get points corresponding to frequency band intervals:
     globvars.TGRID_CRMZ = tgrid.flatten()
@@ -1286,19 +1422,24 @@ def eval_grid(globvars, edges, num_bands, M, L, fdomain, wgts, grid_density, oth
 
     # Get desired frequency characteristics at specified intervals:
     # Note: We use the [0, 0.5] range, so we adjust the frequency bands and grid accordingly.
-    globvars.DES_CRMZ, globvars.WT_CRMZ = multiband(M, 2 * np.array(edges), 2 * globvars.GRID_CRMZ, wgts, *other_params)
+    globvars.DES_CRMZ, globvars.WT_CRMZ = multiband(
+        M, 2 * np.array(edges), 2 * globvars.GRID_CRMZ, wgts, *other_params
+    )
 
     # Cleanup the results and check sizes:
     globvars.DES_CRMZ = globvars.DES_CRMZ.flatten()
     globvars.WT_CRMZ = globvars.WT_CRMZ.flatten()
 
-    if not (globvars.DES_CRMZ.shape == globvars.GRID_CRMZ.shape and globvars.WT_CRMZ.shape == globvars.GRID_CRMZ.shape):
+    if not (
+        globvars.DES_CRMZ.shape == globvars.GRID_CRMZ.shape
+        and globvars.WT_CRMZ.shape == globvars.GRID_CRMZ.shape
+    ):
         raise ValueError("Invalid Dimensions: multiband, GF")
 
     return Lfft, indx_edges, vec_edges, globvars
 
-def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
 
+def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
     N1 = 0
 
     if sym is None:
@@ -1308,37 +1449,37 @@ def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
     is_odd = L % 2 != 0
     if is_odd:
         Lf = int((L + 1) // 2)
-        Ws = 'W[:,1:Lf]'
-        hr_str = 'np.concatenate((a[Lc-1:0:-1] / 2, a[[0]], a[1:Lc] / 2), axis=0)'
-        hi_str = 'np.concatenate((-a[Lb-1:Lc-1:-1] / 2, np.asarray([0]), a[Lc:Lb] / 2), axis=0)'
-        ph_str = 'np.ones(len(globvars.TGRID_CRMZ))'
+        Ws = "W[:,1:Lf]"
+        hr_str = "np.concatenate((a[Lc-1:0:-1] / 2, a[[0]], a[1:Lc] / 2), axis=0)"
+        hi_str = "np.concatenate((-a[Lb-1:Lc-1:-1] / 2, np.asarray([0]), a[Lc:Lb] / 2), axis=0)"
+        ph_str = "np.ones(len(globvars.TGRID_CRMZ))"
     else:
         Lf = int(L // 2)
-        Ws = 'W'
-        hr_str = 'np.concatenate((a[Lc-1::-1] / 2, a[0:Lc] / 2), axis=0)'
-        hi_str = 'np.concatenate((-a[Lb-1:Lc-1:-1] / 2, a[Lc:Lb] / 2), axis=0)'
-        ph_str = 'np.exp(-1j * np.pi * globvars.TGRID_CRMZ)'
+        Ws = "W"
+        hr_str = "np.concatenate((a[Lc-1::-1] / 2, a[0:Lc] / 2), axis=0)"
+        hi_str = "np.concatenate((-a[Lb-1:Lc-1:-1] / 2, a[Lc:Lb] / 2), axis=0)"
+        ph_str = "np.exp(-1j * np.pi * globvars.TGRID_CRMZ)"
     Lc = Lf
     Ls = L - Lf
 
     if sym == 0:
         Lb = int(L)
-        M_str = 'np.concatenate((np.cos(W), np.sin(Ws)), axis=1)'
-        h_str = f'{hr_str} + 1j * {hi_str}'
-        HH_str = 'np.fft.fftshift(np.fft.fft(hc, Lfft)) * ' + ph_str
+        M_str = "np.concatenate((np.cos(W), np.sin(Ws)), axis=1)"
+        h_str = f"{hr_str} + 1j * {hi_str}"
+        HH_str = "np.fft.fftshift(np.fft.fft(hc, Lfft)) * " + ph_str
     elif sym == 1:
         Lb = int(Lc)
-        M_str = 'np.cos(W)'
+        M_str = "np.cos(W)"
         h_str = hr_str
         mask_str = "(np.arange(hc.shape[0]) <= Lfft//2 )"
-        HH_str = f'np.fft.fft(hc, Lfft)[{mask_str}] * {ph_str}'
+        HH_str = f"np.fft.fft(hc, Lfft)[{mask_str}] * {ph_str}"
     elif sym == 2:
         Lb = int(Ls)
         Lc = 0
-        M_str = 'np.sin(Ws)'
-        h_str = '1j * ' + hi_str
+        M_str = "np.sin(Ws)"
+        h_str = "1j * " + hi_str
         mask_str = "(np.arange(hc.shape[0]) <= Lfft//2 )"
-        HH_str = f'np.fft.fft(hc, Lfft)[{mask_str}] * {ph_str}'
+        HH_str = f"np.fft.fft(hc, Lfft)[{mask_str}] * {ph_str}"
 
     A = globvars.DES_CRMZ * np.exp(1j * 2 * np.pi * globvars.GRID_CRMZ * (N1 + N2) / 2)
 
@@ -1351,16 +1492,16 @@ def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
     delta_old = -1
     no_stp = True
 
-    exactTol = np.finfo(float).eps ** (2/3)
+    exactTol = np.finfo(float).eps ** (2 / 3)
     last_ee = np.zeros(10)
-    
+
     while no_stp:
         it += 1
         delta_old = abs(delta)
         fext = globvars.GRID_CRMZ[iext]
         W = 2 * np.pi * fext[:, None] * (np.arange(Lf) + (not is_odd) * 0.5)
         Mb = eval(M_str)
-        M = np.column_stack((Mb, ((-1) ** np.arange(Lb+1)) / globvars.WT_CRMZ[iext]))
+        M = np.column_stack((Mb, ((-1) ** np.arange(Lb + 1)) / globvars.WT_CRMZ[iext]))
         a = np.linalg.lstsq(M, A[iext], rcond=None)[0]
         delta = a[Lb]
         h = eval(h_str)
@@ -1368,18 +1509,22 @@ def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
         HH = eval(HH_str)
         W = 2 * np.pi * vec_edges[:, None] * (np.arange(Lf) + (not is_odd) * 0.5)
         Mb = eval(M_str)
-        
+
         HH[indx_edges] = Mb @ a[:Lb]
         EE = globvars.WT_CRMZ * (A - HH[globvars.IFGRD_CRMZ])
         EE[iext] = delta * ((-1) ** np.arange(2, len(iext) + 2))
         jext, EEj = crmz_find(EE, iext)
-        
+
         e_max = max(np.abs(EE))
         last_ee = np.roll(last_ee, shift=1)
         last_ee[0] = e_max
         s = max(np.abs(last_ee - e_max))
-        
-        if np.all(iext == jext) or (e_max / max(np.abs(A)) < exactTol) or ((s < exactTol) and (it > 10)):
+
+        if (
+            np.all(iext == jext)
+            or (e_max / max(np.abs(A)) < exactTol)
+            or ((s < exactTol) and (it > 10))
+        ):
             no_stp = False
         iext = jext
 
@@ -1388,33 +1533,50 @@ def crmz(globvars, L, sym=0, Lfft=None, indx_edges=None):
         not_optimal = 0
     else:
         not_optimal = 1
-        
-    return h, a, delta, not_optimal, iext, HH, EE, M_str, HH_str, h_str, Lf, Lb, Ls, Lc, A, globvars
+
+    return (
+        h,
+        a,
+        delta,
+        not_optimal,
+        iext,
+        HH,
+        EE,
+        M_str,
+        HH_str,
+        h_str,
+        Lf,
+        Lb,
+        Ls,
+        Lc,
+        A,
+        globvars,
+    )
 
 
 def crmz_find(error, fold):
     fold = fold.flatten("F")
     Nx = len(fold)
     Ngrid = len(error)
-    
+
     if error[fold[0]] != 0:
         sgn_error = error[fold[0]] / abs(error[fold[0]])
     else:
         sgn_error = 1
-    
+
     error = np.real(np.conj(sgn_error) * error)
     delta = min(np.abs(error[fold]))
     up = np.sign(error[fold[0]]) > 0
-        
+
     if up:
         tmp1 = np.concatenate((np.asarray([0]), fold[:Nx:2]))
-        tmp2 = np.concatenate((fold[:Nx:2]+1, np.asarray([Ngrid])))
+        tmp2 = np.concatenate((fold[:Nx:2] + 1, np.asarray([Ngrid])))
         fence = np.stack((tmp1, tmp2), axis=1)
     else:
         tmp1 = np.concatenate((np.asarray([0]), fold[1:Nx:2]))
-        tmp2 = np.concatenate((fold[1:Nx:2]+1, np.asarray([Ngrid])))
+        tmp2 = np.concatenate((fold[1:Nx:2] + 1, np.asarray([Ngrid])))
         fence = np.stack((tmp1, tmp2), axis=1)
-    
+
     Lf = fence.shape[0]
     emn = np.zeros(Lf, dtype=float)
     imn = np.zeros(Lf, dtype=int)
@@ -1422,31 +1584,32 @@ def crmz_find(error, fold):
         start, end = int(fence[i][0]), int(fence[i][1])
         emn[i] = np.min(error[start:end])
         imn[i] = np.argmin(error[start:end]) + start
-    
+
     imn = imn[np.logical_not(emn > -delta)]
     tmp1 = np.concatenate((np.asarray([0]), imn))
-    tmp2 = np.concatenate((imn+1, np.asarray([Ngrid])))
-    fence = np.stack((tmp1, tmp2), axis=1)   
+    tmp2 = np.concatenate((imn + 1, np.asarray([Ngrid])))
+    fence = np.stack((tmp1, tmp2), axis=1)
 
     Lf = fence.shape[0]
     emx = np.zeros(Lf, dtype=float)
-    imx = np.zeros(Lf, dtype=int)    
+    imx = np.zeros(Lf, dtype=int)
     for i in range(Lf):
         start, end = int(fence[i][0]), int(fence[i][1])
         emx[i] = np.max(error[start:end])
         imx[i] = np.argmax(error[start:end]) + start
 
-    imx = imx[np.logical_not(emx < delta)] 
+    imx = imx[np.logical_not(emx < delta)]
     fnew = np.sort(np.concatenate((imx, imn)))
     Nf = len(fnew)
-    
+
     if Nf > Nx:
         if abs(error[fnew[0]]) >= abs(error[fnew[-1]]):
             fnew = fnew[:Nx]
         else:
             fnew = fnew[-Nx:]
-                    
+
     return fnew, error[fnew]
+
 
 def crmz_grid(edge_pairs, L, fdomain, grid_density):
     if edge_pairs[0][0] == -0.5 and edge_pairs[-1][-1] == 0.5:
@@ -1469,10 +1632,12 @@ def crmz_grid(edge_pairs, L, fdomain, grid_density):
     edge_vec = edge_pairs.T  # M-by-2 to 2-by-M
     edge_vec = edge_vec.ravel(order="F")  # single column of adjacent edge-pairs
 
-    if fdomain == 'whole':
+    if fdomain == "whole":
         grid = np.arange(Ngrid) / Ngrid - 0.5  # uniform grid points [-.5,.5)
-        edge_idx = np.round((edge_vec + 0.5) * Ngrid).astype(int)  # closest indices in grid
-    elif fdomain == 'half':
+        edge_idx = np.round((edge_vec + 0.5) * Ngrid).astype(
+            int
+        )  # closest indices in grid
+    elif fdomain == "half":
         grid = np.arange(Ngrid // 2 + 1) / Ngrid  # uniform grid points [0,.5]
         edge_idx = np.round(edge_vec * Ngrid).astype(int)  # closest indices in grid
     else:
@@ -1495,7 +1660,8 @@ def crmz_grid(edge_pairs, L, fdomain, grid_density):
     grid[edge_idx] = edge_vec
 
     return grid, Ngrid, edge_vec, edge_idx
-    
+
+
 def crmz_guess(edges, grid, nfcns):
     TOL = 5 * np.finfo(float).eps
     next = int(nfcns + 1)
@@ -1503,9 +1669,9 @@ def crmz_guess(edges, grid, nfcns):
     tt = edges.copy()
     merged = tt.copy()
     if Nbands > 1:
-        jkl = np.where(np.abs(tt[0:Nbands-1, 1] - tt[1:Nbands, 0]) > TOL)[0]
-        tmp1 = np.concatenate((np.atleast_1d(tt[0, 0]), tt[jkl+1, 0]), axis=0)
-        tmp2 = np.concatenate((tt[jkl, 1], np.atleast_1d(tt[Nbands-1, 1])), axis=0)
+        jkl = np.where(np.abs(tt[0 : Nbands - 1, 1] - tt[1:Nbands, 0]) > TOL)[0]
+        tmp1 = np.concatenate((np.atleast_1d(tt[0, 0]), tt[jkl + 1, 0]), axis=0)
+        tmp2 = np.concatenate((tt[jkl, 1], np.atleast_1d(tt[Nbands - 1, 1])), axis=0)
         merged = np.stack((tmp1, tmp2), axis=1)
 
     Nbands = len(merged[:, 0])
@@ -1527,7 +1693,7 @@ def crmz_guess(edges, grid, nfcns):
             n += 1
             fext[n] = merged[i, 0]
         else:
-            fext[n:n + nfreqs_i] = np.linspace(merged[i, 0], merged[i, 1], nfreqs_i)
+            fext[n : n + nfreqs_i] = np.linspace(merged[i, 0], merged[i, 1], nfreqs_i)
             n += nfreqs_i
         i += 1
 
@@ -1542,18 +1708,39 @@ def crmz_guess(edges, grid, nfcns):
     fext = grid[iext]
     return fext, iext
 
+
 def crmz_rotate(x, num_places):
     if len(x.shape) > 1:
         M, N = x.shape
         num_places = int(num_places % M)  # Ensure num_places is in the range [0, M-1]
-        rotated = np.vstack((x[M - num_places:M, :], x[0:M - num_places, :]))
+        rotated = np.vstack((x[M - num_places : M, :], x[0 : M - num_places, :]))
     else:
         N = x.shape[0]
         num_places = int(num_places % N)  # Ensure num_places is in the range [0, N-1]
-        rotated = np.hstack((x[N - num_places:N], x[0:N - num_places]))
+        rotated = np.hstack((x[N - num_places : N], x[0 : N - num_places]))
     return rotated
 
-def adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M_str, HH_str, h_str, A, delta):
+
+def adesc(
+    globvars,
+    L,
+    Lf,
+    Lb,
+    Ls,
+    Lc,
+    sym,
+    Lfft,
+    indx_edges,
+    iext,
+    HH,
+    EE,
+    a,
+    M_str,
+    HH_str,
+    h_str,
+    A,
+    delta,
+):
     ACCURACY = 0.01
     is_odd = L % 2 != 0
     vec_edges = globvars.TGRID_CRMZ[indx_edges]
@@ -1591,7 +1778,7 @@ def adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M
 
     HH_o = HH
     e_max = np.max(np.abs(EE))
-    
+
     iext = adesc_findset(EE, iext, bands, delta)
     sub_EE = EE[iext]
     sub_grd = globvars.GRID_CRMZ[iext]
@@ -1612,8 +1799,8 @@ def adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M
 
         if norm_NrG <= r:
             nu += 1
-            epsil = epsi_o / (2 ** nu)
-            r = r_o / (2 ** nu)
+            epsil = epsi_o / (2**nu)
+            r = r_o / (2**nu)
             f_extr = np.where(np.abs(sub_EE) / sub_max >= epsilon)[0]
             gext = adesc_grad(sub_EE, f_extr, sub_grd, sub_WT, M_str, Lf, is_odd)
             rext = adesc_minpolytope(gext)
@@ -1633,8 +1820,33 @@ def adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M
         else:
             d = -NrG / norm_NrG
             d2 = d[:n2] + 1j * d[n2:n]
-            HH_d, globvars = adesc_reconst(globvars, d2, h_str, HH_str, M_str, globvars.TGRID_CRMZ, Lfft, L, Lf, Lc, Ls, Lb, is_odd, vec_edges, indx_edges)
-            HH_n, EE, e_max, alpha = adesc_linsearch(alpha, iext, HH_o, HH_d, sub_max, A, globvars.WT_CRMZ, globvars.IFGRD_CRMZ)
+            HH_d, globvars = adesc_reconst(
+                globvars,
+                d2,
+                h_str,
+                HH_str,
+                M_str,
+                globvars.TGRID_CRMZ,
+                Lfft,
+                L,
+                Lf,
+                Lc,
+                Ls,
+                Lb,
+                is_odd,
+                vec_edges,
+                indx_edges,
+            )
+            HH_n, EE, e_max, alpha = adesc_linsearch(
+                alpha,
+                iext,
+                HH_o,
+                HH_d,
+                sub_max,
+                A,
+                globvars.WT_CRMZ,
+                globvars.IFGRD_CRMZ,
+            )
             a += alpha * d2
             HH_o = HH_n
             sub_EE = EE[iext]
@@ -1647,8 +1859,9 @@ def adesc(globvars, L, Lf, Lb, Ls, Lc, sym, Lfft, indx_edges, iext, HH, EE, a, M
     iext = adesc_findextr(EE, bands, epsilon)
     jext = iext.ravel()
     delta = np.max(np.abs(EE))
-    
+
     return h, a, delta, HH, EE, globvars
+
 
 def adesc_findextr(error, indx_edges, epsilon):
     error = error.ravel()
@@ -1656,38 +1869,46 @@ def adesc_findextr(error, indx_edges, epsilon):
     Ngrid = len(error)
     abs_e = np.abs(error)
     abs_e = np.concatenate(([abs_e[1]], abs_e, [abs_e[Ngrid - 1]]))
-    fmax = np.where((abs_e[1:Ngrid + 1] >= abs_e[0:Ngrid]) & (abs_e[1:Ngrid + 1] > abs_e[2:Ngrid + 2]))[0]
+    fmax = np.where(
+        (abs_e[1 : Ngrid + 1] >= abs_e[0:Ngrid])
+        & (abs_e[1 : Ngrid + 1] > abs_e[2 : Ngrid + 2])
+    )[0]
     fmax = fmax.ravel()
     fmax = np.sort(np.concatenate((fmax, indx_edges)))
-    abs_e = np.delete(abs_e, [0, Ngrid+1])
-    
-    idx = fmax[0:len(fmax)-1] - fmax[1:len(fmax)] != 0
+    abs_e = np.delete(abs_e, [0, Ngrid + 1])
+
+    idx = fmax[0 : len(fmax) - 1] - fmax[1 : len(fmax)] != 0
     if idx.shape[0] < fmax.shape[0]:
-        idx = np.pad(idx, (0, fmax.shape[0] - idx.shape[0]), constant_values=(1,1))
+        idx = np.pad(idx, (0, fmax.shape[0] - idx.shape[0]), constant_values=(1, 1))
     fmax = fmax[idx].astype(int)
-    
+
     if len(fmax) > 1:
         fmax = fmax[abs_e[fmax] / np.max(abs_e) >= epsilon]
-        
+
     return fmax
+
 
 def adesc_findset(error, iext, indx_edges, delta):
     error = error.ravel(order="F")
     indx_edges = indx_edges.ravel(order="F")
     Ngrid = len(error)
     abs_e = np.abs(error)
-    abs_e = np.concatenate(([abs_e[1]], abs_e, [abs_e[Ngrid-1]]))
-    fmax = np.where((abs_e[1:Ngrid + 1] >= abs_e[0:Ngrid]) & (abs_e[1:Ngrid + 1] >= abs_e[2:Ngrid + 2]))[0]
+    abs_e = np.concatenate(([abs_e[1]], abs_e, [abs_e[Ngrid - 1]]))
+    fmax = np.where(
+        (abs_e[1 : Ngrid + 1] >= abs_e[0:Ngrid])
+        & (abs_e[1 : Ngrid + 1] >= abs_e[2 : Ngrid + 2])
+    )[0]
     fmax = fmax.ravel(order="F")
     fmax = np.sort(np.concatenate((fmax, indx_edges, iext)))
-    abs_e = np.delete(abs_e, [0, Ngrid+1])
-    idx = fmax[0:len(fmax)-1] - fmax[1:len(fmax)] != 0
+    abs_e = np.delete(abs_e, [0, Ngrid + 1])
+    idx = fmax[0 : len(fmax) - 1] - fmax[1 : len(fmax)] != 0
     if idx.shape[0] < fmax.shape[0]:
-        idx = np.pad(idx, (0, fmax.shape[0] - idx.shape[0]), constant_values=(1,1))
+        idx = np.pad(idx, (0, fmax.shape[0] - idx.shape[0]), constant_values=(1, 1))
     fmax = fmax[idx].astype(int)
     fmax = fmax[np.logical_not(abs_e[fmax] < 0.9 * np.abs(delta))]
-         
+
     return fmax
+
 
 def adesc_grad(EE, iext, grd, WT, M_str, Lf, is_odd):
     J = 1j
@@ -1698,8 +1919,9 @@ def adesc_grad(EE, iext, grd, WT, M_str, Lf, is_odd):
     MWT = np.diag(2 * WT[iext] * EE[iext])
     M = Mb @ MWT
     G = np.concatenate((M.real, M.imag), axis=0)
-    
+
     return G
+
 
 def adesc_linsearch(t0, iext, HH_o, d, emx, DD, WT, ifgrid):
     t = t0
@@ -1764,11 +1986,27 @@ def adesc_linsearch(t0, iext, HH_o, d, emx, DD, WT, ifgrid):
     EEt = EEt_min
     emxt = np.max(np.abs(EEt))
     t = tmin
-    
+
     return HHt, EEt, emxt, t
 
-def adesc_reconst(globvars, at, h_str, HH_str, M_str, tgrid, Lfft, L, Lf, Lc, Ls, Lb, is_odd, v_edges, in_edges):
 
+def adesc_reconst(
+    globvars,
+    at,
+    h_str,
+    HH_str,
+    M_str,
+    tgrid,
+    Lfft,
+    L,
+    Lf,
+    Lc,
+    Ls,
+    Lb,
+    is_odd,
+    v_edges,
+    in_edges,
+):
     J = 1j
     a = at.ravel()
     h = eval(h_str)
@@ -1778,16 +2016,16 @@ def adesc_reconst(globvars, at, h_str, HH_str, M_str, tgrid, Lfft, L, Lf, Lc, Ls
     Mb = eval(M_str)
     HH = np.zeros(len(globvars.GRID_CRMZ))
     HH[in_edges] = Mb @ a
-    
+
     return HH, globvars
 
-def adesc_minpolytope(P):
 
+def adesc_minpolytope(P):
     N, M = P.shape
     if M == 1:
         Ptmin = P
         return Ptmin
-    
+
     Z1 = 1e-10
     Z2 = 1e-10
     Z3 = 1e-10
@@ -1796,7 +2034,7 @@ def adesc_minpolytope(P):
     S = np.array([J])
     w = np.array([1])
     no_stp = 1
-    
+
     while no_stp:
         X = P[:, S] @ w
         pmn, J = np.min(X @ P), np.argmin(X @ P)
@@ -1831,8 +2069,9 @@ def adesc_minpolytope(P):
                         w = np.delete(w, I[0])
                         S = np.delete(S, I[0])
         Ptmin = X
-        
+
     return Ptmin
+
 
 def zeropad(x, N):
     """Zero pads signal x to length N."""

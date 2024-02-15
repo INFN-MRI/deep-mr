@@ -101,7 +101,7 @@ def _get_trajectory(matfile):
         if np.iscomplexobj(k):
             k = np.stack((k.real, k.imag), axis=-1)
         k = k.reshape(nviews, npts, -1)
-        
+
     elif "ks" in matfile and "phi" in matfile:
         ks = matfile["ks"]
         phi = matfile["phi"].T
@@ -222,7 +222,7 @@ def _get_shape(matfile, ndim):
         shape = [int(shape)] * ndim
     else:
         shape = shape.astype(int)
-        
+
     return shape[::-1]
 
 
@@ -238,7 +238,7 @@ def _get_resolution_and_spacing(matfile, shape, ndim):
         # expand scalar
         if np.isscalar(fov) or fov.size == 1:
             fov = [float(fov)] * ndim
-            
+
         # reverse (x, y, z) -> (z, y, x)
         fov = fov[::-1]
 
@@ -424,7 +424,7 @@ def _reformat_trajectory(head, acq_type, reshape):
 
         # get number of views
         nviews = k.shape[0]
-        
+
         # if nviews < ncontrasts, continue looping from start
         if nviews < ncontrasts:
             nreps = int(np.ceil(ncontrasts / nviews))

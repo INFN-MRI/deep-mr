@@ -18,7 +18,7 @@ validnames = [
 ]
 
 
-def testdata(name: str):
+def testdata(name):
     """
     Test dataset for I/O routines.
 

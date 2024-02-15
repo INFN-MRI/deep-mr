@@ -5,7 +5,7 @@ Can be used to simulate bulk motion and (isotropic) diffusion damping.
 """
 __all__ = ["DiffusionDamping", "FlowDephasing", "FlowWash"]
 
-import math 
+import math
 
 import torch
 
@@ -25,15 +25,15 @@ class DiffusionDamping(Operator):
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
     time : torch.Tensor)
         Time step in ``[ms]``.
-    D : torch.Tensor 
+    D : torch.Tensor
         Apparent diffusion coefficient ``[um**2 ms**-1]``.
-    nstates : int 
+    nstates : int
         Number of EPG dephasing orders.
     total_dephasing : float, optional
         Total dephasing due to unbalanced gradients in ``[rad]``.
-    voxelsize : float, optional 
+    voxelsize : float, optional
         Voxel thickness along unbalanced direction in ``[mm]``.
-    grad_amplitude : float, optional 
+    grad_amplitude : float, optional
         Gradient amplitude along unbalanced direction in ``[mT / m]``.
     grad_direction : str | torch.Tensor
         Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
@@ -46,7 +46,7 @@ class DiffusionDamping(Operator):
     ----------------
     name : str
         Name of the operator.
-        
+
     """
 
     def __init__(
@@ -102,12 +102,12 @@ class DiffusionDamping(Operator):
         Parameters
         ----------
         states : dict
-            Input states matrix for free pools 
+            Input states matrix for free pools
             and, optionally, for bound pools.
 
         Returns
         -------
-        states : dict 
+        states : dict
             Output states matrix for free pools
             and, optionally, for bound pools.
 
@@ -131,20 +131,20 @@ class FlowDephasing(Operator):
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
     time : torch.Tensor)
         Time step in ``[ms]``.
-    v : torch.Tensor 
-        Spin velocity of shape ``(3,)`` in ``[cm / s]``. 
+    v : torch.Tensor
+        Spin velocity of shape ``(3,)`` in ``[cm / s]``.
         If scalar, assume same direction as unbalanced gradient.
-    nstates : int 
+    nstates : int
         Number of EPG dephasing orders.
     total_dephasing : float, optional
         Total dephasing due to unbalanced gradients in ``[rad]``.
-    voxelsize : float, optional 
+    voxelsize : float, optional
         Voxel thickness along unbalanced direction in ``[mm]``.
-    grad_amplitude : float, optional 
+    grad_amplitude : float, optional
         Gradient amplitude along unbalanced direction in ``[mT / m]``.
     grad_direction : str | torch.Tensor
         Gradient orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
-    
+
     Notes
     -----
     User must provide either total dephasing and voxel size or gradient amplitude and duration.
@@ -204,12 +204,12 @@ class FlowDephasing(Operator):
         Parameters
         ----------
         states : dict
-            Input states matrix for free pools 
+            Input states matrix for free pools
             and, optionally, for bound pools.
 
         Returns
         -------
-        states : dict 
+        states : dict
             Output states matrix for free pools
             and, optionally, for bound pools.
 
@@ -226,15 +226,15 @@ class FlowDephasing(Operator):
 class FlowWash(Operator):
     """
     Simulate EPG states replacement due to flow.
-    
+
     device (str): str
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
     time : torch.Tensor)
         Time step in ``[ms]``.
-    v : torch.Tensor 
-        Spin velocity of shape ``(3,)`` in ``[cm / s]``. 
+    v : torch.Tensor
+        Spin velocity of shape ``(3,)`` in ``[cm / s]``.
         If scalar, assume same direction as unbalanced gradient.
-    voxelsize : float, optional 
+    voxelsize : float, optional
         Voxel thickness along unbalanced direction in ``[mm]``.
     slice_direction : str | torch.Tensor
         Slice orientation (``"x"``, ``"y"``, ``"z"`` or ``versor``).
@@ -277,12 +277,12 @@ class FlowWash(Operator):
         Parameters
         ----------
         states : dict
-            Input states matrix for free pools 
+            Input states matrix for free pools
             and, optionally, for bound pools.
 
         Returns
         -------
-        states : dict 
+        states : dict
             Output states matrix for free pools
             and, optionally, for bound pools.
 

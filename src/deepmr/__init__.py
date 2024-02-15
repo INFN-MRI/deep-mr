@@ -20,6 +20,6 @@ from . import _vobj
 from ._signal import *  # noqa
 from ._vobj import *  # noqa
 
-__all__ = ["testdata", "Header"]
+__all__ = [testdata, Header]
 __all__.extend(_signal.__all__)
 __all__.extend(_vobj.__all__)

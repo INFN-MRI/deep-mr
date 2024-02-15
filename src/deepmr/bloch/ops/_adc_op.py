@@ -7,6 +7,7 @@ __all__ = ["observe", "susceptibility", "t1sat"]
 
 import torch
 
+
 def observe(states, phi=None):
     """
     Store observable magnetization.
@@ -15,7 +16,7 @@ def observe(states, phi=None):
     ----------
     states : dict
         Input states matrix for free pools.
-    phi : torch.Tensor 
+    phi : torch.Tensor
          Effective phase for signal demodulation.
 
     Returns
@@ -78,7 +79,7 @@ def t1sat(signal, time, t1):
     ----------
     signal : torch.Tensor
         Net observable magnetization.
-    time : torch.Tensor 
+    time : torch.Tensor
         Effective phase for signal demodulation.
     t1 : torch.Tensor
         Longitudinal magnetization time.

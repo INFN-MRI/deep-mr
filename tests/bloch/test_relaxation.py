@@ -23,6 +23,7 @@ device = ["cpu"]
 if torch.cuda.is_available():
     device += ["cuda:0"]
 
+
 @pytest.mark.parametrize(
     "device, nstates, nlocations, time",
     list(itertools.product(*[device, nstates, nlocations, time])),
@@ -89,7 +90,7 @@ def test_free_precession_mt(device, nstates, nlocations, time):
     b1rms = 13 / (torch.pi / 180.0 * alpha)
     duration = torch.pi / 180.0 * alpha / (267.5221 * 1e-3 * 13)  # [ms]
 
-    # kex = 36.75 ms**-1  
+    # kex = 36.75 ms**-1
     # k = torch.zeros((2, 2), dtype=torch.float32, device=device)
     # k[0, 0] = -4.3
     # k[1, 1] = -32.45
@@ -156,7 +157,7 @@ def test_free_precession_exchange(device, nstates, nlocations, time):
     weight = torch.as_tensor([0.8, 0.2], dtype=torch.float32, device=device)
     # weight = weight[None, :]
 
-    # kex = 10.0 ms**-1  
+    # kex = 10.0 ms**-1
     # k = torch.zeros((2, 2), dtype=torch.float32, device=device)
     # k[0, 0] = -2.0
     # k[1, 1] = -8.0
@@ -227,7 +228,6 @@ def test_free_precession_mt_exchange(device, nstates, nlocations, time):
     b1rms = 13 / (torch.pi / 180.0 * alpha)
     duration = torch.pi / 180.0 * alpha / (267.5221 * 1e-3 * 13)  # [ms]
 
-
     # nondirectional (WM) are:
     # kex = 13.333333 [s**-1]
     # kmt = 200.0 [s**-1]
@@ -240,7 +240,7 @@ def test_free_precession_mt_exchange(device, nstates, nlocations, time):
     # k[0, 1] = 10.0
     # k[2, 1] = 20.0
     # k[1, 2] = 30.0
-    
+
     k = torch.tensor([13.333333, 200.0], dtype=torch.float32, device=device)
     # k = k[None, :]
 
@@ -381,7 +381,6 @@ def test_free_precession_mt_exchange_chemshift(device, nstates, nlocations, time
     b1rms = 13 / (torch.pi / 180.0 * alpha)
     duration = torch.pi / 180.0 * alpha / (267.5221 * 1e-3 * 13)  # [ms]
 
-
     # nondirectional (WM) are:
     # kex = 13.333333 [s**-1]
     # kmt = 200.0 [s**-1]
@@ -393,7 +392,7 @@ def test_free_precession_mt_exchange_chemshift(device, nstates, nlocations, time
     # k[1, 0] = 2.0
     # k[0, 1] = 10.0
     # k[2, 1] = 20.0
-    # k[1, 2] = 30.0    
+    # k[1, 2] = 30.0
     k = torch.tensor([13.333333, 200.0], dtype=torch.float32, device=device)
     # k = k[None, :]
 
@@ -493,7 +492,9 @@ def test_free_precession_moving(device, nstates, nlocations, time):
     else:
         Z[0, ...] = 1.0
 
-    Fmoving = torch.zeros((nstates, nlocations, 1, 2), dtype=torch.complex64, device=device)
+    Fmoving = torch.zeros(
+        (nstates, nlocations, 1, 2), dtype=torch.complex64, device=device
+    )
     if time == 10.0:
         Fmoving[0, ..., 0] = -1j * 0.4524
         Fmoving[0, ..., 1] = 1j * 0.4524
@@ -501,7 +502,9 @@ def test_free_precession_moving(device, nstates, nlocations, time):
         Fmoving[0, ..., 0] = -1j * 0.5000
         Fmoving[0, ..., 1] = 1j * 0.5000
 
-    Zmoving = torch.zeros((nstates, nlocations, 1), dtype=torch.complex64, device=device)
+    Zmoving = torch.zeros(
+        (nstates, nlocations, 1), dtype=torch.complex64, device=device
+    )
     if time == 10.0:
         Zmoving[0, ...] = 0.8674
     elif time == 0.0:

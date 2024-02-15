@@ -17,9 +17,9 @@ def EPGstates(
 ):
     """
     EPG states matrix.
-    
+
     Stores dephasing states for transverse and longitudinal magnetization.
-    
+
     Parameters
     ----------
     device : str
@@ -44,12 +44,12 @@ def EPGstates(
     moving : bool, optional
         Flag for moving spins. If ``True`` include a fresh magnetization pool
         to replace states with ``v != 0``. The default is ``False``.
-    
+
     Returns
     -------
     out : dict
         Dictionary with states (e.g., ``F``, ``Z``) and signal buffer.
-        
+
     """
     # prepare output
     out = {}

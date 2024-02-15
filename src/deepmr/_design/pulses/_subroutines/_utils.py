@@ -1,8 +1,9 @@
 """Utils for RF pulse design."""
 
-__all__ = ['dinf', 'leja']
+__all__ = ["dinf", "leja"]
 
 import numpy as np
+
 
 def dinf(d1=0.01, d2=0.01):
     """Calculate D infinity for a linear phase filter.
@@ -29,23 +30,25 @@ def dinf(d1=0.01, d2=0.01):
     l10d1 = np.log10(d1)
     l10d2 = np.log10(d2)
 
-    d = (a1 * l10d1 * l10d1 + a2 * l10d1 + a3) * l10d2 + (a4 * l10d1 * l10d1 + a5 * l10d1 + a6)
+    d = (a1 * l10d1 * l10d1 + a2 * l10d1 + a3) * l10d2 + (
+        a4 * l10d1 * l10d1 + a5 * l10d1 + a6
+    )
 
     return d
 
 
 def leja(x):
-    """ Perform leja ordering of roots of a polynomial.
-    
+    """Perform leja ordering of roots of a polynomial.
+
     Orders roots in a way suitable to accurately compute polynomial
     coefficients.
-    
+
     Args:
         x (array): roots to be ordered.
-        
+
     Returns:
         (array) ordered roots.
-        
+
     References:
         Lang, M. and B. Frenzel. 1993.
         A New and Efficient Program for Finding All Polynomial Roots. Rice
@@ -53,11 +56,11 @@ def leja(x):
     """
     n = np.size(x)
     # duplicate roots to n+1 rows
-    a = np.tile(np.reshape(x, (1, n)), (n+1, 1))
+    a = np.tile(np.reshape(x, (1, n)), (n + 1, 1))
     # take abs of first row
     a[0, :] = np.abs(a[0, :])
 
-    tmp = np.zeros(n+1, dtype=complex)
+    tmp = np.zeros(n + 1, dtype=complex)
 
     # find index of max abs value
     ind = np.argmax(a[0, :])
@@ -67,12 +70,12 @@ def leja(x):
         a[:, ind] = tmp
 
     x_out = np.zeros(n, dtype=complex)
-    x_out[0] = a[n-1, 0]  # first entry of last row
+    x_out[0] = a[n - 1, 0]  # first entry of last row
     a[1, 1:] = np.abs(a[1, 1:] - x_out[0])
 
     foo = a[0, 0:n]
 
-    for l in range(1, n-1):
+    for l in range(1, n - 1):
         foo = np.multiply(foo, a[l, :])
         ind = np.argmax(foo[l:])
         ind = ind + l
@@ -84,10 +87,9 @@ def leja(x):
             tmp[0] = foo[l]
             foo[l] = foo[ind]
             foo[ind] = tmp[0]
-        x_out[l] = a[n-1, l]
-        a[l+1, (l+1):n] = np.abs(a[l+1, (l+1):] - x_out[l])
+        x_out[l] = a[n - 1, l]
+        a[l + 1, (l + 1) : n] = np.abs(a[l + 1, (l + 1) :] - x_out[l])
 
     x_out = a[n, :]
 
     return x_out
-

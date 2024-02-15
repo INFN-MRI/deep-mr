@@ -50,7 +50,7 @@ class AnalyticalSimulator:
     >>>
     >>>     @staticmethod
     >>>     def signal(flip, TR, TE, T1, T2, signal):
-    >>>         
+    >>>
     >>>         # factors
     >>>         E1 = torch.exp(-TR/T1)
     >>>         E2 = torch.exp(-TE/T2) # here, T2 actually represents T2*
@@ -59,7 +59,7 @@ class AnalyticalSimulator:
     >>>
     >>>         # actual signal
     >>>         signal = sina * (1 - E1) / (1 - cosa * E1) * E2
-    >>>         
+    >>>
     >>>         return signal
 
     The resulting class can be used to perform simulation by instantiating an object (spin properties as input)
@@ -100,25 +100,25 @@ class AnalyticalSimulator:
     T2 : float | np.ndarray | torch.Tensor
         Transverse relaxation time for main pool in ``[ms]``.
     diff : str | tuple[str], optional
-        String or tuple of strings, saying which arguments 
-        to get the signal derivative with respect to. 
+        String or tuple of strings, saying which arguments
+        to get the signal derivative with respect to.
         Defaults to ``None`` (no differentation).
     device : str
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
     B1 : float | np.ndarray | torch.Tensor , optional
-        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Flip angle scaling factor (``1.0 := nominal flip angle``).
         Defaults to ``None``.
-    B0 : float | np.ndarray | torch.Tensor , optional 
+    B0 : float | np.ndarray | torch.Tensor , optional
         Bulk off-resonance in [Hz]. Defaults to ``None``
 
     Other Parameters
     ----------------
     max_chunk_size : int, optional
-        Maximum number of atoms to be simulated in parallel. 
-        High numbers increase speed and memory footprint. 
+        Maximum number of atoms to be simulated in parallel.
+        High numbers increase speed and memory footprint.
         Defaults to ``natoms``.
     nlocs : int, optional
-        Number of spatial locations to be simulated (i.e., for slice profile effects). 
+        Number of spatial locations to be simulated (i.e., for slice profile effects).
         Defaults to ``1``.
 
     """
@@ -202,10 +202,12 @@ class AnalyticalSimulator:
                     fvalue.requires_grad = True
                     setattr(self, fname, fvalue)
 
-    def initialize_buffer(self):  # noqa 
-        buffer = torch.zeros((self.batch_size, self.seqlength), dtype=torch.complex64, device=self.device)
+    def initialize_buffer(self):  # noqa
+        buffer = torch.zeros(
+            (self.batch_size, self.seqlength), dtype=torch.complex64, device=self.device
+        )
         return {"real": buffer.real, "imag": buffer.imag}
-    
+
     def get_sim_inputs(self, modelsig):  # noqa
         output = {
             "T1": self.T1,
@@ -345,6 +347,7 @@ class AnalyticalSimulator:
 def inspect_signature(input):
     return list(inspect.signature(input).parameters)
 
+
 def jacadapt(func):
     @wraps(func)
     def wrapper(*args):
@@ -360,11 +363,14 @@ def jacadapt(func):
 
     return wrapper
 
+
 def real2complex(input):
     return input["real"] + 1j * input["imag"]
 
+
 def complex2real(input):
     return torch.stack((input.real, input.imag), dim=-1)
+
 
 def _sort_signature(input, reference):
     out = {k: input[k] for k in reference if k in input}

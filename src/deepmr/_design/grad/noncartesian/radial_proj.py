@@ -6,6 +6,7 @@ from .radial import radial
 
 from .. import utils
 
+
 def radial_proj(fov, shape, accel=1, nspokes=None, osf=1.0, **kwargs):
     r"""
     Design a 3D radial projection trajectory.
@@ -14,9 +15,9 @@ def radial_proj(fov, shape, accel=1, nspokes=None, osf=1.0, **kwargs):
         fov (float): field of view in [mm].
         shape (tuple of ints): matrix size (npix, echoes=1, frames=1).
         accel (tuple of ints): acceleration (Rplane, Rangular). Ranges from (1, 1) (fully sampled) to (nspokes, nplanes).
-        nspokes (int): number of spokes to be designed. Defaults to Nyquist. 
+        nspokes (int): number of spokes to be designed. Defaults to Nyquist.
         osf (float): oversampling factor along readout. Defaults to 1.
-    
+
     Kwargs:
         dummy (bool): If true, add a dummy repetition for driven equilibrium (defaults to True).
         ordering (str): acquire planes sequentially ("sequentially"), interleaved ("interleaved"), shuffled ("shuffle") or
@@ -49,24 +50,19 @@ def radial_proj(fov, shape, accel=1, nspokes=None, osf=1.0, **kwargs):
 
     """
     # parsing
-    fov, shape, accel, kwargs, ordering = utils.config_projection(fov, shape, accel, kwargs)
-                  
+    fov, shape, accel, kwargs, ordering = utils.config_projection(
+        fov, shape, accel, kwargs
+    )
+
     # get in-plane trajectory (single frame, 1 echo, )
     traj, grad = radial(fov, shape[0], 1, nspokes, osf, **kwargs[0])
-    
+
     # get actual number of interleaves
     nspokes = traj["kr"].shape[0]
 
     # put together
-    traj = utils.make_projection(ordering, traj["compressed"], [nspokes] + shape[1], accel, kwargs[1])
-    
+    traj = utils.make_projection(
+        ordering, traj["compressed"], [nspokes] + shape[1], accel, kwargs[1]
+    )
+
     return traj, grad
-    
-
-
-
-        
-    
-    
-
-

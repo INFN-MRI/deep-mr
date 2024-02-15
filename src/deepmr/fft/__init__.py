@@ -13,11 +13,12 @@ from . import sparse_fft as _sparse_fft
 from . import nufft as _nufft
 
 from .fft import *  # noqa
-from .nufft import * # noqa
-from .sparse_fft import * # noqa
+from .nufft import *  # noqa
+from .sparse_fft import *  # noqa
 
 __all__ = _fft.__all__
 __all__.extend(["sparse_fft", "sparse_ifft", "nufft", "nufft_adj"])
+
 
 def sparse_fft(
     image,
@@ -279,4 +280,3 @@ def nufft_adj(
     return _nufft.apply_nufft_adj(
         kspace, nufft_plan, basis, threadsperblock=threadsperblock
     )
-

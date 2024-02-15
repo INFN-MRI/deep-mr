@@ -17,6 +17,7 @@ from ._abstract_op import Operator
 from ._stats import pulse_analysis
 from ._utils import gamma
 
+
 class BasePulse(Operator):
     """
     Operator representing a RF pulse.
@@ -30,13 +31,13 @@ class BasePulse(Operator):
     alpha : torch.Tensor, optional
         Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
-    phi : torch.Tensor, optional 
+    phi : torch.Tensor, optional
         Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
 
     Other Parameters
     ----------------
-    name : str 
+    name : str
         Name of the operator.
     rf_envelope : torch.Tensor
         Pulse time envelope.
@@ -45,7 +46,7 @@ class BasePulse(Operator):
     b1rms : float
         Pulse root-mean-squared B1 in ``[uT / deg]``,
         when pulse is scaled such as ``flip angle = 1.0 [deg]``.
-    freq_offset : float 
+    freq_offset : float
         Pulse frequency offset in ``[Hz]``.
 
     """
@@ -257,16 +258,16 @@ class BasePulse(Operator):
         Parameters
         ----------
         states : dict
-            Input states matrix for free pools 
+            Input states matrix for free pools
             and, optionally, for bound pools.
-        alpha : torch.Tensor, optional 
+        alpha : torch.Tensor, optional
             Flip angle in ``[deg]``.
-        phi : torch.Tensor, optional 
+        phi : torch.Tensor, optional
             RF phase in ``[deg]``.
 
         Returns
         -------
-        states : dict 
+        states : dict
             Output states matrix for free pools
             and, optionally, for bound pools.
 
@@ -306,7 +307,7 @@ class RFPulse(BasePulse):
     alpha : torch.Tensor, optional
         Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
-    phi : torch.Tensor, optional 
+    phi : torch.Tensor, optional
         Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
     B1 : torch.Tensor, optional
@@ -315,7 +316,7 @@ class RFPulse(BasePulse):
 
     Other Parameters
     ----------------
-    name : str 
+    name : str
         Name of the operator.
     rf_envelope : torch.Tensor
         Pulse time envelope.
@@ -324,10 +325,11 @@ class RFPulse(BasePulse):
     b1rms : float
         Pulse root-mean-squared B1 in ``[uT / deg]``,
         when pulse is scaled such as ``flip angle = 1.0 [deg]``.
-    freq_offset : float 
+    freq_offset : float
         Pulse frequency offset in ``[Hz]``.
 
     """
+
     def __init__(self, device, nlocs=None, alpha=0.0, phi=0.0, B1=1.0, **props):  # noqa
         # base initialization
         super().__init__(device, alpha, phi, **props)
@@ -401,16 +403,16 @@ class AdiabaticPulse(BasePulse):
     alpha : torch.Tensor, optional
         Pulse flip angle in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
-    phi : torch.Tensor, optional 
+    phi : torch.Tensor, optional
         Pulse phase in ``[deg]`` of shape ``(nmodes,)``.
         The default is ``0.0 [deg]``.
     efficiency : torch.Tensor, optional
-        Pulse efficiency of shape ``(nmodes,)``. 
+        Pulse efficiency of shape ``(nmodes,)``.
         The default is ``1.0``.
 
     Other Parameters
     ----------------
-    name : str 
+    name : str
         Name of the operator.
     rf_envelope : torch.Tensor
         Pulse time envelope.
@@ -419,10 +421,11 @@ class AdiabaticPulse(BasePulse):
     b1rms : float
         Pulse root-mean-squared B1 in ``[uT / deg]``,
         when pulse is scaled such as ``flip angle = 1.0 [deg]``.
-    freq_offset : float 
+    freq_offset : float
         Pulse frequency offset in ``[Hz]``.
 
     """
+
     def __init__(self, device, alpha=0.0, phi=0.0, efficiency=1.0, **props):  # noqa
         super().__init__(device, alpha, phi, **props)
 
@@ -487,14 +490,14 @@ def super_lorentzian_lineshape(f, T2star=12e-6, fsample=[-30e3, 30e3]):
     T2star : float, optional
         T2 of semisolid compartment in ``[ms]``. Defaults to ``12e-3 (12 us)``.
     fsample : list | tuple, optional
-        Frequency range at which function is to be evaluated in ``[Hz]``. 
+        Frequency range at which function is to be evaluated in ``[Hz]``.
         Defaults to ``[-2e3, 2e3]``.
 
     Returns
     -------
-    G(omega) : np.ndarray 
+    G(omega) : np.ndarray
         Actual lineshape at arbitrary frequency ``f``.
-        
+
     Examples
     --------
     >>> G = SuperLorentzianLineshape(12e-3, torch.arange(-500, 500))
@@ -503,7 +506,7 @@ def super_lorentzian_lineshape(f, T2star=12e-6, fsample=[-30e3, 30e3]):
     ----------
     Shaihan Malik (c), King's College London, April 2019
     Matteo Cencini: Python porting (December 2022)
-    
+
     """
     # clone
     if isinstance(f, torch.Tensor):

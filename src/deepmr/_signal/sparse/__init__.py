@@ -10,6 +10,7 @@ from .dense2sparse import apply_sampling
 from .sparse2dense import apply_zerofill
 from .plan import plan_sampling
 
+
 def sample(
     data_in,
     indexes,
@@ -66,7 +67,10 @@ def sample(
     indexes = plan.plan_sampling(indexes, shape, device)
 
     # perform actual interpolation
-    return dense2sparse.apply_sampling(data_in, indexes, basis_adjoint, threadsperblock=threadsperblock)
+    return dense2sparse.apply_sampling(
+        data_in, indexes, basis_adjoint, threadsperblock=threadsperblock
+    )
+
 
 def zerofill(
     data_in,
@@ -122,4 +126,6 @@ def zerofill(
     mask = plan.plan_sampling(indexes, shape, device)
 
     # perform actual interpolation
-    return sparse2dense.apply_zerofill(data_in, mask, basis, threadsperblock=threadsperblock)
+    return sparse2dense.apply_zerofill(
+        data_in, mask, basis, threadsperblock=threadsperblock
+    )

@@ -11,6 +11,7 @@ import torch
 
 from ._abstract_op import Operator
 
+
 class Shift(Operator):
     """
     Perform shift operator corrsesponding to a 2npi dephasing of the magnetization.
@@ -23,7 +24,7 @@ class Shift(Operator):
 
     Returns
     -------
-    states : dict 
+    states : dict
         Output states matrix for free pools.
 
     """
@@ -56,9 +57,9 @@ class Spoil(Operator):
 
     Returns
     -------
-    states : dict 
+    states : dict
         Output states matrix for free pools.
-        
+
     """
 
     def apply(self, states):

@@ -9,6 +9,7 @@ from .._signal import sparse as _sparse
 
 from . import fft as _fft
 
+
 def prepare_sampling(indexes, shape, device="cpu"):
     """
     Precompute sparse sampling mask object.
@@ -39,7 +40,7 @@ def prepare_sampling(indexes, shape, device="cpu"):
     Notes
     -----
     Sampled point indexes axes ordering is assumed to be ``(x, y)`` for 2D signals
-    and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape is 
+    and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape is
     assumed to be ``(z, y, x)``.
 
     Indexes tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
@@ -48,7 +49,7 @@ def prepare_sampling(indexes, shape, device="cpu"):
         * ``indexes.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
         * ``indexes.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
-    """    
+    """
     # get parameters
     ndim = indexes.shape[-1]
 
@@ -56,10 +57,13 @@ def prepare_sampling(indexes, shape, device="cpu"):
         shape = np.asarray([shape] * ndim, dtype=np.int16)
     else:
         shape = np.array(shape, dtype=np.int16)
-        
+
     return _sparse.plan_sampling(indexes, shape, device)
 
-def apply_sparse_fft(image, sampling_mask, basis_adjoint=None, device=None, threadsperblock=128):
+
+def apply_sparse_fft(
+    image, sampling_mask, basis_adjoint=None, device=None, threadsperblock=128
+):
     """
     Apply sparse Fast Fourier Transform.
 
@@ -125,7 +129,9 @@ def apply_sparse_fft(image, sampling_mask, basis_adjoint=None, device=None, thre
     kspace = _fft.fft(image, axes=range(-ndim, 0), norm=None)
 
     # Interpolate
-    kspace = _sparse.apply_sampling(kspace, sampling_mask, basis_adjoint, device, threadsperblock)
+    kspace = _sparse.apply_sampling(
+        kspace, sampling_mask, basis_adjoint, device, threadsperblock
+    )
 
     # Bring back to original device
     kspace = kspace.to(odevice)
@@ -133,7 +139,10 @@ def apply_sparse_fft(image, sampling_mask, basis_adjoint=None, device=None, thre
 
     return kspace
 
-def apply_sparse_ifft(kspace, sampling_mask, basis=None, device=None, threadsperblock=128):
+
+def apply_sparse_ifft(
+    kspace, sampling_mask, basis=None, device=None, threadsperblock=128
+):
     """
     Apply adjoint Non-Uniform Fast Fourier Transform.
 
@@ -181,7 +190,7 @@ def apply_sparse_ifft(kspace, sampling_mask, basis=None, device=None, threadsper
     # cast to device is necessary
     if device is not None:
         sampling_mask.to(device)
-        
+
     # unpack plan
     ndim = sampling_mask.ndim
     device = sampling_mask.device
@@ -193,7 +202,9 @@ def apply_sparse_ifft(kspace, sampling_mask, basis=None, device=None, threadsper
     kspace = kspace.to(device)
 
     # Gridding
-    kspace = _sparse.apply_zerofill(kspace, sampling_mask, basis, device, threadsperblock)
+    kspace = _sparse.apply_zerofill(
+        kspace, sampling_mask, basis, device, threadsperblock
+    )
 
     # IFFT
     image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)

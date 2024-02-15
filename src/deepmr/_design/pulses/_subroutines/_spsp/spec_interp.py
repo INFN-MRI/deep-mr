@@ -1,3 +1,6 @@
+"""
+"""
+
 import numpy as np
 
 def spec_interp(h, ni, off, f, dbg):
@@ -29,7 +32,6 @@ def spec_interp(h, ni, off, f, dbg):
         Wact = np.exp(-1j * np.kron(w, t_act))
         Wact_wt = np.outer(wt, Wact)
         hi[idx, :] = np.linalg.pinv(Wact_wt).dot(Fref_wt)
-        
+
     hi = hi.flatten()
     return hi
-

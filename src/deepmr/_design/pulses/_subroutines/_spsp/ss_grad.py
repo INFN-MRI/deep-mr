@@ -1,6 +1,9 @@
+"""
+"""
 __all__ = ["grad_min_bridge", "grad_mintrap", "grad_ss"]
 
 import numpy as np
+
 
 def grad_ss(m0, n, f, mxg, mxs, ts, equal):
     m0 = abs(m0)  # Ensure m0 is positive
@@ -55,7 +58,16 @@ def grad_ss(m0, n, f, mxg, mxs, ts, equal):
                 spec_met = False
                 continue
             g1 = np.arange(1, nb - nc + 1) * dg_test
-            g2 = np.concatenate((np.arange(nb - nc + 1, nb + 1), np.tile(nb, na), np.arange(nb, nb - nc, -1))) * dg_test
+            g2 = (
+                np.concatenate(
+                    (
+                        np.arange(nb - nc + 1, nb + 1),
+                        np.tile(nb, na),
+                        np.arange(nb, nb - nc, -1),
+                    )
+                )
+                * dg_test
+            )
             g3 = np.arange(nb - nc, -1, -1) * dg_test
             gp = np.concatenate((g1, g2, g3))
             if abs(np.sum(g2) * ts - m0) > 10 * np.finfo(float).eps:
@@ -87,7 +99,16 @@ def grad_ss(m0, n, f, mxg, mxs, ts, equal):
         if A >= 1.001 * mxg or dg_test > 1.001 * dg:
             raise ValueError("Amplitude/Slew rate is exceeded")
         g1 = np.arange(1, nb - nc + 1) * dg_test
-        g2 = np.concatenate((np.arange(nb - nc + 1, nb + 1), np.tile(nb, na), np.arange(nb, nb - nc, -1))) * dg_test
+        g2 = (
+            np.concatenate(
+                (
+                    np.arange(nb - nc + 1, nb + 1),
+                    np.tile(nb, na),
+                    np.arange(nb, nb - nc, -1),
+                )
+            )
+            * dg_test
+        )
         g3 = np.arange(nb - nc, -1, -1) * dg_test
         gpos = np.concatenate((g1, g2, g3))
         if abs(np.sum(g2) * ts - m0) > 10 * np.finfo(float).eps:
@@ -101,6 +122,7 @@ def grad_ss(m0, n, f, mxg, mxs, ts, equal):
             gneg = -gpos
 
     return gpos, gneg, g1, g2, g3
+
 
 def grad_mintrap(m0, mxg, mxs, ts):
     if m0 < 0:
@@ -128,9 +150,16 @@ def grad_mintrap(m0, mxg, mxs, ts):
         A = nb * dg_act
 
     # Construct discrete trapezoid --- always end with a zero value
-    g = s * np.concatenate((np.arange(1, nb + 1) * dg_act, np.ones(na) * A, np.arange(nb - 1, -1, -1) * dg_act))
-    
+    g = s * np.concatenate(
+        (
+            np.arange(1, nb + 1) * dg_act,
+            np.ones(na) * A,
+            np.arange(nb - 1, -1, -1) * dg_act,
+        )
+    )
+
     return g
+
 
 def grad_min_bridge(m0, f, mxg, mxs, ts):
     if m0 < 0:
@@ -164,12 +193,18 @@ def grad_min_bridge(m0, f, mxg, mxs, ts):
 
     if A <= mxg and dg_test < dg:  # This works!
         g1 = s * np.arange(1, nb - nc + 1) * dg_test
-        g2 = s * np.concatenate((np.arange(nb - nc + 1, nb + 1), np.arange(nb, nb - nc, -1))) * dg_test
+        g2 = (
+            s
+            * np.concatenate(
+                (np.arange(nb - nc + 1, nb + 1), np.arange(nb, nb - nc, -1))
+            )
+            * dg_test
+        )
         g3 = s * np.arange(nb - nc, -1, -1) * dg_test
         g = np.concatenate((g1, g2, g3))
         if abs((np.sum(g2) * ts) - s * m0) > 10 * np.finfo(float).eps:
-            print('Area Spec:', m0, 'Actual:', np.sum(g) * ts)
-            raise ValueError('grad_min_bridge: Area not calculated correctly')
+            print("Area Spec:", m0, "Actual:", np.sum(g) * ts)
+            raise ValueError("grad_min_bridge: Area not calculated correctly")
     else:  # Must be trapezoid
         # Subtract area of ramps
         nb = int(np.ceil(mxg / dg))
@@ -185,12 +220,22 @@ def grad_min_bridge(m0, f, mxg, mxs, ts):
         dg_test = m0 / (((2 * nb - nc + 1) * nc + nb * na) * ts)
         A = nb * dg_test
         if A > mxg or dg_test > dg:
-            raise ValueError('Amp/Slew being exceeded')
+            raise ValueError("Amp/Slew being exceeded")
         g1 = s * np.arange(1, nb - nc + 1) * dg_test
-        g2 = s * np.concatenate((np.arange(nb - nc + 1, nb + 1), np.tile(nb, na), np.arange(nb, nb - nc, -1))) * dg_test
+        g2 = (
+            s
+            * np.concatenate(
+                (
+                    np.arange(nb - nc + 1, nb + 1),
+                    np.tile(nb, na),
+                    np.arange(nb, nb - nc, -1),
+                )
+            )
+            * dg_test
+        )
         g3 = s * np.arange(nb - nc, -1, -1) * dg_test
         g = np.concatenate((g1, g2, g3))
         if abs((np.sum(g2) * ts) - s * m0) > 10 * np.finfo(float).eps:
-            raise ValueError('grad_min_bridge: Area not calculated correctly')
+            raise ValueError("grad_min_bridge: Area not calculated correctly")
 
     return g, g1, g2, g3

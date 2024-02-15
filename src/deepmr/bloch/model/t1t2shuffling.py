@@ -26,7 +26,7 @@ def t1t2shuffling(
         Refocusing angle phases in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
     ESP : float
         Echo spacing in [ms].
-    TR : float 
+    TR : float
         Repetition time in [ms].
     T1 : float | np.ndarray | torch.Tensor
         Longitudinal relaxation time for main pool in ``[ms]``.
@@ -35,12 +35,12 @@ def t1t2shuffling(
     sliceprof : float | np.ndarray | torch.Tensor
         Excitation slice profile (i.e., flip angle scaling across slice).
         If ``False``, pulse are non selective. If ``True``, pulses are selective but ideal profile is assumed.
-        If array, flip angle scaling along slice is simulated. Defaults to ``False``.  
-    spoil_inc : float, optional 
-        RF spoiling increment in ``[deg]``. Defaults to ``117°``.      
+        If array, flip angle scaling along slice is simulated. Defaults to ``False``.
+    spoil_inc : float, optional
+        RF spoiling increment in ``[deg]``. Defaults to ``117°``.
     diff : str | tuple[str], optional
-        String or tuple of strings, saying which arguments 
-        to get the signal derivative with respect to. 
+        String or tuple of strings, saying which arguments
+        to get the signal derivative with respect to.
         Defaults to ``None`` (no differentation).
     device : str
         Computational device (e.g., ``cpu`` or ``cuda:n``, with ``n=0,1,2...``).
@@ -48,28 +48,28 @@ def t1t2shuffling(
 
     Other Parameters
     ----------------
-    nstates : int, optional 
-        Maximum number of EPG states to be retained during simulation. 
-        High numbers improve accuracy but decrease performance. 
+    nstates : int, optional
+        Maximum number of EPG states to be retained during simulation.
+        High numbers improve accuracy but decrease performance.
         Defaults to ``10``.
     max_chunk_size : int, optional
-        Maximum number of atoms to be simulated in parallel. 
-        High numbers increase speed and memory footprint. 
+        Maximum number of atoms to be simulated in parallel.
+        High numbers increase speed and memory footprint.
         Defaults to ``natoms``.
     verbose : bool, optional
         If ``True``, prints execution time for signal (and gradient) calculations.
         Defaults to ``False``.
     B1 : float | np.ndarray | torch.Tensor , optional
-        Flip angle scaling factor (``1.0 := nominal flip angle``). 
+        Flip angle scaling factor (``1.0 := nominal flip angle``).
         Defaults to ``None``.
-    B0 : float | np.ndarray | torch.Tensor , optional 
+    B0 : float | np.ndarray | torch.Tensor , optional
         Bulk off-resonance in [Hz]. Defaults to ``None``
-    B1Tx2 : float | np.ndarray | torch.Tensor 
-        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``). 
+    B1Tx2 : float | np.ndarray | torch.Tensor
+        Flip angle scaling factor for secondary RF mode (``1.0 := nominal flip angle``).
         Defaults to ``None``.
     B1phase : float | np.ndarray | torch.Tensor
-        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``). 
-        Defaults to ``None``. 
+        B1 relative phase in ``[deg]``. (``0.0 := nominal rf phase``).
+        Defaults to ``None``.
 
     """
     # constructor

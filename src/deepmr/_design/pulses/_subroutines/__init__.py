@@ -3,8 +3,8 @@
 from . import _slr
 from . import _spsp
 
-from ._slr import * # noqa
-from ._spsp import * # noqa
+from ._slr import *  # noqa
+from ._spsp import *  # noqa
 
 __all__ = []
 __all__.extend(_slr.__all__)
@@ -14,7 +14,7 @@ __all__.extend(_spsp.__all__)
 
 
 # from mridesign.src.pulses import _adiabatic,  _multiband, _slr
-                                    
+
 
 # from mridesign.src.pulses._adiabatic import *
 
@@ -23,42 +23,42 @@ __all__.extend(_spsp.__all__)
 # __all__.extend(_adiabatic.__all__)
 
 
-# def shinnar_leroux(dur: float = 1.8e-3, tbw: int = 4, 
-#                    ptype: str = 'st', ftype: str = 'min', 
+# def shinnar_leroux(dur: float = 1.8e-3, tbw: int = 4,
+#                    ptype: str = 'st', ftype: str = 'min',
 #                    n_bands: int = 1, band_sep: float = None, slice_sep: float = None, beta: float = None,
-#                    passband_ripple_level: float = 0.01, stopband_ripple_level: float = 0.01, 
+#                    passband_ripple_level: float = 0.01, stopband_ripple_level: float = 0.01,
 #                    cancel_alpha_phs=False, phs_0_pt = 'None', dt: float = 8e-6, flip: float = None):
 #     """
 #     Design a single or multi-band pulse using Shinnar-LeRoux algorithm
-    
+
 #     Args:
 #         dur: pulse duration in [s].
 #         tbw: pulse time bandwidth product (min: 2; max: 10).
 #         ptype: pulse type:
 #                     - 'st' (small-tip excitation);
-#                     - 'ex' (pi / 2 excitation pulse); 
+#                     - 'ex' (pi / 2 excitation pulse);
 #                     - 'se' (spin-echo pulse);
 #                     - 'inv' (inversion):
-#                     - 'sat' (pi/2 saturation pulse).                  
-#         ftype: type of filter to use: 
-#                     - 'ms' (sinc); 
-#                     - 'pm' (Parks-McClellan equal-ripple); 
+#                     - 'sat' (pi/2 saturation pulse).
+#         ftype: type of filter to use:
+#                     - 'ms' (sinc);
+#                     - 'pm' (Parks-McClellan equal-ripple);
 #                     - 'min' (minphase using factored pm);
 #                     - 'max' (maxphase using factored pm);
-#                     - 'ls' (least squares);                     
+#                     - 'ls' (least squares);
 #         n_bands: number of bands (default: single band).
-#         band_sep: (for multi-band pulses) band separation in Hz. 
+#         band_sep: (for multi-band pulses) band separation in Hz.
 #                    Provide either this or band separation in unit of # slices (not both!).
-#         slice_sep: (for multi-band pulses) band separation in unit of # slices. 
+#         slice_sep: (for multi-band pulses) band separation in unit of # slices.
 #                    Provide either this or band separation in Hz (not both!).
-#         beta: (for multi-band pulses) ratio of off-resonant to on-resonant power 
+#         beta: (for multi-band pulses) ratio of off-resonant to on-resonant power
 #               (default: equal power for each band).
 #         passband_ripple_level: passband ripple level in :math:'M_0^{-1}'.
 #         stopband_ripple_level: stopband ripple level in :math:'M_0^{-1}'.
-#         cancel_alpha_phs: For 'ex' pulses, absorb the alpha phase profile 
+#         cancel_alpha_phs: For 'ex' pulses, absorb the alpha phase profile
 #                           from beta's profile for a flatter total phase.
 #         phs_0_pt: set of phases to use for multiband. Can be:
-#                     - 'phs_mod' (Wong); 
+#                     - 'phs_mod' (Wong);
 #                     - 'amp_mod' (Malik);
 #                     - 'quad_mod' (Grissom);
 #                     - 'None'.
@@ -86,9 +86,9 @@ __all__.extend(_spsp.__all__)
 #     # check tbw
 #     assert type(tbw) is int, "Time-Bandiwidth-Product = {tbw} must be integer"
 #     assert tbw >= 2 and tbw <= 10, "Time-Bandiwidth-Product = {tbw} must be between 2 and 10"
-    
+
 #     rf_pulse = _slr.design_singleband_pulse(dur, tbw, ptype, ftype, passband_ripple_level, stopband_ripple_level, cancel_alpha_phs, dt, flip)
-    
+
 #     # remove first and last point
 #     rf_pulse[0] = 0
 #     rf_pulse[-1] = 0
@@ -100,12 +100,12 @@ __all__.extend(_spsp.__all__)
 #     # add bands
 #     if n_bands != 1:
 #         rf_pulse = _multiband.make_multiband_pulse(rf_pulse, dt, tbw / dur, n_bands, band_sep, slice_sep, beta, phs_0_pt)
-    
+
 #     # cast to complex 64
 #     rf_pulse = rf_pulse.astype(np.complex64)
-    
+
 #     # clean phase
 #     if np.allclose(rf_pulse.imag, 0):
 #         rf_pulse = rf_pulse.real
-        
+
 #     return rf_pulse
