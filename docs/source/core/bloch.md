@@ -1,4 +1,4 @@
-# Bloch Simulation (`deepmr.bloch`)
+# Bloch Sim (`deepmr.bloch`)
 
 ```{eval-rst}
 .. automodule:: deepmr.bloch
@@ -98,11 +98,6 @@ This is useful e.g. for nonlinear fitting and for calculating objective function
 
 To facilitate the development of signal models, we include basic sequence building blocks (e.g., Inversion Preparation, SSFP Propagator) and low-level Extended Phase Graphs operators:
 
-## Sequence Blocks
-
-```{eval-rst}
-
-```
 
 ## Sequence Blocks
 
