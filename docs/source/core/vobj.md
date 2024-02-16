@@ -23,4 +23,5 @@
 	:nosignatures:
 	
 	deepmr.spiral
+	deepmr.spiral_stack
 ```
