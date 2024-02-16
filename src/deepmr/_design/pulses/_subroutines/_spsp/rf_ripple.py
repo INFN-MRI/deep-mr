@@ -4,6 +4,7 @@ __all__ = ["rf_ripple"]
 
 import numpy as np
 
+
 def rf_ripple(de, a, ang, excitation_type):
     nband = len(de)
     d = np.zeros(nband)
