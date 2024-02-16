@@ -20,7 +20,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     Parameters
     ----------
     shape : Iterable[int]
-        Matrix shape ``(in-plane, contrasts=1)``.
+        Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
     accel : int, optional
         In-plane acceleration. Ranges from ``1`` (fully sampled) to ``nintl``.
         The default is ``1``.
@@ -71,6 +71,11 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     # expand shape if needed
     if np.isscalar(shape):
         shape = [shape, 1]
+    else:
+        shape = list(shape)
+        
+    while len(shape) < 3:
+        shape = shape + [1]
         
     # assume 1mm iso
     fov = shape[0]
@@ -95,6 +100,9 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     traj = _design.projection(traj[0].T, rot)
     traj = traj.swapaxes(-2, -1).T
     traj = traj.reshape(ncontrasts, nviews, *traj.shape[-2:])
+    
+    # expand echoes
+    traj = np.repeat(traj, shape[-1], axis=0)
 
     # get dcf
     dcf = tmp["dcf"]
