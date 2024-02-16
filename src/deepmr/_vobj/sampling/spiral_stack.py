@@ -112,7 +112,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
 
     >>> head = deepmr.spiral_stack((128, 120, 1, 8), nintl=48)
     >>> head.traj.shape
-    torch.Size([4, 5760, 538, 3])
+    torch.Size([8, 5760, 538, 3])
 
     corresponding to a 8-echoes fully sampled k-spaces, e.g., for QSM and T2* mapping.
 
@@ -146,9 +146,6 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
         accel = [accel, 1]
     else:
         accel = list(accel)
-
-    while len(accel) < 3:
-        accel = accel + [1]
 
     # expand acs if needed
     if "acs_shape" in kwargs:

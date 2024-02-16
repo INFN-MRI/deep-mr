@@ -24,4 +24,5 @@
 	
 	deepmr.spiral
 	deepmr.spiral_stack
+	deepmr.spiral_proj
 ```

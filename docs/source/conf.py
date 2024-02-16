@@ -7,8 +7,8 @@
 import os
 import sys
 
-for x in os.walk('../../src'):
-  sys.path.insert(0, os.path.abspath(x[0]))
+for x in os.walk("../../src"):
+    sys.path.insert(0, os.path.abspath(x[0]))
 
 # -- Project information -----------------------------------------------------
 
