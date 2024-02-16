@@ -13,14 +13,12 @@ except Exception:
 from ..._types import Header
 
 
-def spiral(fov, shape, accel=1, nintl=1, **kwargs):
+def spiral(shape, accel=1, nintl=1, **kwargs):
     r"""
     Design a constant- or multi-density spiral.
 
     Parameters
     ----------
-    fov : float
-        Field of view in ``[mm]``.
     shape : Iterable[int]
         Matrix shape ``(in-plane, contrasts=1)``.
     accel : int, optional
@@ -73,6 +71,9 @@ def spiral(fov, shape, accel=1, nintl=1, **kwargs):
     # expand shape if needed
     if np.isscalar(shape):
         shape = [shape, 1]
+        
+    # assume 1mm iso
+    fov = shape[0]
 
     # design single interleaf spiral
     tmp, _ = _design.spiral(fov, shape[0], accel, nintl, **kwargs)
