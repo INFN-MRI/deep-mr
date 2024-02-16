@@ -20,7 +20,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     As in the 2D spiral case, interleaves are rotated by a pseudo golden angle
     with period 377 interelaves. Rotations are performed both along
     ``view`` and ``contrast`` dimensions. Acquisition is assumed to
-    traverse the ``contrast`` dimension first and then the ``vieww``,
+    traverse the ``contrast`` dimension first and then the ``view``,
     i.e., all the contrasts are acquired before moving to the second view.
     If multiple echoes are specified, final contrast dimensions will have
     length ``ncontrasts * nechoes``. Echoes are assumed to be acquired
@@ -86,7 +86,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     >>> head = deepmr.spiral_stack((128, 120), nintl=48, acs_shape=(32, 16), acs_nintl=4, moco_shape=8)
 
     The generated spiral will have an innermost ``(8, 8)`` single-shot k-space region (e.g., for PROPELLER-like motion correction),
-    an intermediate ``(32, 32, 16)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128, 120)`` fully covered by 48 interleaves.
+    an intermediate ``(32, 32, 16)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128, 120)`` region fully covered by 48 interleaves.
 
     In-plane and slice accelerations can be specified using the ``accel`` argument. For example, the following
 

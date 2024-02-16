@@ -20,7 +20,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     The spiral interleaves are rotated by a pseudo golden angle
     with period 377 interelaves. Rotations are performed both along
     ``view`` and ``contrast`` dimensions. Acquisition is assumed to
-    traverse the ``contrast`` dimension first and then the ``vieww``,
+    traverse the ``contrast`` dimension first and then the ``view``,
     i.e., all the contrasts are acquired before moving to the second view.
     If multiple echoes are specified, final contrast dimensions will have
     length ``ncontrasts * nechoes``. Echoes are assumed to be acquired
@@ -83,7 +83,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     >>> head = deepmr.spiral(128, nintl=48, acs_shape=32, acs_nintl=4, moco_shape=8)
 
     The generated spiral will have an innermost ``(8, 8)`` single-shot k-space region (e.g., for PROPELLER-like motion correction),
-    an intermediate ``(32, 32)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128)`` fully covered by 48 interleaves.
+    an intermediate ``(32, 32)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128)`` region fully covered by 48 interleaves.
 
     In-plane acceleration can be specified using the ``accel`` argument. For example, the following
 
