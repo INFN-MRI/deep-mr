@@ -16,6 +16,15 @@ from ..._types import Header
 def spiral(shape, accel=1, nintl=1, **kwargs):
     r"""
     Design a constant- or multi-density spiral.
+    
+    The spiral interleaves are rotated by a pseudo golden angle
+    with period 377 interelaves. Rotations are performed both along
+    ``view`` and ``contrast`` dimensions. Acquisition is assumed to
+    traverse the ``contrast`` dimension first and then the ``vieww``,
+    i.e., all the contrasts are acquired before moving to the second view.
+    If multiple echoes are specified, final contrast dimensions will have
+    length ``ncontrasts * nechoes``. Echoes are assumed to be acquired
+    sequentially with the same spiral interleaf.
 
     Parameters
     ----------
@@ -99,7 +108,8 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     traj = tmp["kr"] * tmp["mtx"]
     traj = _design.projection(traj[0].T, rot)
     traj = traj.swapaxes(-2, -1).T
-    traj = traj.reshape(ncontrasts, nviews, *traj.shape[-2:])
+    traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
+    traj = traj.swapaxes(0, 1)
     
     # expand echoes
     traj = np.repeat(traj, shape[-1], axis=0)
