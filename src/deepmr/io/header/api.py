@@ -64,7 +64,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
         This is the expected image resolution in mm of shape ``(dz, dy, dx)``.
     * t (torch.Tensor):
         This is the readout sampling time ``(0, t_read)`` in ``ms``.
-        with shape (nsamples,).
+        with shape ``(nsamples,)``.
     * traj (torch.Tensor):
         This is the k-space trajectory normalized as ``(-0.5 * shape, 0.5 * shape)``
         with shape ``(ncontrasts, nviews, nsamples, ndims)``.

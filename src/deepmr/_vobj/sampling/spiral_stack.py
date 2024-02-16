@@ -33,7 +33,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     shape : Iterable[int]
         Matrix shape ``(in-plane, slices=1, contrasts=1, echoes=1)``.
     accel : Iterable[int], optional
-        Acceleration factors (in-plane, slices=1). 
+        Acceleration factors ``(in-plane, slices=1)``. 
         Range from ``1`` (fully sampled) to ``nintl`` / ``nslices``.
         The default is ``(1, 1)``.
     nintl : int, optional
@@ -86,7 +86,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     >>> head = deepmr.spiral_stack((128, 120), nintl=48, acs_shape=(32, 16), acs_nintl=4, moco_shape=8)
     
     The generated spiral will have an innermost ``(8, 8)`` single-shot k-space region (e.g., for PROPELLER-like motion correction),
-    an intermediate ``(32, 32, 16)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128, 16)`` fully covered by 48 interleaves.
+    an intermediate ``(32, 32, 16)`` k-space region fully covered by 4 spiral shots and an outer ``(128, 128, 120)`` fully covered by 48 interleaves.
     
     In-plane and slice accelerations can be specified using the ``accel`` argument. For example, the following
     
@@ -124,7 +124,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
         This is the expected image size of shape ``(nz, ny, nx)``.
     * t (torch.Tensor):
         This is the readout sampling time ``(0, t_read)`` in ``ms``.
-        with shape (nsamples,).
+        with shape ``(nsamples,)``.
     * traj (torch.Tensor):
         This is the k-space trajectory normalized as ``(-0.5 * shape, 0.5 * shape)``
         with shape ``(ncontrasts, nviews, nsamples, 3)``.

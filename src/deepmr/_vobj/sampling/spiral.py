@@ -120,7 +120,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
         This is the expected image size of shape ``(nz, ny, nx)``.
     * t (torch.Tensor):
         This is the readout sampling time ``(0, t_read)`` in ``ms``.
-        with shape (nsamples,).
+        with shape ``(nsamples,)``.
     * traj (torch.Tensor):
         This is the k-space trajectory normalized as ``(-0.5 * shape, 0.5 * shape)``
         with shape ``(ncontrasts, nviews, nsamples, 2)``.
