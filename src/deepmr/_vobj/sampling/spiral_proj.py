@@ -187,19 +187,7 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     # perform rotation
     axis = np.zeros_like(theta, dtype=int)  # rotation axis
     Rx = _design.angleaxis2rotmat(theta, [1, 0, 0])  # whole-plane rotation about x
-    if order[-9:] == "multiaxis":
-        Ry = _design.angleaxis2rotmat(theta, [0, 1, 0])  # whole-plane rotation about y
-        R0 = _design.angleaxis2rotmat(0.5 * np.pi * np.ones_like(theta), [0, 1, 0])
-        Rz = np.einsum(
-            "...ij,...jk->...ik", Rx, R0
-        )  # bring plane on y-z, then whole-plane rotation about z
-        Rx = np.concatenate((Rx, Ry, Rz), axis=0)  # whole-plane rotation
-        axis = np.concatenate((axis, axis + 1, axis + 2), axis=0)
-
     Rz = _design.angleaxis2rotmat(phi, [0, 0, 1])  # in-plane rotation about z
-    if order[-9:] == "multiaxis":
-        Rz = np.concatenate((Rz, Rz, Rz), axis=0)
-        nviews *= 3
     
     # put together full rotation matrix
     rot = np.einsum("...ij,...jk->...ik", Rx, Rz)
@@ -211,17 +199,36 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     traj = traj.swapaxes(-2, -1).T
     traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
     traj = traj.swapaxes(0, 1)
-
-    # expand echoes
-    nechoes = shape[-1]
-    traj = np.repeat(traj, nechoes, axis=0)
-    axis = np.repeat(axis, nechoes)
-
+    
     # get dcf
     dcf = tmp["dcf"]
     dcf = _design.angular_compensation(dcf, traj.reshape(-1, *traj.shape[-2:]), axis)
     dcf = dcf.reshape(*traj.shape[:-1])
-    
+
+    # apply multiaxis    
+    if order[-9:] == "multiaxis":
+        # expand trajectory
+        traj1 = np.stack((traj[..., 2], traj[..., 0], traj[..., 1]), axis=-1)
+        traj2 = np.stack((traj[..., 1], traj[..., 2], traj[..., 0]), axis=-1)
+        traj = np.concatenate((traj, traj1, traj2), axis=-3)
+        
+        # expand dcf
+        dcf = np.concatenate((dcf, dcf, dcf), axis=-2)
+
+        # renormalize dcf
+        tabs = (traj[0, 0] ** 2).sum(axis=-1) ** 0.5
+        k0_idx = np.argmin(tabs)
+        nshots = nviews * ncontrasts
+        
+        # impose that center of k-space weight is 1 / nshots
+        scale = 1.0 / (dcf[[k0_idx]] + 0.000001) / nshots
+        dcf = scale * dcf
+            
+    # expand echoes
+    nechoes = shape[-1]
+    traj = np.repeat(traj, nechoes, axis=0)
+    dcf = np.repeat(dcf, nechoes, axis=0)
+        
     # get shape
     shape = list(tmp["mtx"]) + [shape[0]] 
 
