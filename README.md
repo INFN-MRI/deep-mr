@@ -12,6 +12,8 @@
 </p>
 A framework to accelerate the development of modern MR acquisition and reconstruction methods, focused on quantitative MRI.
 
+## Installation
+
 Deep-MR can be installed using pip:
 
 1. Clone the repo
