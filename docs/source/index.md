@@ -32,9 +32,9 @@ tutorials/02-dl-mri-recon.ipynb
 
 core/signal.md
 core/fft.md
+core/bloch.md
 core/vobj.md
 core/io.md
-core/bloch.md
 
 ```
 

@@ -1,4 +1,4 @@
-# Bloch Sim (`deepmr.bloch`)
+# Bloch Simulation
 
 ```{eval-rst}
 .. automodule:: deepmr.bloch

@@ -1,4 +1,4 @@
-# Fourier Transform  (`deepmr.fft`)
+# Fourier Transform
 
 ```{eval-rst}
 .. automodule:: deepmr.fft

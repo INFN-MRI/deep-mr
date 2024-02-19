@@ -1,4 +1,4 @@
-# Signal Processing  (`deepmr`)
+# Signal Processing
 
 ```{eval-rst}
 .. automodule:: deepmr._signal

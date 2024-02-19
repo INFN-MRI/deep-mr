@@ -36,13 +36,11 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
         Spiral plane rotation type:
             
         * ``ga``: Pseudo golden angle variation of periodicity ``377``.
-        * ``ga::multiaxis``: Pseudo golden angle, i.e., same as ``ga`` 
-        but views are repeated 3 times on orthogonal axes.
+        * ``ga::multiaxis``: Pseudo golden angle, i.e., same as ``ga`` but views are repeated 3 times on orthogonal axes.
         * ``ga-sh``: Shuffled pseudo golden angle.
-        * ``ga-sh::multiaxis``: Multiaxis shuffled pseudo golden angle, i.e., same as ``ga-sh`` 
-        but views are repeated 3 times on orthogonal axes.
+        * ``ga-sh::multiaxis``: Multiaxis shuffled pseudo golden angle, i.e., same as ``ga-sh`` but views are repeated 3 times on orthogonal axes.
             
-        The default is ``ga``
+        The default is ``ga``.
 
     Keyword Arguments
     -----------------
