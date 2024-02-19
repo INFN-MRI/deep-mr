@@ -13,9 +13,14 @@ except Exception:
 from ..._types import Header
 
 
-def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
+def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     r"""
     Design a constant- or multi-density spiral projection.
+    
+    The trajectory consists of a 2D spiral, whose plane
+    is rotated to cover the 3D k-space. In-plane rotations
+    are sequential. Plane rotation types are specified
+    via the ``order`` argument.
 
     Parameters
     ----------
@@ -27,9 +32,17 @@ def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
     nintl : int, optional
         Number of interleaves to fully sample a plane.
         The default is ``1``.
-    multiaxis : bool, optional
-        If True, repeat each view on 3 orthogonal axes.
-        The default is ``False``
+    order : str, optional
+        Spiral plane rotation type:
+            
+        * ``ga``: Pseudo golden angle variation of periodicity ``377``.
+        * ``ga::multiaxis``: Pseudo golden angle, i.e., same as ``ga`` 
+        but views are repeated 3 times on orthogonal axes.
+        * ``ga-sh``: Shuffled pseudo golden angle.
+        * ``ga-sh::multiaxis``: Multiaxis shuffled pseudo golden angle, i.e., same as ``ga-sh`` 
+        but views are repeated 3 times on orthogonal axes.
+            
+        The default is ``ga``
 
     Keyword Arguments
     -----------------
@@ -143,8 +156,8 @@ def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
     ncontrasts = shape[1]
     nviews = max(int(nintl // accel), 1)
     
-    dphi = 22.5
-    dtheta = 23.63
+    dphi = 360.0 / nintl
+    dtheta = (1 - 233 / 377) * 360.0
     
     if ncontrasts == 1:
         j = np.arange(shape[0])
@@ -153,27 +166,28 @@ def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
         j = np.tile(j, nviews)
         i = np.repeat(i, shape[0])
         
-        theta =  j * dtheta
-        phi =  i * dphi
-        nviews = len(theta)
-        multiaxis = False
+        nviews = len(i)
     else:
         j = np.arange(ncontrasts)
         i = np.arange(nviews)
         
         j = np.tile(j, nviews)
         i = np.repeat(i, ncontrasts)
-        
+      
+    if order[:5] == "ga-sh":
         theta = (i + j) * dtheta
-        phi = i * dphi
-        
+    else:
+        theta = j * dtheta
+    phi = i * dphi
+    
+    # convert to radians
     theta = np.deg2rad(theta)  # angles in radians
     phi = np.deg2rad(phi)  # angles in radians
     
     # perform rotation
-    axis = np.zeros_like(theta)  # rotation axis
+    axis = np.zeros_like(theta, dtype=int)  # rotation axis
     Rx = _design.angleaxis2rotmat(theta, [1, 0, 0])  # whole-plane rotation about x
-    if multiaxis:
+    if order[-9:] == "multiaxis":
         Ry = _design.angleaxis2rotmat(theta, [0, 1, 0])  # whole-plane rotation about y
         R0 = _design.angleaxis2rotmat(0.5 * np.pi * np.ones_like(theta), [0, 1, 0])
         Rz = np.einsum(
@@ -183,7 +197,7 @@ def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
         axis = np.concatenate((axis, axis + 1, axis + 2), axis=0)
 
     Rz = _design.angleaxis2rotmat(phi, [0, 0, 1])  # in-plane rotation about z
-    if multiaxis:
+    if order[-9:] == "multiaxis":
         Rz = np.concatenate((Rz, Rz, Rz), axis=0)
         nviews *= 3
     
@@ -209,7 +223,7 @@ def spiral_proj(shape, accel=1, nintl=1, multiaxis=False, **kwargs):
     dcf = dcf.reshape(*traj.shape[:-1])
     
     # get shape
-    shape = tmp["mtx"]
+    shape = list(tmp["mtx"]) + [shape[0]] 
 
     # get time
     t = tmp["t"]

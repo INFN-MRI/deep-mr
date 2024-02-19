@@ -46,16 +46,18 @@ def angular_compensation(wi, coord, rotation_axis):
 
     """
     # versors
-    ux = np.asarray([1, 0, 0])
-    uy = np.asarray([0, 1, 0])
-    uz = np.asarray([0, 0, 1])
-    umat = np.stack((ux, uy, uz), axis=0)
+    # ux = np.asarray([1, 0, 0])
+    # uy = np.asarray([0, 1, 0])
+    # uz = np.asarray([0, 0, 1])
+    # umat = np.stack((ux, uy, uz), axis=0)
 
-    # versor for each proj
-    u = umat[rotation_axis.astype(int)].astype(np.float32)
+    # # versor for each proj
+    # u = umat[rotation_axis.astype(int)].astype(np.float32)
 
     # angular component
-    cangular = np.cross(coord.transpose(1, 0, 2), u).transpose(1, 0, 2)
+    # cangular = np.cross(coord.transpose(1, 0, 2), u).transpose(1, 0, 2)
+    cangular = [np.delete(coord[n], rotation_axis[n], axis=-1) for n in range(len(rotation_axis))]
+    cangular = np.stack(cangular, axis=0)
     wi_angular = analytical_dcf(cangular)  # shape (npts)
 
     # apply compensation
