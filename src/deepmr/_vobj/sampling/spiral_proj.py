@@ -33,7 +33,8 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
         Number of interleaves to fully sample a plane.
         The default is ``1``.
     order : str, optional
-        Spiral plane rotation type:
+        Spiral plane rotation type. 
+        These can be:
             
         * ``ga``: Pseudo golden angle variation of periodicity ``377``.
         * ``ga::multiaxis``: Pseudo golden angle, i.e., same as ``ga`` but views are repeated 3 times on orthogonal axes.
@@ -228,7 +229,7 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     dcf = np.repeat(dcf, nechoes, axis=0)
         
     # get shape
-    shape = list(tmp["mtx"]) + [shape[0]] 
+    shape = [shape[0]] + list(tmp["mtx"])
 
     # get time
     t = tmp["t"]

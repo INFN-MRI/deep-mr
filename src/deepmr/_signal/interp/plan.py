@@ -51,7 +51,7 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     -----
     Non-uniform coordinates axes ordering is assumed to be ``(x, y)`` for 2D signals
     and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape, kernel width
-    and Kaiser Bessel parameters are assumed to be ``(z, y, x)``.
+    and Kaiser Bessel parameters are assumed to be ``(y, x)`` and ``(z, y, x)``.
 
     Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
@@ -100,29 +100,40 @@ def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
     # preallocate interpolator
     index = []
     value = []
-
+        
     for i in range(ndim):  # (x, y, z)
         # kernel value
         value.append(torch.zeros((nframes * npts, width[i]), dtype=torch.float32))
 
         # kernel index
         index.append(torch.zeros((nframes * npts, width[i]), dtype=torch.int32))
-
+         
     # actual precomputation
-    for i in range(-ndim, 0):  # (z, y, x)
+    for i in range(ndim):  # (x, y, z)
         _do_prepare_interpolator(
             value[i], index[i], coord[i], width[i], beta[i], shape[i]
         )
-
+        
+    # fix cartesian axes
+    for i in range(ndim): # (x, y, z)
+        if width[i] == 1:
+            index[i] = coord[i][..., None].to(torch.int32)
+            value[i] = 0 * value[i] + 1.0
+            
     # reformat for output
     for i in range(ndim):
         index[i] = index[i].reshape([nframes, npts, width[i]]).to(device)
         value[i] = value[i].reshape([nframes, npts, width[i]]).to(device)
-
+        
+    # revert axis (x, y, z) > (z, y, x)
+    index = index[::-1]
+    value = value[::-1]
+    shape = shape[::-1]
+           
     # send to numba
     index = [backend.pytorch2numba(idx) for idx in index]
     value = [backend.pytorch2numba(val) for val in value]
-
+    
     # transform to tuples
     index = tuple(index)
     value = tuple(value)
@@ -190,6 +201,11 @@ def _get_kernel_scaling(beta, width):
             )
         )
 
+    # fix cartesian axes
+    for ax in range(len(width)):
+        if width[ax] == 1:
+            value[ax] = np.array([1.0])
+            
     value = np.stack(np.meshgrid(*value), axis=0).prod(axis=0)
 
     return value.sum()
@@ -258,11 +274,11 @@ def _do_prepare_interpolator(
     interp_value = backend.pytorch2numba(interp_value)
     interp_index = backend.pytorch2numba(interp_index)
     coord = backend.pytorch2numba(coord)
-
+    
     _prepare_interpolator(
         interp_value, interp_index, coord, kernel_width, kernel_param, grid_shape
     )
-
+            
     interp_value = backend.numba2pytorch(interp_value)
     interp_index = backend.numba2pytorch(interp_index, requires_grad=False)
     coord = backend.numba2pytorch(coord)

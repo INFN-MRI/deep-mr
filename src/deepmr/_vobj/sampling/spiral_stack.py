@@ -182,10 +182,6 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
     traj = traj.swapaxes(0, 1)
 
-    # expand echoes
-    nechoes = shape[-1]
-    traj = np.repeat(traj, nechoes, axis=0)
-
     # expand slices
     nz = shape[1]
     az = np.arange(-nz // 2, nz // 2, dtype=np.float32)
@@ -201,17 +197,22 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
         az = np.unique(az)
 
     # expand
-    traj = np.apply_along_axis(np.tile, -2, traj, len(az))
+    traj = np.apply_along_axis(np.tile, -3, traj, len(az))
     az = np.repeat(az, nviews)
+    az = az[None, :, None] * np.ones_like(traj[..., 0])
 
     # append new axis
-    traj = traj.concatenate((traj, az[None, :, None, None]), axis=-1)
+    traj = np.concatenate((traj, az[..., None]), axis=-1)
 
     # get dcf
     dcf = tmp["dcf"]
+    
+    # expand echoes
+    nechoes = shape[-1]
+    traj = np.repeat(traj, nechoes, axis=0)
 
     # get shape
-    shape = tmp["mtx"]
+    shape = [shape[1]] + tmp["mtx"]
 
     # get time
     t = tmp["t"]

@@ -56,7 +56,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     -----
     Non-uniform coordinates axes ordering is assumed to be ``(x, y)`` for 2D signals
     and ``(x, y, z)`` for 3D. Conversely, axes ordering for grid shape, kernel width
-    and oversampling factors are assumed to be ``(z, y, x)``.
+    and oversampling factors are assumed to be ``(y, x)`` and ``(z, y, x)``.
 
     Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
@@ -96,18 +96,18 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
         np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax]))
         for ax in range(ndim)
     ]
-    is_cart = np.asarray(is_cart)
+    is_cart = np.asarray(is_cart[::-1]) # (z, y, x)
 
     # Cartesian axes have osf = 1.0 and kernel width = 1 (no interpolation)
     oversamp[is_cart] = 1.0
     width[is_cart] = 1
-
+    
     # get oversampled grid shape
     os_shape = _get_oversamp_shape(shape, oversamp, ndim)
 
     # rescale trajectory
-    coord = _scale_coord(coord, shape, oversamp)
-
+    coord = _scale_coord(coord, shape[::-1], oversamp[::-1])
+    
     # compute interpolator
     interpolator = _interp.plan_interpolator(coord, os_shape, width, beta, device)
 
@@ -118,7 +118,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     beta = tuple(beta)
     os_shape = tuple(os_shape)
     shape = tuple(shape)
-
+    
     return NUFFTPlan(ndim, oversamp, width, beta, os_shape, shape, interpolator, device)
 
 
@@ -205,7 +205,6 @@ def apply_nufft(
     kspace = _interp.apply_interpolation(
         kspace, interpolator, basis_adjoint, device, threadsperblock
     )
-    # kspace /= np.prod(width)
 
     # bring back to original device
     kspace = kspace.to(odevice)
@@ -289,7 +288,6 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
 
     # crop
     image = _resize(image, list(image.shape[:-ndim]) + list(shape))
-    # image *= np.prod(os_shape[-ndim:]) / np.prod(shape[-ndim:])**0.5
 
     # apodize
     _apodize(image, ndim, oversamp, width, beta)
@@ -346,24 +344,26 @@ def _scale_coord(coord, shape, oversamp):
 
 def _apodize(data_in, ndim, oversamp, width, beta):
     data_out = data_in
-    for axis in range(-ndim, 0):
-        i = data_out.shape[axis]
-        os_i = np.ceil(oversamp[axis] * i)
-        idx = torch.arange(i, dtype=torch.float32, device=data_in.device)
-
-        # Calculate apodization
-        apod = (
-            beta[axis] ** 2 - (math.pi * width[axis] * (idx - i // 2) / os_i) ** 2
-        ) ** 0.5
-        apod /= torch.sinh(apod)
-
-        # normalize by DC
-        apod = apod / apod[int(i // 2)]
-
-        # avoid NaN
-        apod = torch.nan_to_num(apod, nan=1.0)
-
-        # apply to axis
-        data_out *= apod.reshape([i] + [1] * (-axis - 1))
+    for n in range(1, ndim+1):
+        axis = -n
+        if width[axis] != 1:
+            i = data_out.shape[axis]
+            os_i = np.ceil(oversamp[axis] * i)
+            idx = torch.arange(i, dtype=torch.float32, device=data_in.device)
+    
+            # Calculate apodization
+            apod = (
+                beta[axis] ** 2 - (math.pi * width[axis] * (idx - i // 2) / os_i) ** 2
+            ) ** 0.5
+            apod /= torch.sinh(apod)
+    
+            # normalize by DC
+            apod = apod / apod[int(i // 2)]
+    
+            # avoid NaN
+            apod = torch.nan_to_num(apod, nan=1.0)
+    
+            # apply to axis
+            data_out *= apod.reshape([i] + [1] * (-axis - 1))
 
     return data_out
