@@ -130,11 +130,11 @@ def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_widt
     >>> b1map3T = deepmr.b1field((128, 128), b1range=(0.5, 2.0), coil_width=1.1) 
     
     Multiple orthogonal modes can be simulated by ``nmodes`` argument.
-    For example, ``CP`` mode and ``gradient mode`` can be obtained as:
+    For example, ``CP`` mode and ``gradient`` mode can be obtained as:
         
     >>> b1map = deepmr.b1field((128, 128), nmodes=2) # b1map[0] is CP, b1map[1] is gradient mode.
     
-    Three dimensional sensitivity maps of shape ``(nz, ny, nx)`` can be obtained as:
+    Three dimensional B1+ maps of shape ``(nz, ny, nx)`` can be obtained as:
         
     >>> b1map = deepmr.b1field((128, 128, 128))
     
