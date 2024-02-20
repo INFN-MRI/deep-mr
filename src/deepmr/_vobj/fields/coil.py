@@ -6,7 +6,6 @@ import math
 import numpy as np
 import torch
 
-
 def sensmap(shape, coil_cent=None, coil_width=1.5, n_rings=None):
     """
     Simulate birdcage coils.
@@ -50,7 +49,7 @@ def sensmap(shape, coil_cent=None, coil_width=1.5, n_rings=None):
     
     return smap
 
-def b1field(shape, nmodes=1, b1range=(0.8, 1.2), coil_cent=None, ncoils=2, coil_width=1.5, n_rings=None):
+def b1field(shape, nmodes=1, b1range=(0.8, 1.2), coil_cent=None, ncoils=16, coil_width=1.5, n_rings=None):
     """
     Simulate birdcage coils.
     
@@ -97,7 +96,7 @@ def b1field(shape, nmodes=1, b1range=(0.8, 1.2), coil_cent=None, ncoils=2, coil_
     """
     # check we can do quadrature
     assert ncoils >= 2, f"We support circular polarization only - found {ncoils} transmit elements."
-    assert ncoils >= nmodes, f"Need  ncoils (={ncoils}) to be >= nmodes (={nmodes})."
+    assert ncoils >= nmodes, f"Need ncoils (={ncoils}) to be >= nmodes (={nmodes})."
     
     # generate coils
     smap = _birdcage([ncoils] + list(shape), coil_cent, coil_width, n_rings).numpy()
@@ -107,9 +106,9 @@ def b1field(shape, nmodes=1, b1range=(0.8, 1.2), coil_cent=None, ncoils=2, coil_
     smap /= rss
 
     # combine
-    dalpha = 2 * math.pi / ncoils
+    dalpha = math.pi / ncoils
     alpha = np.arange(ncoils) * dalpha
-    mode = np.arange(nmodes)
+    mode = np.arange(nmodes) + 1
     phafu = np.exp(1j * mode[:, None] * alpha[None, :]) # (nmodes, nchannels)
     
     # get modes
@@ -136,6 +135,7 @@ def _birdcage(shape, coil_cent=None, coil_width=1.5, n_rings=None):
     # default
     if coil_cent is None:
         coil_cent = [ax / 2.0 for ax in shape[1:]]
+        
     if n_rings is None:
         n_rings = np.max((shape[0] // 4, 1))
         
@@ -148,8 +148,8 @@ def _birdcage(shape, coil_cent=None, coil_width=1.5, n_rings=None):
         
         coil_phs = -c * (2 * np.pi / nc)
 
-        x_co = (x - coil_cent[-1]) / (nx / 2.0) - coilx
-        y_co = (y - coil_cent[-2]) / (ny / 2.0) - coily
+        x_co = (x - nx / 2.0) / (nx / 2.0) - coilx
+        y_co = (y - ny / 2.0) / (ny / 2.0) - coily
         
         rr = np.sqrt(x_co**2 + y_co**2)
 
