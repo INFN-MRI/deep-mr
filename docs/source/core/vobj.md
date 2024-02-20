@@ -15,6 +15,17 @@
 	deepmr.custom_phantom
 ```
 
+## Fields
+```{eval-rst}
+.. currentmodule:: deepmr
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.sensmap
+	deepmr.b1field
+```
+
 ## Sampling
 ```{eval-rst}
 .. currentmodule:: deepmr
