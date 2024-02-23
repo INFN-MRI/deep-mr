@@ -12,6 +12,7 @@
 	:nosignatures:
 	
 	deepmr.shepp_logan
+	deepmr.brainweb
 	deepmr.custom_phantom
 ```
 
@@ -22,9 +23,9 @@
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.sensmap
-	deepmr.b1field
 	deepmr.b0field
+	deepmr.b1field
+	deepmr.sensmap
 ```
 
 ## Sampling

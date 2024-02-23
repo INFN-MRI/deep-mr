@@ -12,22 +12,6 @@ import torch
 
 
 def ct_shepp_logan(npix, nslices):
-    """
-    Generate a Shepp Logan phantom with a given shape and dtype.
-
-    Parameters
-    ----------
-    npix : Iterable[int]
-        In-plane matrix size.
-    nslices : int
-        Number of slices.
-
-    Returns
-    -------
-    out : torch.Tensor
-        Shepp-Logan phantom of shape (nslices, ny, nx).
-
-    """
     # get shape
     if nslices != 1:
         shape = [npix, npix, npix]

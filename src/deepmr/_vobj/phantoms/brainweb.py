@@ -11,56 +11,26 @@ import gzip
 import logging
 import os
 import shutil
+import requests
+
 from dataclasses import asdict
 from os import path
-
-import requests
-from urllib3.exceptions import InsecureRequestWarning
+from pathlib import Path
+# from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress the warnings from urllib3
-requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+# requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
+import numpy as np
+import torch
+
+from scipy.ndimage import zoom
 
 import nibabel as nib
-import numpy as np
-from scipy.ndimage import zoom
 
 from . import tissue_classes
 
-
-def create_brainweb(
-    npix: int,
-    nslices: int = 1,
-    B0: float = 3.0,
-    model: str = "single",
-    fuzzy: bool = False,
-    idx: int = 0,
-):
-    """
-    Brainweb phantom with MR tissue parameters.
-
-    Args:
-        Args:
-            npix (int or tuple of ints): shape, can be scalar or tuple (ny, nx). If scalar, assume squared FOV.
-            nslices (int, optional): Number of slices in the phantom (default is 1).
-            B0 (float, optional): Static field strength in units of [T]; ignored if `mr` is False (default is 3.0 T).
-            model (str):  signal model to be used:
-                    - "single": single pool T1 / T2.
-                    - "bm": 2-pool model with exchange (iew pool + mw pool).
-                    - "mt": 2-pool model with exchange( iew/mw pool + zeeman semisolid pool)
-                    - "bm-mt": 3-pool model (iew pool, mw pool, zeeman semisolid pool; mw exchange with iew and ss).
-            fuzzy (bool): if true, use fuzzy model for different classes; otherwise, use discrete model (defaults: False).
-            idx (int): subject index (0 to 19). Defaults to 0.
-
-    Returns:
-        (array): if fuzzy = True, 4D phantom segmentation. Otherwise, 3D discrte segmentation.
-        (list): list of dictionaries containing 1) free water T1/T2/T2*/ADC/v, 2) bm/mt/ihmt T1/T2/fraction, 3) exchange matrix
-                for each class (index along the list correspond to value in segmentation mask)
-        (list): list of dictionaries containing electromagnetic tissue properties for each class.
-
-    Example:
-        >>> seg, mrtp, emtp = create_brainweb_logan(npix=256, nslices=3, B0=1.5, model="mt")
-
-    """
+def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuzzy=False):
     assert model in [
         "single",
         "bm",
@@ -82,7 +52,7 @@ def create_brainweb(
     shape = 3 * [npix[0]]
 
     # prepare tissue masks
-    tissue_mask = _brainweb_segmentation(shape, idx)
+    tissue_mask = _brainweb_segmentation(shape, idx, cache_dir)
 
     # get slices and phase fov
     center = int(npix[0] // 2)
@@ -119,11 +89,11 @@ def create_brainweb(
     bm = {"T1": [], "T2": [], "chemshift": [], "k": [], "weight": []}
     mt = {"k": [], "weight": []}
 
-    emtp = {
-        "chi": np.zeros(discrete_model.shape, np.float32),
-        "sigma": np.zeros(discrete_model.shape, np.float32),
-        "epsilon": np.zeros(discrete_model.shape, np.float32),
-    }
+    emtp = {"chi": [], "sigma": [], "epsilon": []}
+    #     "chi": np.zeros(discrete_model.shape, np.float32),
+    #     "sigma": np.zeros(discrete_model.shape, np.float32),
+    #     "epsilon": np.zeros(discrete_model.shape, np.float32),
+    # }
     for n in range(len(tissue_params)):
         par = tissue_params[n]
         for k in [
@@ -143,9 +113,12 @@ def create_brainweb(
             for k in ["k", "weight"]:
                 mt[k].append(par["mt"][k])
 
-        emtp["chi"][discrete_model == n] = par["chi"]
-        emtp["sigma"][discrete_model == n] = par["sigma"]
-        emtp["epsilon"][discrete_model == n] = par["epsilon"]
+        # emtp["chi"][discrete_model == n] = par["chi"]
+        # emtp["sigma"][discrete_model == n] = par["sigma"]
+        # emtp["epsilon"][discrete_model == n] = par["epsilon"]
+        emtp["chi"].append(par["chi"][0])
+        emtp["sigma"].append(par["sigma"][0])
+        emtp["epsilon"].append(par["epsilon"][0])
 
     # concatenate mrtp
     for k in [
@@ -188,12 +161,12 @@ def create_brainweb(
     if fuzzy:
         return tissue_mask, mrtp, emtp
     else:
-        return discrete_model.astype(np.float32), mrtp, emtp
+        return torch.as_tensor(discrete_model.copy(), dtype=int).squeeze(), mrtp, emtp
 
 
-def _brainweb_segmentation(shape, idx):
+def _brainweb_segmentation(shape, idx, cache_dir):
     # download files
-    fuzzy_model = get_subj(idx)
+    fuzzy_model = get_subj(idx, cache_dir)
 
     # load brain model for the given subject
     values = list(fuzzy_model.values())
@@ -211,15 +184,14 @@ def _brainweb_segmentation(shape, idx):
     # prepare model
     model = dict(zip(list(fuzzy_model.keys()), values))
 
-    # sort for output
     return np.stack(
         [
             model["bck"],
-            model["ves"],
-            model["csf"],
+            model["fat"],
             model["wht"],
             model["gry"],
-            model["fat"],
+            model["csf"],
+            model["ves"],
             model["skl"],
         ],
         axis=0,
@@ -312,7 +284,7 @@ def get_file(fname, origin, cache_dir):
             session = requests.Session()
             session.verify = False
 
-            with requests.get(origin, stream=True, verify=False) as r:
+            with requests.get(origin, stream=True, verify=True) as r:
                 with open(fpath, "wb") as fo:
                     shutil.copyfileobj(r.raw, fo)
 
@@ -351,9 +323,13 @@ def get_subj(idx, cache_dir=None):
     Returns list of files which can be `numpy.load`ed
     """
     # create cache dir
-    if cache_dir is None:
-        cache_dir = path.join("~", ".brainweb")
-
+    if cache_dir is not None:
+        cache_dir = Path(cache_dir)
+    elif "BRAINWEB_DIR" in os.environ:
+        cache_dir = Path(os.environ["BRAINWEB_DIR"])
+    else:
+        cache_dir = Path.home() / ".brainweb"
+    
     cache_dir = path.expanduser(cache_dir)
 
     if not path.exists(cache_dir):

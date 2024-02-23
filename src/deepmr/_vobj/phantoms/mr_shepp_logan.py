@@ -17,31 +17,6 @@ from . import tissue_classes
 
 
 def mr_shepp_logan(npix, nslices, B0=3.0, model="single"):
-    """
-    Generate a Shepp Logan phantom with a given shape.
-
-    Parameters
-    ----------
-    npix : Iterable[int]
-        In-plane matrix size.
-    nslices : int
-        Number of slices.
-    B0 : float, optional
-        Static field strength in T. The default is 3.0.
-    model : str, optional
-        Signal mode. Can be "single", "bm" (Bloch-McConnell), "mt" (Magnetization Transfer)
-        or "bm-mt" (Bloch-McConnell + Magnetization Transfer). The default is "single".
-
-    Returns
-    -------
-    tissue_mask : TYPE
-        DESCRIPTION.
-    mrtp : TYPE
-        DESCRIPTION.
-    emtp : TYPE
-        DESCRIPTION.
-
-    """
     assert model in [
         "single",
         "bm",
