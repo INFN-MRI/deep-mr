@@ -206,7 +206,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
 
     # get dcf
     dcf = tmp["dcf"]
-    
+
     # expand echoes
     nechoes = shape[-1]
     traj = np.repeat(traj, nechoes, axis=0)

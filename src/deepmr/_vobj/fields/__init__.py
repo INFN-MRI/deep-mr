@@ -3,7 +3,7 @@
 from . import b0 as _b0
 from . import coil as _coil
 
-from .b0 import * # noqa
+from .b0 import *  # noqa
 from .coil import *  # noqa
 
 __all__ = []

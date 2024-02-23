@@ -16,6 +16,7 @@ import requests
 from dataclasses import asdict
 from os import path
 from pathlib import Path
+
 # from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress the warnings from urllib3
@@ -30,7 +31,10 @@ import nibabel as nib
 
 from . import tissue_classes
 
-def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuzzy=False):
+
+def brainweb(
+    npix=None, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuzzy=False
+):
     assert model in [
         "single",
         "bm",
@@ -44,15 +48,23 @@ def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuz
     # tissue classes
     classes = tissue_classes.__all__
     classes = ["tissue_classes." + cl for cl in classes]
+    classes = classes[:5] + classes[-2:]
 
-    if np.isscalar(npix):
-        npix = [npix, npix]
+    if npix is not None:
+        if np.isscalar(npix):
+            npix = [npix, npix]
 
-    # get shape
-    shape = 3 * [npix[0]]
+        # get shape
+        shape = 3 * [max(npix)]
+    else:
+        shape = None
 
     # prepare tissue masks
-    tissue_mask = _brainweb_segmentation(shape, idx, cache_dir)
+    tissue_mask = _brainweb_segmentation(shape, idx, fuzzy, cache_dir)
+
+    if shape is None:
+        shape = tissue_mask.shape[-3:]
+        npix = shape
 
     # get slices and phase fov
     center = int(npix[0] // 2)
@@ -60,13 +72,15 @@ def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuz
     if nslices != 1:
         zwidth = int(nslices // 2)
         tissue_mask = tissue_mask[
-            :, center - zwidth : center + zwidth, :, center - xwidth : center + xwidth
+            ..., center - zwidth : center + zwidth, :, center - xwidth : center + xwidth
         ]
     else:
-        tissue_mask = tissue_mask[:, [center], :, center - xwidth : center + xwidth]
+        tissue_mask = tissue_mask[..., [center], :, center - xwidth : center + xwidth]
 
-    # get discrete model
-    discrete_model = np.argmax(tissue_mask, axis=0)
+    # remove unused classes
+    if fuzzy is False:
+        idx = np.unique(tissue_mask)
+        classes = [classes[i] for i in idx]
 
     # prepare tissue parameters
     tissue_params = [asdict(eval(cl)(n_atoms=1, B0=B0, model=model)) for cl in classes]
@@ -159,43 +173,52 @@ def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None, model="single", fuz
     #     )
 
     if fuzzy:
-        return tissue_mask, mrtp, emtp
+        return torch.as_tensor(tissue_mask.copy(), dtype=torch.float32), mrtp, emtp
     else:
-        return torch.as_tensor(discrete_model.copy(), dtype=int).squeeze(), mrtp, emtp
+        return torch.as_tensor(tissue_mask.copy(), dtype=int).squeeze(), mrtp, emtp
 
 
-def _brainweb_segmentation(shape, idx, cache_dir):
+def _brainweb_segmentation(shape, idx, fuzzy, cache_dir):
     # download files
-    fuzzy_model = get_subj(idx, cache_dir)
+    model = get_subj(idx, fuzzy, cache_dir)
 
     # load brain model for the given subject
-    values = list(fuzzy_model.values())
-    values = np.stack(values, axis=0)
+    if fuzzy:
+        values = list(model.values())
+        values = np.stack(values, axis=0)
+    else:
+        values = model
 
     # resize to desired matrix size
-    scale = np.asarray(shape) / np.asarray(values.shape[-3:])
-    scale = [1.0] + scale.tolist()
-    values = zoom(values, scale)
+    if shape is not None:
+        scale = np.asarray(shape) / np.asarray(values.shape[-3:])
+        if fuzzy:
+            scale = [1.0] + scale.tolist()
+        values = zoom(values.astype(np.float32), scale, order=0)
 
     # normalize such as total fraction = 1
-    values = values / values.sum(axis=0)
-    values = [val for val in values]
+    if fuzzy:
+        values = values / values.sum(axis=0)
+        values = [val for val in values]
+    else:
+        values = values.astype(int)
 
     # prepare model
-    model = dict(zip(list(fuzzy_model.keys()), values))
-
-    return np.stack(
-        [
-            model["bck"],
-            model["fat"],
-            model["wht"],
-            model["gry"],
-            model["csf"],
-            model["ves"],
-            model["skl"],
-        ],
-        axis=0,
-    )
+    if fuzzy:
+        model = dict(zip(list(model.keys()), values))
+        return np.stack(
+            [
+                model["bck"],
+                model["fat"],
+                model["wht"],
+                model["gry"],
+                model["csf"],
+                model["skl"],
+                model["ves"],
+            ],
+            axis=0,
+        )
+    return values
 
 
 # %% local utils
@@ -318,7 +341,7 @@ def load_subj(fpath, value):
     return data
 
 
-def get_subj(idx, cache_dir=None):
+def get_subj(idx, fuzzy, cache_dir):
     """
     Returns list of files which can be `numpy.load`ed
     """
@@ -329,7 +352,7 @@ def get_subj(idx, cache_dir=None):
         cache_dir = Path(os.environ["BRAINWEB_DIR"])
     else:
         cache_dir = Path.home() / ".brainweb"
-    
+
     cache_dir = path.expanduser(cache_dir)
 
     if not path.exists(cache_dir):
@@ -356,7 +379,15 @@ def get_subj(idx, cache_dir=None):
         files[c] = get_file(fname, url, cache_dir=cache_dir)
 
     # convert to niftis
-    fpath = path.join(cache_dir, "sub" + str(idx).zfill(2) + ".nii.gz")
+    fpath_discrete = path.join(
+        cache_dir, "sub" + str(idx).zfill(2) + "_discrete.nii.gz"
+    )
+    fpath_fuzzy = path.join(cache_dir, "sub" + str(idx).zfill(2) + "_fuzzy.nii.gz")
+
+    if fuzzy:
+        fpath = fpath_fuzzy
+    else:
+        fpath = fpath_discrete
 
     if path.exists(fpath):
         # load data
@@ -364,7 +395,10 @@ def get_subj(idx, cache_dir=None):
         data = data.get_fdata().transpose()
 
         # create subject dict
-        subj = dict(zip(["bck", "csf", "gry", "wht", "fat", "skl", "ves"], data))
+        if fuzzy:
+            subj = dict(zip(["bck", "fat", "wht", "gry", "csf", "skl", "ves"], data))
+        else:
+            subj = data
 
     else:
         background_value = {k: 0 for k in files.keys()}
@@ -392,9 +426,30 @@ def get_subj(idx, cache_dir=None):
         subj["fat"] += subj["dura"]
         subj.pop("dura", None)
 
-        # save values
+        # reorder
+        subj = {
+            "bck": subj["bck"],
+            "fat": subj["fat"],
+            "wht": subj["wht"],
+            "gry": subj["gry"],
+            "csf": subj["csf"],
+            "skl": subj["skl"],
+            "ves": subj["ves"],
+        }
+
+        # save fuzzy values
         values = np.stack(list(subj.values()), axis=0).transpose()
         cache = nib.Nifti1Image(values, np.eye(4))  # Save axis for data (just identity)
-        cache.to_filename(fpath)  # Save as NiBabel file
+        cache.to_filename(fpath_fuzzy)  # Save as NiBabel file
+
+        # save discrete
+        discrete_model = np.argmax(values, axis=-1)
+        cache = nib.Nifti1Image(
+            discrete_model.astype(np.float32), np.eye(4)
+        )  # Save axis for data (just identity)
+        cache.to_filename(fpath_discrete)  # Save as NiBabel file
+
+        if fuzzy is False:
+            subj = discrete_model
 
     return subj

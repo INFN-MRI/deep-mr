@@ -16,14 +16,14 @@ def resize(input, oshape):
 
     Parameters
     ----------
-    input : torch.Tensor
+    input : np.ndarray | torch.Tensor
         Input tensor of shape ``(..., ishape)``.
     oshape : Iterable
         Output shape.
 
     Returns
     -------
-    output : torch.Tensor
+    output : np.ndarray | torch.Tensor
         Zero-padded or cropped tensor of shape ``(..., oshape)``.
 
     Examples
@@ -68,6 +68,12 @@ def resize(input, oshape):
     [1] https://github.com/mikgroup/sigpy/blob/main/sigpy/util.py
 
     """
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+        input = torch.as_tensor(input)
+    else:
+        isnumpy = False
+
     if isinstance(oshape, int):
         oshape = [oshape]
 
@@ -90,6 +96,9 @@ def resize(input, oshape):
     input = input.reshape(ishape1)
     output[oslice] = input[islice]
 
+    if isnumpy:
+        output = output.numpy(force=True)
+
     return output
 
 
@@ -99,7 +108,7 @@ def resample(input, oshape, filt=True, polysmooth=False):
 
     Parameters
     ----------
-    input : torch.Tensor
+    input : np.ndarray | torch.Tensor
         Input tensor of shape ``(..., ishape)``.
     oshape : Iterable
         Output shape.
@@ -113,10 +122,16 @@ def resample(input, oshape, filt=True, polysmooth=False):
 
     Returns
     -------
-    output : torch.Tensor
+    output : np.ndarray | torch.Tensor
         Resampled tensor of shape ``(..., oshape)``.
 
     """
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+        input = torch.as_tensor(input)
+    else:
+        isnumpy = False
+
     if isinstance(oshape, int):
         oshape = [oshape]
 
@@ -157,6 +172,9 @@ def resample(input, oshape, filt=True, polysmooth=False):
     # take magnitude if original signal was real
     if isreal:
         output = abs(output)
+
+    if isnumpy:
+        output = output.numpy(force=True)
 
     return output
 

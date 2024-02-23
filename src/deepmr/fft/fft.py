@@ -5,6 +5,7 @@ __all__ = ["fft", "ifft"]
 import numpy as np
 import torch
 
+
 def fft(input, axes=None, norm="ortho"):
     """
     Centered Fast Fourier Transform.
@@ -66,9 +67,9 @@ def fft(input, axes=None, norm="ortho"):
         isnumpy = True
     else:
         isnumpy = False
-        
+
     # make sure this is a tensor
-    input = torch.as_tensor(input) 
+    input = torch.as_tensor(input)
     ax = _normalize_axes(axes, input.ndim)
     output = torch.fft.fftshift(
         torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
@@ -76,7 +77,7 @@ def fft(input, axes=None, norm="ortho"):
 
     if isnumpy:
         output = np.asarray(output)
-        
+
     return output
 
 
@@ -140,17 +141,17 @@ def ifft(input, axes=None, norm="ortho"):
         isnumpy = True
     else:
         isnumpy = False
-        
+
     # make sure this is a tensor
-    input = torch.as_tensor(input)  
+    input = torch.as_tensor(input)
     ax = _normalize_axes(axes, input.ndim)
     output = torch.fft.fftshift(
         torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
     )
-    
+
     if isnumpy:
         output = np.asarray(output)
-        
+
     return output
 
 

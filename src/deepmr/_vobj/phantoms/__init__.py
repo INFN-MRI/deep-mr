@@ -92,26 +92,26 @@ def shepp_logan(npix, nslices=1, qmr=False, B0=3.0):
         return custom_phantom(seg, prop)
     else:
         return ct_shepp_logan(npix, nslices)
-    
-    
-def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None):
-    """
-    Initialize a brain-shaped [1-3] phantom for MR simulations.
 
-    This function generates a brain-shaped phantom for qMR or MR simulations based on the provided parameters.
+
+def brainweb(idx, npix=None, nslices=1, B0=3.0, cache_dir=None):
+    """
+    Initialize a brain-shaped phantom for MR simulations.
+
+    This function generates a brain-shaped phantom [1-3] for qMR or MR simulations based on the provided parameters.
 
     Parameters
     ----------
-    npix : Iterable[int]
-        In-plane matrix size.
+    idx : int
+        Brainweb ID (``0`` to ``19``).
+    npix : Iterable[int], optional
+        In-plane matrix size. The default is ``None``.
     nslices : int, optional
         Number of slices. An isotropic ``[npix, npix, npix]`` phantom can be
         generated, for convenience, by setting nslices to ``-1``. The default is ``1``.
     B0 : float, optional
         Static field strength in ``[T]``.
         The default is ``3.0``.
-    idx : int, optional
-        Brainweb ID (``0`` to ``19``). The default is ``0``.
     cache_dir : os.PathLike
        Directory to download the data.
 
@@ -126,34 +126,34 @@ def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None):
     --------
     >>> import deepmr
 
-    We can generate a single-slice BrainWen phantom as:
+    We can generate a single-slice BrainWeb phantom as:
 
     >>> phantom = deepmr.brainweb(128)
     >>> phantom.keys()
     dict_keys(['M0', 'T1', 'T2', 'T2star', 'chi'])
-    
+
     Each map will have ``(nslices, npix, npix)`` shape:
 
     >>> phantom["M0"].shape
     torch.Size([128, 128])
-    
+
     We also support multiple slices:
 
     >>> phantom = deepmr.brainweb(128, 32)
     >>> phantom["M0"].shape
     torch.Size([32, 128, 128])
-    
+
     Notes
     -----
     The brainweb is set in the following order:
-        
+
     * The ``cache_dir`` passed as argument.
     * The environment variable ``BRAINWEB_DIR``.
     * The default cache__dir ``~/brainweb``.
 
     References
     ----------
-    [1] D.L. Collins, A.P. Zijdenbos, V. Kollokian, J.G. Sled, N.J. Kabani, C.J. Holmes, A.C. Evans : 
+    [1] D.L. Collins, A.P. Zijdenbos, V. Kollokian, J.G. Sled, N.J. Kabani, C.J. Holmes, A.C. Evans :
         "Design and Construction of a Realistic Digital Brain Phantom"
         IEEE Transactions on Medical Imaging, vol.17, No.3, p.463--468, June 1998\n
     [2] https://github.com/casperdcl/brainweb/ \n
@@ -163,7 +163,7 @@ def brainweb(npix, nslices=1, B0=3.0, idx=0, cache_dir=None):
     """
     if nslices < 0:
         nslices = npix
-        
+
     seg, mrtp, emtp = _brainweb(npix, nslices, B0, idx, cache_dir)
     # - seg (tensor): phantom segmentation (e.g., 1 := GM, 2 := WM, 3 := CSF...)
     # - mrtp (list): list of dictionaries containing 1) free water T1/T2/T2*/ADC/v, 2) bm/mt T1/T2/fraction, 3) exchange matrix

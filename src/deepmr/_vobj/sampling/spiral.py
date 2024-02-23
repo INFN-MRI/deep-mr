@@ -36,7 +36,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     nintl : int, optional
         Number of interleaves to fully sample a plane.
         The default is ``1``.
-    
+
 
     Keyword Arguments
     -----------------

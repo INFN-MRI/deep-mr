@@ -56,7 +56,10 @@ def angular_compensation(wi, coord, rotation_axis):
 
     # angular component
     # cangular = np.cross(coord.transpose(1, 0, 2), u).transpose(1, 0, 2)
-    cangular = [np.delete(coord[n], rotation_axis[n], axis=-1) for n in range(len(rotation_axis))]
+    cangular = [
+        np.delete(coord[n], rotation_axis[n], axis=-1)
+        for n in range(len(rotation_axis))
+    ]
     cangular = np.stack(cangular, axis=0)
     wi_angular = analytical_dcf(cangular)  # shape (npts)
 
