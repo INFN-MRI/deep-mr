@@ -140,7 +140,7 @@ def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_widt
     >>>
     >>> # transmit coil is 1.1 times bigger than FOV (e.g., head coil) and 
     >>> # B1+ scalings are between (0.5, 2.0) the nominal flip angle (e.g., 7T scanner)
-    >>> b1map3T = deepmr.b1field((128, 128), b1range=(0.5, 2.0), coil_width=1.1) 
+    >>> b1map7T = deepmr.b1field((128, 128), b1range=(0.5, 2.0), coil_width=1.1) 
     
     Multiple orthogonal modes can be simulated by ``nmodes`` argument.
     For example, ``CP`` mode and ``gradient`` mode can be obtained as:
