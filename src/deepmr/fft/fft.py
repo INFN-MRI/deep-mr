@@ -2,10 +2,10 @@
 
 __all__ = ["fft", "ifft"]
 
+import numpy as np
 import torch
 
-
-def fft(input, axes, norm="ortho"):
+def fft(input, axes=None, norm="ortho"):
     """
     Centered Fast Fourier Transform.
 
@@ -13,14 +13,17 @@ def fft(input, axes, norm="ortho"):
 
     Parameters
     ----------
-    input : torch.Tensor
+    input : np.ndarray | torch.Tensor
         Input signal.
-    axes : Iterable[int]
+    axes : Iterable[int], optional
         Axes over which to compute the FFT.
+        If not specified, apply FFT over all the axes.
+    norm : str, optional
+        FFT normalization. The default is ``ortho``.
 
     Returns
     -------
-    output : torch.Tensor
+    output : np.ndarray | torch.Tensor
         Output signal.
 
     Examples
@@ -58,13 +61,26 @@ def fft(input, axes, norm="ortho"):
     [1] https://github.com/mikgroup/sigpy
 
     """
+    # check if we are using numpy arrays
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+    else:
+        isnumpy = False
+        
+    # make sure this is a tensor
+    input = torch.as_tensor(input) 
     ax = _normalize_axes(axes, input.ndim)
-    return torch.fft.fftshift(
+    output = torch.fft.fftshift(
         torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
     )
 
+    if isnumpy:
+        output = np.asarray(output)
+        
+    return output
 
-def ifft(input, axes, norm="ortho"):
+
+def ifft(input, axes=None, norm="ortho"):
     """
     Centered inverse Fast Fourier Transform.
 
@@ -72,14 +88,17 @@ def ifft(input, axes, norm="ortho"):
 
     Parameters
     ----------
-    input : torch.Tensor
+    input :  np.ndarray | torch.Tensor
         Input signal.
     axes : Iterable[int]
-        Axes over which to compute the FFT.
+        Axes over which to compute the iFFT.
+        If not specified, apply iFFT over all the axes.
+    norm : str, optional
+        FFT normalization. The default is ``ortho``.
 
     Returns
     -------
-    output : torch.Tensor
+    output :  np.ndarray | torch.Tensor
         Output signal.
 
     Examples
@@ -116,10 +135,23 @@ def ifft(input, axes, norm="ortho"):
     [1] https://github.com/mikgroup/sigpy
 
     """
+    # check if we are using numpy arrays
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+    else:
+        isnumpy = False
+        
+    # make sure this is a tensor
+    input = torch.as_tensor(input)  
     ax = _normalize_axes(axes, input.ndim)
-    return torch.fft.fftshift(
+    output = torch.fft.fftshift(
         torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
     )
+    
+    if isnumpy:
+        output = np.asarray(output)
+        
+    return output
 
 
 # %% local subroutines

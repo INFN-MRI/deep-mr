@@ -24,6 +24,7 @@
 	
 	deepmr.sensmap
 	deepmr.b1field
+	deepmr.b0field
 ```
 
 ## Sampling

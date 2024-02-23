@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 
-def sensmap(shape ,coil_width=2.0,  shift=None, dphi=0.0, nrings=None):
+def sensmap(shape ,coil_width=2.0,  shift=None, dphi=0.0, nrings=None, mask=None):
     """
     Simulate birdcage coils.
     
@@ -15,7 +15,7 @@ def sensmap(shape ,coil_width=2.0,  shift=None, dphi=0.0, nrings=None):
     Parameters
     ----------
     shape : Iterable[int]
-        Size of the image ``(ncoils, ny, nx)`` (2D) or ``(ncoils, nz, ny, nx)`` (3D) for the sensitivity coils.
+        Size of the matrix ``(ncoils, ny, nx)`` (2D) or ``(ncoils, nz, ny, nx)`` (3D) for the sensitivity coils.
     shift : Iterable[int], optional
         Displacement of the coil center with respect to matrix center. 
         The default is ``(0, 0)`` / ``(0, 0, 0)``.
@@ -28,6 +28,10 @@ def sensmap(shape ,coil_width=2.0,  shift=None, dphi=0.0, nrings=None):
     nrings : int, optional
         Number of rings for a cylindrical hardware set-up. 
         The default is ``ncoils // 4``.
+    mask : np.ndarray | torch.Tensor, optional
+        Region of support of the object of
+        shape ``(ny, nx)`` (2D) or ``(nz, ny, nx)`` (3D). 
+        The default is ``None``.
 
     Returns
     -------
@@ -64,10 +68,15 @@ def sensmap(shape ,coil_width=2.0,  shift=None, dphi=0.0, nrings=None):
     rss = sum(abs(smap) ** 2, 0) ** 0.5
     smap /= rss
     
+    # mask
+    if mask is not None:
+        mask = torch.as_tensor(mask != 0)
+        smap = mask * smap
+    
     return smap
 
 
-def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_width=1.1, ncoils=8, nrings=None):
+def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_width=1.1, ncoils=8, nrings=None, mask=None):
     """
     Simulate inhomogeneous B1+ fields.
     
@@ -76,8 +85,8 @@ def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_widt
     Parameters
     ----------
     shape : Iterable[int]
-        Size of the image ``(ncoils, ny, nx)`` (2D) or 
-        ``(ncoils, nz, ny, nx)`` (3D) for the sensitivity coils.
+        Size of the matrix ``(ny, nx)`` (2D) or 
+        ``(nz, ny, nx)`` (3D) for the B1+ field.
     nmodes : int, optional
         Number of B1+ modes. First mode is ``CP`` mode, second
         is ``gradient`` mode, and so on. The default is ``1``.
@@ -99,6 +108,10 @@ def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_widt
     nrings : int, optional
         Number of rings for a cylindrical hardware set-up. 
         The default is ``ncoils // 4``.
+    mask : np.ndarray | torch.Tensor, optional
+        Region of support of the object of
+        shape ``(ny, nx)`` (2D) or ``(nz, ny, nx)`` (3D). 
+        The default is ``None``.
 
     Returns
     -------
@@ -182,10 +195,15 @@ def b1field(shape, nmodes=1, b1range=(0.5, 2.0), shift=None, dphi=0.0, coil_widt
     else:
         smap = torch.as_tensor(smap, dtype=torch.complex64)
     
+    # mask
+    if mask is not None:
+        mask = torch.as_tensor(mask != 0)
+        smap = mask * smap
+    
     return smap
 
     
-def _birdcage(shape, coil_width=1.5, nrings=None, shift=None, dphi=0.0):
+def _birdcage(shape, coil_width, nrings, shift, dphi):
     
     # default
     if shift is None:
@@ -195,7 +213,7 @@ def _birdcage(shape, coil_width=1.5, nrings=None, shift=None, dphi=0.0):
         
     # coil width and radius
     c_width = coil_width * min(shape[-2:])
-    c_rad = 0.5 * min(shape[-2:])
+    c_rad = 0.5 * c_width
     
     if len(shape) == 3:
         nc, ny, nx = shape

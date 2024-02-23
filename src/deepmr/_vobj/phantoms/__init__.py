@@ -34,8 +34,9 @@ def shepp_logan(npix, nslices=1, qmr=False, B0=3.0):
     -------
     phantom : torch.Tensor, dict
         Shepp-Logan phantom of shape ``(nslices, ny, nx)`` (``qmr == False``) or
-        a dictionary of maps ("M0", ``T1``, ``T2``, ``T2star``, ``chi``) of
-        shape ``(nslices, ny, nx)`` (``qmr == True``).
+        a dictionary of maps (``M0``, ``T1``, ``T2``, ``T2star``, ``chi``) of
+        shape ``(nslices, ny, nx)`` (``qmr == True``). Units for ``T1``, ``T2`` and ``T2star``
+        are ``[ms]``; for ``chi``, units are ``[ppm]``.
 
     Examples
     --------
