@@ -108,7 +108,7 @@ def read_acqheader(filepath, *args, device="cpu", verbose=False, **kwargs):
         List of spatial axis to be flipped after image reconstruction.
         The default is an empty list (no flipping).
     * transpose (list):
-         Permutation of image dimensions after reconstruction, depending on acquisition mode:
+        Permutation of image dimensions after reconstruction, depending on acquisition mode:
 
         * **2Dcart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``
         * **2Dnoncart:** reconstructed image has ``(nslices, ncontrasts, ny, nx) -> transpose = [1, 0, 2, 3]``

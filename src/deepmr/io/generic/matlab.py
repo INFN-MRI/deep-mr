@@ -49,8 +49,8 @@ def read_matfile(filepath, return_fullpath=False):
     array([[0.        , 0.78539816, 1.57079633, 2.35619449, 3.14159265,
             3.92699082, 4.71238898, 5.49778714, 6.28318531]])
 
-    Contrary to 'scipy.io', this will load matlab v7.3 files as well, using 'mat73' library [1].
-    In addition, '__global__', '__header__' and '__version__' fields are automatically
+    Contrary to ``scipy.io``, this will load matlab v7.3 files as well, using ``mat73`` library [1].
+    In addition, ``__global__``, ``__header__`` and ``__version__`` fields are automatically
     discarded.
 
     References

@@ -36,7 +36,7 @@ def tensor2patches(image, patch_shape, patch_stride=None):
 
     References
     ----------
-    [1] https://stackoverflow.com/questions/64462917/view-as-windows-from-skimage-but-in-pytorch
+    [1] https://stackoverflow.com/questions/64462917/view-as-windows-from-skimage-but-in-pytorch \n
     [2] https://discuss.pytorch.org/t/patch-making-does-pytorch-have-anything-to-offer/33850/10
 
     """
@@ -130,7 +130,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
 
     References
     ----------
-    [1] https://discuss.pytorch.org/t/how-to-split-tensors-with-overlap-and-then-reconstruct-the-original-tensor/70261
+    [1] https://discuss.pytorch.org/t/how-to-split-tensors-with-overlap-and-then-reconstruct-the-original-tensor/70261 \n
     [2] https://github.com/f-dangel/unfoldNd
 
     """

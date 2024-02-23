@@ -48,7 +48,7 @@ def fermi(ndim, size, width=None):
     >>> (filt1d >= 0.5).sum()
     tensor(128)
 
-    User can specify a smaller FWHM via "width" parameter:
+    User can specify a smaller FWHM via ``width`` parameter:
 
     >>> filt1d = deepmr.fermi(1, 128, width=32)
     >>> filt1d.shape

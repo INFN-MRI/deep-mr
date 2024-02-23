@@ -406,18 +406,18 @@ def write_image(
     When the image to be written is the result of a reconstruction performed on k-space data loaded using :func:`deepmr.io.read_rawdata`,
     axis order depends on acquisition mode:
 
-        * **2Dcart:** ``(nslices, ncontrasts, ny, nx)``
-        * **2Dnoncart:** ``(nslices, ncontrasts, ny, nx)``
-        * **3Dcart:** ``(ncontrasts, nz, ny, nx)``
-        * **3Dnoncart:** ``(nx, ncontrasts, nz, ny)``
+    * **2Dcart:** ``(nslices, ncontrasts, ny, nx)``
+    * **2Dnoncart:** ``(nslices, ncontrasts, ny, nx)``
+    * **3Dcart:** ``(ncontrasts, nz, ny, nx)``
+    * **3Dnoncart:** ``(nx, ncontrasts, nz, ny)``
 
     In this case, image should be transposed to ``(ncontrasts, nslices, ny, nx)`` or ``(ncontrasts, nz, ny, nx)`` for 2D/3D acquisitions, respectively.
     If provided, ``head`` will contain the appropriate permutation order (:func:`head.transpose`):
 
-        * **2Dcart:** ``head.transpose = [1, 0, 2, 3]``
-        * **2Dnoncart:** ``head.transpose = [1, 0, 2, 3]``
-        * **3Dcart:** ``head.transpose = [0, 1, 2, 3]``
-        * **3Dnoncart:** ``head.transpose = [1, 2, 3, 0]``
+    * **2Dcart:** ``head.transpose = [1, 0, 2, 3]``
+    * **2Dnoncart:** ``head.transpose = [1, 0, 2, 3]``
+    * **3Dcart:** ``head.transpose = [0, 1, 2, 3]``
+    * **3Dnoncart:** ``head.transpose = [1, 2, 3, 0]``
 
     If ``head`` is not provided, the user shoudl manually transpose the image tensor to match the required shape.
 
