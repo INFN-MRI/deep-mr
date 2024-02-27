@@ -134,6 +134,9 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     * dcf (torch.Tensor):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
+    * TE (torch.Tensor):
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        and minimal echo spacing.
 
     """
     # expand shape if needed

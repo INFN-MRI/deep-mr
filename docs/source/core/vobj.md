@@ -35,6 +35,8 @@
 	:toctree: generated
 	:nosignatures:
 	
+	deepmr.cartesian2D
+	deepmr.cartesian3D
 	deepmr.spiral
 	deepmr.spiral_stack
 	deepmr.spiral_proj

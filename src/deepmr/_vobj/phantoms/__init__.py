@@ -70,6 +70,14 @@ def shepp_logan(npix, nslices=1, qmr=False, B0=3.0):
 
     >>> phantom["M0"].shape
     torch.Size([128, 128])
+    
+    References
+    ----------
+    [1] L. A. Shepp and B. F. Logan, 
+    "The Fourier reconstruction of a head section," 
+    in IEEE Transactions on Nuclear Science, 
+    vol. 21, no. 3, pp. 21-43, June 1974, 
+    doi: 10.1109/TNS.1974.6499235.
 
     """
     if nslices < 0:
@@ -153,8 +161,8 @@ def brainweb(idx, npix=None, nslices=1, B0=3.0, cache_dir=None):
 
     References
     ----------
-    [1] D.L. Collins, A.P. Zijdenbos, V. Kollokian, J.G. Sled, N.J. Kabani, C.J. Holmes, A.C. Evans :
-        "Design and Construction of a Realistic Digital Brain Phantom"
+    [1] D.L. Collins, A.P. Zijdenbos, V. Kollokian, J.G. Sled, N.J. Kabani, C.J. Holmes, A.C. Evans,
+        Design and Construction of a Realistic Digital Brain Phantom,
         IEEE Transactions on Medical Imaging, vol.17, No.3, p.463--468, June 1998\n
     [2] https://github.com/casperdcl/brainweb/ \n
     [3] https://github.com/paquiteau/brainweb-dl?tab=readme-ov-file

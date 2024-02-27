@@ -111,7 +111,7 @@ def make_cartesian_gradient(k, gmax, smax, gdt, rew_derate, fid=(0, 0), flyback=
     satisfying physical system constraint.
 
     Args:
-        k: input trajectory of shape (npts, ) in units of [rad / m].
+        k: input trajectory of shape (npts,) in units of [rad / m].
         gmax: maximum gradient [mT / m].
         smax: max slew rate [T / m / s].
         gdt: sample time [us].
@@ -126,8 +126,8 @@ def make_cartesian_gradient(k, gmax, smax, gdt, rew_derate, fid=(0, 0), flyback=
 
     """
     # get kmax
-    kmin = k[:, 0].min()
-    kmax = k[:, -1].max()
+    kmin = k.min()
+    kmax = k.max()
 
     # compute gradient
     if gmax is not None and smax is not None:

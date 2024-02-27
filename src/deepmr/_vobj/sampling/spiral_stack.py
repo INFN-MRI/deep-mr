@@ -131,6 +131,9 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     * dcf (torch.Tensor):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
+    * TE (torch.Tensor):
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        and minimal echo spacing.
 
     """
     assert len(shape) >= 2, "Please provide at least (in-plane, nslices) as shape."
