@@ -37,6 +37,12 @@
 	
 	deepmr.cartesian2D
 	deepmr.cartesian3D
+	deepmr.radial
+	deepmr.radial_stack
+	deepmr.radial_proj
+	deepmr.rosette
+	deepmr.rosette_stack
+	deepmr.rosette_proj
 	deepmr.spiral
 	deepmr.spiral_stack
 	deepmr.spiral_proj
