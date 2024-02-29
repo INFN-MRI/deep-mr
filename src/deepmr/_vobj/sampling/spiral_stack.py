@@ -132,7 +132,7 @@ def spiral_stack(shape, accel=None, nintl=1, **kwargs):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
     * TE (torch.Tensor):
-        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us``
         and minimal echo spacing.
 
     """
@@ -143,19 +143,19 @@ def spiral_stack(shape, accel=None, nintl=1, **kwargs):
 
     while len(shape) < 4:
         shape = shape + [1]
-        
+
     # default accel
     if accel is None:
         if shape[2] == 1:
             accel = 1
         else:
             accel = nintl
-        
+
     # expand accel if needed
     if np.isscalar(accel):
         accel = [accel, 1]
     else:
-        accel = list(accel)        
+        accel = list(accel)
 
     # expand acs if needed
     if "acs_shape" in kwargs:

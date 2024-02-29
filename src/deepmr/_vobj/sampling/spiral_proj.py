@@ -138,7 +138,7 @@ def spiral_proj(shape, accel=None, nintl=1, order="ga", **kwargs):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
     * TE (torch.Tensor):
-        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us``
         and minimal echo spacing.
 
     """
@@ -150,19 +150,19 @@ def spiral_proj(shape, accel=None, nintl=1, order="ga", **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
-        
+
     # default accel
     if accel is None:
         if shape[1] == 1:
             accel = 1
         else:
             accel = int(math.pi * shape[0])
-        
+
     # expand accel if needed
     if np.isscalar(accel):
         accel = [1, accel]
     else:
-        accel = list(accel) 
+        accel = list(accel)
 
     # assume 1mm iso
     fov = shape[0]
@@ -177,7 +177,7 @@ def spiral_proj(shape, accel=None, nintl=1, order="ga", **kwargs):
 
     dphi = 360.0 / nintl
     dtheta = (1 - 233 / 377) * 360.0
-    
+
     # build rotation angles
     j = np.arange(ncontrasts * nplanes)
     i = np.arange(nviews)
@@ -190,7 +190,7 @@ def spiral_proj(shape, accel=None, nintl=1, order="ga", **kwargs):
         theta = (i + j) * dtheta
     else:
         theta = j * dtheta
-    
+
     # in-plane angle
     phi = i * dphi
 

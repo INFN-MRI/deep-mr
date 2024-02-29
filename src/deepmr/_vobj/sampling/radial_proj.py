@@ -29,7 +29,7 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
         Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
     nviews : int, optional
         Number of spokes (in-plane, radial).
-        The default is ``$\pi$ * (shape[0], shape[1])`` if ``shape[2] == 1``, 
+        The default is ``$\pi$ * (shape[0], shape[1])`` if ``shape[2] == 1``,
         otherwise it is ``($\pi$ * shape[0], 1)``.
     order : str, optional
         Radial plane rotation type.
@@ -76,7 +76,7 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
 
     corresponding to 420 different contrasts, each sampled with a different fully sampled plane.
     Similarly, multiple echoes (with fixed sampling) can be specified as:
-        
+
     >>> head = deepmr.radial_proj((128, 1, 8))
     >>> head.traj.shape
     torch.Size([8, 161604, 128, 2])
@@ -99,7 +99,7 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
     * TE (torch.Tensor):
-        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us``
         and minimal echo spacing.
 
     """
@@ -111,19 +111,19 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
-        
+
     # default views
     if nviews is None:
         if shape[1] == 1:
             nviews = int(math.pi * shape[0])
         else:
             nviews = 1
-            
+
     # expand nviews if needed
     if np.isscalar(nviews):
         nviews = [int(math.pi * shape[0]), nviews]
     else:
-        nviews = list(nviews) 
+        nviews = list(nviews)
 
     # assume 1mm iso
     fov = shape[0]
@@ -149,7 +149,7 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
         theta = (i + j) * dtheta
     else:
         theta = j * dtheta
-    
+
     # in-plane angle
     phi = i * dphi
 

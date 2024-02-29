@@ -129,7 +129,7 @@ def spiral(shape, accel=None, nintl=1, **kwargs):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
     * TE (torch.Tensor):
-        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us``
         and minimal echo spacing.
 
     """
@@ -141,7 +141,7 @@ def spiral(shape, accel=None, nintl=1, **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
-        
+
     # default accel
     if accel is None:
         if shape[1] == 1:

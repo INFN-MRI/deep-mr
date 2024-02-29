@@ -92,7 +92,7 @@ def radial(shape, nviews=None, **kwargs):
         This is the k-space sampling density compensation factor
         with shape ``(ncontrasts, nviews, nsamples)``.
     * TE (torch.Tensor):
-        This is the Echo Times array. Assumes a k-space raster time of ``1 us`` 
+        This is the Echo Times array. Assumes a k-space raster time of ``1 us``
         and minimal echo spacing.
 
     """
@@ -104,7 +104,7 @@ def radial(shape, nviews=None, **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
-        
+
     # default views
     if nviews is None:
         if shape[1] == 1:
@@ -117,7 +117,7 @@ def radial(shape, nviews=None, **kwargs):
 
     # design single interleaf spiral
     tmp, _ = _design.radial(fov, shape[0], 1, 1, **kwargs)
-    
+
     # rotate
     ncontrasts = shape[1]
 
@@ -158,5 +158,3 @@ def radial(shape, nviews=None, **kwargs):
     head.torch()
 
     return head
-
-

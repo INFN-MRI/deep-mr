@@ -11,13 +11,13 @@ from . import spiral as _spiral
 from . import spiral_stack as _spiral_stack
 from . import spiral_proj as _spiral_proj
 
-from .cartesian import * # noqa
-from .radial import * # noqa
-from .radial_stack import * # noqa
-from .radial_proj import * # noqa
-from .rosette import * # noqa
-from .rosette_stack import * # noqa
-from .rosette_proj import * # noqa
+from .cartesian import *  # noqa
+from .radial import *  # noqa
+from .radial_stack import *  # noqa
+from .radial_proj import *  # noqa
+from .rosette import *  # noqa
+from .rosette_stack import *  # noqa
+from .rosette_proj import *  # noqa
 from .spiral import *  # noqa
 from .spiral_stack import *  # noqa
 from .spiral_proj import *  # noqa

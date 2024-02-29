@@ -14,29 +14,29 @@ gamma = 2 * np.pi * gamma_bar  # rad / T / us -> rad / T / s
 
 def cartesian2D(fov, shape, accel=1, osf=1.0, **kwargs):
     r"""
-    Design a 2D (+t) cartesian encoding scheme.
+        Design a 2D (+t) cartesian encoding scheme.
 
-    Args:
-        fov (tuple of floats): field of view (FOVx, FOVy) in [mm]. If scalar, assume isotropic FOV (FOVx = FOVy).
-        shape (tuple of ints): matrix size (x, y, echoes=1, frames=1).
-        accel (tuple of ints): acceleration (Ry, Pf). Ranges from (1, 1) (fully sampled) to (ny, 0.75).
-        osf (float): readout oversampling factor (defaults to 1.0)
-.
-    Kwargs:
-        ordering (str): acquire phase sequentially ("sequentially") or not ("interleaved") when nframes > 1.
-            Default to "interleaved".
-        echo_type (str): can be "bipolar" or "flyback".
-        acs_shape (int): matrix size for calibration regions ACSy. Defaults to None.
-        gdt (float): gradient sampling rate in [us].
-        gmax (float): maximum gradient amplitude in [mT / m].
-        smax (float): maximum slew rate in [T / m / s].
-        rew_derate (float): derate slew rate during rewinder and z phase-encode blip by this factor, to reduce PNS. Default: 0.1.
-        fid (tuple of ints): number of fid points before and after readout (defaults to (0, 0)).
+        Args:
+            fov (tuple of floats): field of view (FOVx, FOVy) in [mm]. If scalar, assume isotropic FOV (FOVx = FOVy).
+            shape (tuple of ints): matrix size (x, y, echoes=1, frames=1).
+            accel (tuple of ints): acceleration (Ry, Pf). Ranges from (1, 1) (fully sampled) to (ny, 0.75).
+            osf (float): readout oversampling factor (defaults to 1.0)
+    .
+        Kwargs:
+            ordering (str): acquire phase sequentially ("sequentially") or not ("interleaved") when nframes > 1.
+                Default to "interleaved".
+            echo_type (str): can be "bipolar" or "flyback".
+            acs_shape (int): matrix size for calibration regions ACSy. Defaults to None.
+            gdt (float): gradient sampling rate in [us].
+            gmax (float): maximum gradient amplitude in [mT / m].
+            smax (float): maximum slew rate in [T / m / s].
+            rew_derate (float): derate slew rate during rewinder and z phase-encode blip by this factor, to reduce PNS. Default: 0.1.
+            fid (tuple of ints): number of fid points before and after readout (defaults to (0, 0)).
 
-    Returns:
-        (dict): structure containing info for reconstruction (coordinates, dcf, matrix, timing...).
-        (dict): structure containing info for acquisition (gradient waveforms...).
-        (dict): structure containing info for saving-/loading- (base trajectory, angles...).
+        Returns:
+            (dict): structure containing info for reconstruction (coordinates, dcf, matrix, timing...).
+            (dict): structure containing info for acquisition (gradient waveforms...).
+            (dict): structure containing info for saving-/loading- (base trajectory, angles...).
 
     """
     # parsing

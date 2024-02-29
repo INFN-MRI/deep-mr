@@ -28,6 +28,17 @@
 	deepmr.sensmap
 ```
 
+## Non-idealities
+Miscellaneous non-idealities generation routines (e.g., motion patterns).
+```{eval-rst}
+.. currentmodule:: deepmr
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.rigid_motion
+```
+
 ## Sampling
 ```{eval-rst}
 .. currentmodule:: deepmr
@@ -46,4 +57,18 @@
 	deepmr.spiral
 	deepmr.spiral_stack
 	deepmr.spiral_proj
+```
+
+## Trains
+Variable parameters (e.g., flip angle, rf phase, echo time) train generators.
+```{eval-rst}
+.. currentmodule:: deepmr
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.piecewise_fa
+	deepmr.sinusoidal_fa
+	deepmr.phase_cycling
+	deepmr.rf_spoiling
 ```
