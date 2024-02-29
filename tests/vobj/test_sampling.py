@@ -43,3 +43,21 @@ def test_radial():
     head = deepmr.radial((128, 1, 8))
     npt.assert_allclose(head.traj.shape, [8, 402, 128, 2])
     
+
+def test_rosette():
+    # nyquist sampled
+    head = deepmr.rosette(128)
+    npt.assert_allclose(head.traj.shape, [1, 402, 128, 2])
+
+    # accelerated
+    head = deepmr.rosette(128, nviews=64)
+    npt.assert_allclose(head.traj.shape, [1, 64, 128, 2])
+    
+    # multi contrast
+    head = deepmr.rosette((128, 420))
+    npt.assert_allclose(head.traj.shape, [420, 1, 128, 2])
+    
+    # multi echo
+    head = deepmr.rosette((128, 1, 8))
+    npt.assert_allclose(head.traj.shape, [8, 402, 128, 2])
+    

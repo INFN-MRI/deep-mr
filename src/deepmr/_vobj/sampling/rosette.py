@@ -135,6 +135,10 @@ def rosette(shape, nviews=None, bending_factor=1.0):
     traj = traj.swapaxes(-2, -1).T
     traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
     traj = traj.swapaxes(0, 1)
+    
+    # expand echoes
+    nechoes = shape[1]
+    traj = np.repeat(traj, nechoes, axis=0)
 
     # get dcf
     dcf = tmp["dcf"]
