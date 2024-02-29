@@ -64,7 +64,7 @@ def rigid_motion(ndims, nframes, degree="moderate", seed=42):
     x = _generate_series(6, nframes, transition_mtx, change)
 
     # rescale series
-    x_max = np.abs(x).std(axis=1)[:, None]
+    x_max = np.abs(x).max(axis=1)[:, None]
     x_max[x_max == 0] = 1
     x = x / x_max
 
