@@ -35,7 +35,7 @@ def radial_stack(shape, nviews=None, accel=1, **kwargs):
         Matrix shape ``(in-plane, slices=1, contrasts=1, echoes=1)``.
     nviews : int, optional
         Number of spokes.
-        The default is ``$\pi$ * shape`` if ``shape[1] == 1``, otherwise it is ``1``.
+        The default is ``$\pi$ * shape[0]`` if ``shape[1] == 1``, otherwise it is ``1``.
     accel : int, optional
         Slice acceleration factor.
         Ranges from ``1`` (fully sampled) to ``nslices``.
@@ -122,18 +122,17 @@ def radial_stack(shape, nviews=None, accel=1, **kwargs):
         and minimal echo spacing.
 
     """
-    # expand shape if needed
-    if np.isscalar(shape):
-        shape = [shape, 1]
-    else:
-        shape = list(shape)
+    assert len(shape) >= 2, "Please provide at least (in-plane, nslices) as shape."
 
-    while len(shape) < 3:
+    # expand shape if needed
+    shape = list(shape)
+
+    while len(shape) < 4:
         shape = shape + [1]
         
     # default views
     if nviews is None:
-        if shape[1] == 1:
+        if shape[2] == 1:
             nviews = int(math.pi * shape[0])
         else:
             nviews = 1    
@@ -152,7 +151,7 @@ def radial_stack(shape, nviews=None, accel=1, **kwargs):
     tmp, _ = _design.radial(fov, shape[0], 1, 1, **kwargs)
 
     # rotate
-    ncontrasts = shape[1]
+    ncontrasts = shape[2]
 
     # generate angles
     dphi = (1 - 233 / 377) * 360.0
@@ -174,7 +173,7 @@ def radial_stack(shape, nviews=None, accel=1, **kwargs):
     az = np.arange(-nz // 2, nz // 2, dtype=np.float32)
 
     # accelerate
-    az = az[:: accel[1]]
+    az = az[:: accel]
 
     # add back ACS
     if acs_shape is not None:

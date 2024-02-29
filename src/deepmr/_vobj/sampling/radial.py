@@ -33,7 +33,7 @@ def radial(shape, nviews=None, **kwargs):
         Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
     nviews : int, optional
         Number of spokes.
-        The default is ``$\pi$ * shape`` if ``shape[1] == 1``, otherwise it is ``1``.
+        The default is ``$\pi$ * shape[0]`` if ``shape[1] == 1``, otherwise it is ``1``.
 
     Keyword Arguments
     -----------------
@@ -117,7 +117,7 @@ def radial(shape, nviews=None, **kwargs):
 
     # design single interleaf spiral
     tmp, _ = _design.radial(fov, shape[0], 1, 1, **kwargs)
-
+    
     # rotate
     ncontrasts = shape[1]
 

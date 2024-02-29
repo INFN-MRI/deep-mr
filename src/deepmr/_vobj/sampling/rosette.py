@@ -32,7 +32,7 @@ def rosette(shape, nviews=None, bending_factor=1.0):
         Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
     nviews : int, optional
         Number of spokes.
-        The default is ``$\pi$ * shape`` if ``shape[1] == 1``, otherwise it is ``1``.
+        The default is ``$\pi$ * shape[0]`` if ``shape[1] == 1``, otherwise it is ``1``.
     bending_factor : float, optional
         This is ``0.0`` for radial-like trajectory; increase for maximum coverage per shot.
         In real world, must account for hardware and safety limitations.

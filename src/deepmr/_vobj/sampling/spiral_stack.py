@@ -13,7 +13,7 @@ except Exception:
 from ..._types import Header
 
 
-def spiral_stack(shape, accel=1, nintl=1, **kwargs):
+def spiral_stack(shape, accel=None, nintl=1, **kwargs):
     r"""
     Design a constant- or multi-density stack of spirals.
 
@@ -103,7 +103,7 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
     Multiple contrasts with different sampling (e.g., for MR Fingerprinting) can be achieved by providing
     a tuple of ints as the ``shape`` argument:
 
-    >>> head = deepmr.spiral_stack((128, 120, 420), nintl=48, accel=48)
+    >>> head = deepmr.spiral_stack((128, 120, 420), nintl=48)
     >>> head.traj.shape
     torch.Size([420, 120, 538, 3])
 
@@ -143,12 +143,19 @@ def spiral_stack(shape, accel=1, nintl=1, **kwargs):
 
     while len(shape) < 4:
         shape = shape + [1]
-
+        
+    # default accel
+    if accel is None:
+        if shape[2] == 1:
+            accel = 1
+        else:
+            accel = nintl
+        
     # expand accel if needed
     if np.isscalar(accel):
         accel = [accel, 1]
     else:
-        accel = list(accel)
+        accel = list(accel)        
 
     # expand acs if needed
     if "acs_shape" in kwargs:

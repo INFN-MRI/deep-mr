@@ -2,6 +2,7 @@
 
 __all__ = ["spiral_proj"]
 
+import math
 import numpy as np
 
 # this is for stupid Sphinx
@@ -13,7 +14,7 @@ except Exception:
 from ..._types import Header
 
 
-def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
+def spiral_proj(shape, accel=None, nintl=1, order="ga", **kwargs):
     r"""
     Design a constant- or multi-density spiral projection.
 
@@ -26,9 +27,11 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     ----------
     shape : Iterable[int]
         Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
-    accel : int, optional
-        In-plane acceleration. Ranges from ``1`` (fully sampled) to ``nintl``.
-        The default is ``1``.
+    accel : Iterable[int], optional
+        Acceleration factors ``(in-plane, radial)``.
+        Range from ``1`` (fully sampled) to ``nintl`` / ``$\pi$ * shape[0]``.
+        The default is ``(1, 1)`` if ``ncontrast == 1`` and ``(1, ``$\pi$ * shape[0])``
+        if ``ncontrast > 1``.
     nintl : int, optional
         Number of interleaves to fully sample a plane.
         The default is ``1``.
@@ -98,10 +101,10 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     will generate the following trajectory:
 
     >>> head.traj.shape
-    torch.Size([1, 1536, 538, 2])
+    torch.Size([1, 4824, 538, 2])
 
     i.e., a 48-interleaves trajectory with an in-plane acceleration factor of 4 (i.e., 12 interleaves),
-    repeated for 128 planes covering the 3D k-space sphere.
+    repeated for 402 planes covering the 3D k-space sphere.
 
     Multiple contrasts with different sampling (e.g., for MR Fingerprinting) can be achieved by providing
     a tuple of ints as the ``shape`` argument:
@@ -115,7 +118,7 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
 
     >>> head = deepmr.spiral_proj((128, 1, 8), nintl=48)
     >>> head.traj.shape
-    torch.Size([8, 6144, 538, 2])
+    torch.Size([8, 19296, 538, 2])
 
     corresponding to a 8-echoes fully sampled k-spaces, e.g., for QSM and T2* mapping.
 
@@ -147,6 +150,19 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
+        
+    # default accel
+    if accel is None:
+        if shape[1] == 1:
+            accel = 1
+        else:
+            accel = int(math.pi * shape[0])
+        
+    # expand accel if needed
+    if np.isscalar(accel):
+        accel = [1, accel]
+    else:
+        accel = list(accel) 
 
     # assume 1mm iso
     fov = shape[0]
@@ -156,30 +172,26 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
 
     # generate angles
     ncontrasts = shape[1]
-    nviews = max(int(nintl // accel), 1)
+    nplanes = max(int((math.pi * shape[0]) // accel[1]), 1)
+    nviews = max(int(nintl // accel[0]), 1)
 
     dphi = 360.0 / nintl
     dtheta = (1 - 233 / 377) * 360.0
+    
+    # build rotation angles
+    j = np.arange(ncontrasts * nplanes)
+    i = np.arange(nviews)
 
-    if ncontrasts == 1:
-        j = np.arange(shape[0])
-        i = np.arange(nviews)
+    j = np.tile(j, nviews)
+    i = np.repeat(i, ncontrasts * nplanes)
 
-        j = np.tile(j, nviews)
-        i = np.repeat(i, shape[0])
-
-        nviews = len(i)
-    else:
-        j = np.arange(ncontrasts)
-        i = np.arange(nviews)
-
-        j = np.tile(j, nviews)
-        i = np.repeat(i, ncontrasts)
-
+    # radial angle
     if order[:5] == "ga-sh":
         theta = (i + j) * dtheta
     else:
         theta = j * dtheta
+    
+    # in-plane angle
     phi = i * dphi
 
     # convert to radians
@@ -188,7 +200,7 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
 
     # perform rotation
     axis = np.zeros_like(theta, dtype=int)  # rotation axis
-    Rx = _design.angleaxis2rotmat(theta, [1, 0, 0])  # whole-plane rotation about x
+    Rx = _design.angleaxis2rotmat(theta, [1, 0, 0])  # radial rotation about x
     Rz = _design.angleaxis2rotmat(phi, [0, 0, 1])  # in-plane rotation about z
 
     # put together full rotation matrix
@@ -199,8 +211,9 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
     traj = np.concatenate((traj, 0 * traj[..., [0]]), axis=-1)
     traj = _design.projection(traj[0].T, rot)
     traj = traj.swapaxes(-2, -1).T
-    traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
-    traj = traj.swapaxes(0, 1)
+    traj = traj.reshape(nviews, nplanes, ncontrasts, *traj.shape[-2:])
+    traj = traj.transpose(2, 1, 0, *np.arange(3, len(traj.shape)))
+    traj = traj.reshape(ncontrasts, -1, *traj.shape[3:])
 
     # get dcf
     dcf = tmp["dcf"]
@@ -220,7 +233,7 @@ def spiral_proj(shape, accel=1, nintl=1, order="ga", **kwargs):
         # renormalize dcf
         tabs = (traj[0, 0] ** 2).sum(axis=-1) ** 0.5
         k0_idx = np.argmin(tabs)
-        nshots = nviews * ncontrasts
+        nshots = nviews * ncontrasts * nplanes
 
         # impose that center of k-space weight is 1 / nshots
         scale = 1.0 / (dcf[[k0_idx]] + 0.000001) / nshots

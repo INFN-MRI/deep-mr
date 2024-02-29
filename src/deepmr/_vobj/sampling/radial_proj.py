@@ -28,8 +28,9 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
     shape : Iterable[int]
         Matrix shape ``(in-plane, contrasts=1, echoes=1)``.
     nviews : int, optional
-        Number of spokes.
-        The default is ``$\pi$ * shape`` if ``shape[1] == 1``, otherwise it is ``1``.
+        Number of spokes (in-plane, radial).
+        The default is ``$\pi$ * (shape[0], shape[1])`` if ``shape[2] == 1``, 
+        otherwise it is ``($\pi$ * shape[0], 1)``.
     order : str, optional
         Radial plane rotation type.
         These can be:
@@ -117,6 +118,12 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
             nviews = int(math.pi * shape[0])
         else:
             nviews = 1
+            
+    # expand nviews if needed
+    if np.isscalar(nviews):
+        nviews = [int(math.pi * shape[0]), nviews]
+    else:
+        nviews = list(nviews) 
 
     # assume 1mm iso
     fov = shape[0]
@@ -127,28 +134,23 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
     # generate angles
     ncontrasts = shape[1]
 
-    dphi = 360.0 / nviews
+    dphi = 360.0 / nviews[0]
     dtheta = (1 - 233 / 377) * 360.0
 
-    if ncontrasts == 1:
-        j = np.arange(shape[0])
-        i = np.arange(nviews)
+    # build rotation angles
+    j = np.arange(ncontrasts * nviews[1])
+    i = np.arange(nviews[0])
 
-        j = np.tile(j, nviews)
-        i = np.repeat(i, shape[0])
+    j = np.tile(j, nviews[0])
+    i = np.repeat(i, ncontrasts * nviews[1])
 
-        nviews = len(i)
-    else:
-        j = np.arange(ncontrasts)
-        i = np.arange(nviews)
-
-        j = np.tile(j, nviews)
-        i = np.repeat(i, ncontrasts)
-
+    # radial angle
     if order[:5] == "ga-sh":
         theta = (i + j) * dtheta
     else:
         theta = j * dtheta
+    
+    # in-plane angle
     phi = i * dphi
 
     # convert to radians
@@ -168,8 +170,9 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
     traj = np.concatenate((traj, 0 * traj[..., [0]]), axis=-1)
     traj = _design.projection(traj[0].T, rot)
     traj = traj.swapaxes(-2, -1).T
-    traj = traj.reshape(nviews, ncontrasts, *traj.shape[-2:])
-    traj = traj.swapaxes(0, 1)
+    traj = traj.reshape(nviews[0], nviews[1], ncontrasts, *traj.shape[-2:])
+    traj = traj.transpose(2, 1, 0, *np.arange(3, len(traj.shape)))
+    traj = traj.reshape(ncontrasts, -1, *traj.shape[3:])
 
     # get dcf
     dcf = tmp["dcf"]
@@ -189,7 +192,7 @@ def radial_proj(shape, nviews=None, order="ga", **kwargs):
         # renormalize dcf
         tabs = (traj[0, 0] ** 2).sum(axis=-1) ** 0.5
         k0_idx = np.argmin(tabs)
-        nshots = nviews * ncontrasts
+        nshots = nviews[0] * nviews[1] * ncontrasts
 
         # impose that center of k-space weight is 1 / nshots
         scale = 1.0 / (dcf[[k0_idx]] + 0.000001) / nshots

@@ -32,7 +32,7 @@ def rosette_stack(shape, nviews=None, accel=1, bending_factor=1.0, **kwargs):
         Matrix shape ``(in-plane, slices=1, contrasts=1, echoes=1)``.
     nviews : int, optional
         Number of spokes.
-        The default is ``$\pi$ * shape`` if ``shape[1] == 1``, otherwise it is ``1``.
+        The default is ``$\pi$ * shape[0]`` if ``shape[1] == 1``, otherwise it is ``1``.
     accel : int, optional
         Slice acceleration factor.
         Ranges from ``1`` (fully sampled) to ``nslices``.
@@ -121,18 +121,17 @@ def rosette_stack(shape, nviews=None, accel=1, bending_factor=1.0, **kwargs):
         This is the Echo Times array.
 
     """
-    # expand shape if needed
-    if np.isscalar(shape):
-        shape = [shape, 1]
-    else:
-        shape = list(shape)
+    assert len(shape) >= 2, "Please provide at least (in-plane, nslices) as shape."
 
-    while len(shape) < 3:
+    # expand shape if needed
+    shape = list(shape)
+
+    while len(shape) < 4:
         shape = shape + [1]
         
     # default views
     if nviews is None:
-        if shape[1] == 1:
+        if shape[2] == 1:
             nviews = int(math.pi * shape[0])
         else:
             nviews = 1
@@ -147,14 +146,15 @@ def rosette_stack(shape, nviews=None, accel=1, bending_factor=1.0, **kwargs):
     # assume 1mm iso
     fov = shape[0]
     
-    # get number of contrasts
-    ncontrasts = shape[1]
-    shape[1] = 1
-    shape = [shape[0], shape[2], shape[1]]
-
+    # get number of slices and contrasts
+    nz = shape[1]
+    ncontrasts = shape[3]
+    shape[3] = 1
+    shape = [shape[0], shape[3], shape[2]]
+    
     # design single interleaf spiral
     tmp, _ = _design.rosette(fov, shape, 1, 1, int(math.pi * shape[0]), bending_factor)
-
+    
     # generate angles
     dphi = (1 - 233 / 377) * 360.0
     phi = np.arange(ncontrasts * nviews) * dphi  # angles in degrees
@@ -171,11 +171,10 @@ def rosette_stack(shape, nviews=None, accel=1, bending_factor=1.0, **kwargs):
     traj = traj.swapaxes(0, 1)
     
     # expand slices
-    nz = shape[1]
     az = np.arange(-nz // 2, nz // 2, dtype=np.float32)
 
     # accelerate
-    az = az[:: accel[1]]
+    az = az[:: accel]
 
     # add back ACS
     if acs_shape is not None:
@@ -191,6 +190,10 @@ def rosette_stack(shape, nviews=None, accel=1, bending_factor=1.0, **kwargs):
 
     # append new axis
     traj = np.concatenate((traj, az[..., None]), axis=-1)
+    
+    # expand echoes
+    nechoes = shape[-1]
+    traj = np.repeat(traj, nechoes, axis=0)
 
     # get dcf
     dcf = tmp["dcf"]
