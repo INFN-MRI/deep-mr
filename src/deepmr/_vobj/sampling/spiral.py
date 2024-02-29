@@ -13,7 +13,7 @@ except Exception:
 from ..._types import Header
 
 
-def spiral(shape, accel=1, nintl=1, **kwargs):
+def spiral(shape, accel=None, nintl=1, **kwargs):
     r"""
     Design a constant- or multi-density spiral.
 
@@ -100,7 +100,7 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
     Multiple contrasts with different sampling (e.g., for MR Fingerprinting) can be achieved by providing
     a tuple of ints as the ``shape`` argument:
 
-    >>> head = deepmr.spiral((128, 420), nintl=48, accel=48)
+    >>> head = deepmr.spiral((128, 420), nintl=48)
     >>> head.traj.shape
     torch.Size([420, 1, 538, 2])
 
@@ -141,6 +141,13 @@ def spiral(shape, accel=1, nintl=1, **kwargs):
 
     while len(shape) < 3:
         shape = shape + [1]
+        
+    # default accel
+    if accel is None:
+        if shape[1] == 1:
+            accel = 1
+        else:
+            accel = nintl
 
     # assume 1mm iso
     fov = shape[0]

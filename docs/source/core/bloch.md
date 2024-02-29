@@ -75,14 +75,14 @@ def simulate_ssfp(flip, TR, T1, T2, device="cpu"):
     return ssfp(flip=flip, TR=TR)
 ```
 
-The class also enable automatic forward differentiation wrt to input spin parameters via "diff" argument:
+The class also enable automatic forward differentiation wrt to input spin parameters via ``diff`` argument:
 
 ```python
 import numpy as np
 
 def simulate_ssfp(flip, TR, T1, T2, diff=None, device="cpu"):
-ssfp = SSFP(device=device, T1=T1, T2=T2, diff=diff)
-return ssfp(flip=flip, TR=TR)
+	ssfp = SSFP(device=device, T1=T1, T2=T2, diff=diff)
+	return ssfp(flip=flip, TR=TR)
 
 # this will return signal only (evolution towards steady state of unbalanced SSFP sequence)
 signal = simulate_ssfp(flip=10.0*np.ones(1000, dtype=np.float32), TR=4.5, T1=500.0, T2=50.0)
