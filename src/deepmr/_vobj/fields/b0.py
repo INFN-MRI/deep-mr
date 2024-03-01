@@ -30,8 +30,8 @@ def b0field(chi, b0range=(-200, 200), mask=None):
 
     Returns
     -------
-    B0map : torch,Tensor
-        Spatially varying b0 maps of shape ``(ny, nx)`` (2D)
+    B0map : torch.Tensor
+        Spatially varying B0 maps of shape ``(ny, nx)`` (2D)
         or ``(nz, ny, nx)`` (3D) in ``[Hz]``, arising from the object susceptibility.
 
     Example

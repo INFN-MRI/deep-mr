@@ -36,7 +36,7 @@ def sensmap(shape, coil_width=2.0, shift=None, dphi=0.0, nrings=None, mask=None)
 
     Returns
     -------
-    smap : torch,Tensor
+    smap : torch.Tensor
         Complex spatially varying sensitivity maps of shape ``(nmodes, ny, nx)`` (2D)
         or ``(nmodes, nz, ny, nx)`` (3D). If ``nmodes = 1``, the first dimension is squeezed.
 
@@ -126,7 +126,7 @@ def b1field(
 
     Returns
     -------
-    smap : torch,Tensor
+    smap : torch.Tensor
         Complex spatially varying b1+ maps of shape ``(nmodes, ny, nx)`` (2D)
         or ``(nmodes, nz, ny, nx)`` (3D). Magnitude of the map represents
         the relative flip angle scaling (wrt to the nominal).
