@@ -5,7 +5,6 @@ __all__ = ["plan_sampling"]
 from dataclasses import dataclass
 
 import numpy as np
-import numba as nb
 import torch
 
 from .. import backend

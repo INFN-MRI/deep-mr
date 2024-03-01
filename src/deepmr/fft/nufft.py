@@ -43,14 +43,14 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     interpolator : dict
         Structure containing sparse interpolator matrix:
 
-            * ndim (``int``): number of spatial dimensions.
-            * oversampling (``Iterable[float]``): grid oversampling factor (z, y, x).
-            * width (``Iterable[int]``): kernel width (z, y, x).
-            * beta (``Iterable[float]``): Kaiser Bessel parameter (z, y, x).
-            * os_shape (``Iterable[int]``): oversampled grid shape (z, y, x).
-            * shape (``Iterable[int]``): grid shape (z, y, x).
-            * interpolator (``Interpolator``): precomputed interpolator object.
-            * device (``str``): computational device.
+        * ndim (``int``): number of spatial dimensions.
+        * oversampling (``Iterable[float]``): grid oversampling factor (z, y, x).
+        * width (``Iterable[int]``): kernel width (z, y, x).
+        * beta (``Iterable[float]``): Kaiser Bessel parameter (z, y, x).
+        * os_shape (``Iterable[int]``): oversampled grid shape (z, y, x).
+        * shape (``Iterable[int]``): grid shape (z, y, x).
+        * interpolator (``Interpolator``): precomputed interpolator object.
+        * device (``str``): computational device.
 
     Notes
     -----
@@ -61,8 +61,8 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     Coordinates tensor shape is ``(ncontrasts, nviews, nsamples, ndim)``. If there are less dimensions
     (e.g., single-shot or single contrast trajectory), assume singleton for the missing ones:
 
-        * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
-        * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
+    * ``coord.shape = (nsamples, ndim) -> (1, 1, nsamples, ndim)``
+    * ``coord.shape = (nviews, nsamples, ndim) -> (1, nviews, nsamples, ndim)``
 
     """
     # make sure this is a tensor

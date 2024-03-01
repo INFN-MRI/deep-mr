@@ -6,10 +6,10 @@ from . import grid
 from . import interp
 from . import plan
 
-from .grid import apply_gridding
-from .interp import apply_interpolation
-from .plan import plan_interpolator
-
+from .grid import apply_gridding # noqa
+from .interp import apply_interpolation  # noqa
+from .plan import plan_interpolator  # noqa
+from .toeplitz import *  # noqa
 
 def interpolate(
     data_in,
