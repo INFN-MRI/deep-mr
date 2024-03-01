@@ -42,22 +42,32 @@ def plan_toeplitz(indexes, shape, basis=None, device="cpu"):
         Structure containing Toeplitz kernel (i.e., Fourier transform of system tPSF).
 
     """
-    # get dimensions
+    # convert to tensor if nececessary
+    indexes = torch.as_tensor(indexes, dtype=torch.int32)
+    if basis is not None:
+        basis = torch.as_tensor(basis)
+    
+    # expand singleton dimensions
+    ishape = list(indexes.shape[:-1])
     ndim = indexes.shape[-1]
-    npts = indexes.shape[-2]
+    
+    while len(ishape) < 3:
+        ishape = [1] + ishape
+    
+    ishape = ishape[1:]
 
     # if spatio-temporal basis is provided, check reality and offload to device
     if basis is not None:
         islowrank = True
         isreal = not torch.is_complex(basis)  # pylint: disable=no-member
-        ncoeff, nframes = basis.shape
+        ncoeff, _ = basis.shape
         basis = basis.to(device)
         adjoint_basis = basis.conj().T.to(device)
 
     else:
         islowrank = False
         isreal = False
-        nframes, ncoeff = indexes.shape[0], indexes.shape[0]
+        ncoeff = indexes.shape[0]
 
     if isreal:
         dtype = torch.float32
@@ -70,12 +80,12 @@ def plan_toeplitz(indexes, shape, basis=None, device="cpu"):
 
     if basis is not None:
         # initialize temporary arrays
-        delta = torch.ones((nframes, ncoeff, npts), dtype=torch.complex64, device=device)
-        delta = delta * adjoint_basis[:, :, None]
-
+        delta = np.ones([ncoeff] + list(indexes.shape[:-1]), dtype=np.float32)
+        delta = (delta.T * adjoint_basis.numpy(force=True)).T
+        delta = torch.as_tensor(delta, device=device)
     else:
         # initialize temporary arrays
-        delta = torch.ones((nframes, npts), dtype=torch.complex64, device=device)
+        delta = torch.ones(list(indexes.shape[:-1]), dtype=torch.float32, device=device)
 
     # calculate interpolator
     interpolator = plan_sampling(indexes, shape, device)
@@ -90,20 +100,15 @@ def plan_toeplitz(indexes, shape, basis=None, device="cpu"):
 
     if basis is not None:
         st_kernel = st_kernel.reshape(*st_kernel.shape[:2], np.prod(st_kernel.shape[2:]))
-
+        st_kernel = st_kernel.permute(2, 1, 0).contiguous()
+        
     # normalize
-    st_kernel /= torch.quantile(st_kernel, 0.95)
+    st_kernel /= torch.mean(abs(st_kernel[st_kernel != 0]))
 
     # remove NaN
     st_kernel = torch.nan_to_num(st_kernel)
 
-    # get device identifier
-    if device == "cpu":
-        device_str = device
-    else:
-        device_str = device[:4]
-
-    return GramMatrix(st_kernel, device_str, islowrank)
+    return GramMatrix(st_kernel, device, islowrank)
 
 
 def apply_toeplitz(data_out, data_in, toeplitz_kernel, device=None, threadsperblock=128):
@@ -151,6 +156,22 @@ def apply_toeplitz(data_out, data_in, toeplitz_kernel, device=None, threadsperbl
         
 
 # %% subroutines
+def _get_oversamp_shape(shape, oversamp, ndim):
+    return np.ceil(oversamp * shape).astype(np.int16)
+
+
+def _scale_coord(coord, shape, oversamp):
+    ndim = coord.shape[-1]
+    output = coord.clone()
+    for i in range(-ndim, 0):
+        scale = np.ceil(oversamp[i] * shape[i]) / shape[i]
+        shift = np.ceil(oversamp[i] * shape[i]) // 2
+        output[..., i] *= scale
+        output[..., i] += shift
+
+    return output
+
+
 @dataclass
 class GramMatrix:
     value: torch.Tensor
@@ -197,23 +218,24 @@ def do_selfadjoint_interpolation(data_out, data_in, toeplitz_matrix):
 def _dot_product(out, in_a, in_b):
     row, col = in_a.shape
 
-    for j in range(col):
-        for i in range(row):
+    for i in range(row):
+        for j in range(col):
             out[j] += in_a[i][j] * in_b[j]
 
     return out
 
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
-def _interp_selfadjoint(data_out, toeplitz_matrix, data_in):
+def _interp_selfadjoint(data_out, data_in, toeplitz_matrix):
 
-    n_coeff, batch_size, _ = data_in.shape
+    # get data dimension
+    nvoxels, batch_size, _ = data_in.shape
 
-    for i in nb.prange(n_coeff*batch_size):
-        coeff = i // batch_size
+    for i in nb.prange(nvoxels * batch_size):
+        voxel = i // batch_size
         batch = i % batch_size
 
-        _dot_product(data_out[coeff][batch], toeplitz_matrix[coeff], data_in[coeff][batch])
+        _dot_product(data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix)
 
     return data_out
 
@@ -222,15 +244,21 @@ if torch.cuda.is_available():
     from numba import cuda
     
     def do_selfadjoint_interpolation_cuda(data_out, data_in, toeplitz_matrix, threadsperblock):
+        
+        # calculate size
+        nvoxels, batch_size, ncoeff = data_out.shape
+
         # define number of blocks
-        blockspergrid = (data_out.size + (threadsperblock - 1)) // threadsperblock
+        blockspergrid = (
+            (nvoxels * batch_size) + (threadsperblock - 1)
+        ) // threadsperblock
 
         data_out = backend.pytorch2numba(data_out)
         data_in = backend.pytorch2numba(data_in)
         toeplitz_matrix = backend.pytorch2numba(toeplitz_matrix)
 
         # run kernel
-        _interp_selfadjoint_cuda[blockspergrid, threadsperblock](data_out, toeplitz_matrix, data_in)
+        _interp_selfadjoint_cuda[blockspergrid, threadsperblock](data_out, data_in, toeplitz_matrix)
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
@@ -240,26 +268,24 @@ if torch.cuda.is_available():
     @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _dot_product_cuda(out, in_a, in_b):
         row, col = in_a.shape
-
-        for j in range(col):
-            for i in range(row):
+        for i in range(row):
+            for j in range(col):
                 out[j] += in_a[i][j] * in_b[j]
 
         return out
         
     
     @cuda.jit(fastmath=True)  # pragma: no cover
-    def _interp_selfadjoint_cuda(data_out, toeplitz_matrix, data_in):
+    def _interp_selfadjoint_cuda(data_out, data_in, toeplitz_matrix):
 
-        n_coeff, batch_size, _ = data_in.shape
+        # get data dimension
+        nvoxels, batch_size, _ = data_in.shape
 
         i = nb.cuda.grid(1)
-        if i < n_coeff*batch_size:
-            coeff = i // batch_size
+        if i < nvoxels * batch_size:
+            voxel = i // batch_size
             batch = i % batch_size
 
-            _dot_product_cuda(data_out[coeff][batch], toeplitz_matrix[coeff], data_in[coeff][batch])
+            _dot_product_cuda(data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix)
 
         return data_out
-        
-        

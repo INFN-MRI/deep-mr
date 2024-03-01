@@ -122,6 +122,42 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
     return NUFFTPlan(ndim, oversamp, width, beta, os_shape, shape, interpolator, device)
 
 
+def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
+    """
+    Compute spatio-temporal kernel for fast self-adjoint operation.
+
+    Parameters
+    ----------
+    coord : torch.Tensor
+        K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
+        Coordinates must be normalized between ``(-0.5 * shape[i], 0.5 * shape[i])``,
+        with ``i = (z, y, x)``.
+    shape : int | Iterable[int]
+        Oversampled grid size of shape ``(ndim,)``.
+        If scalar, isotropic matrix is assumed.
+        basis : torch.Tensor, optional
+        Low rank subspace projection operator
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    dcf : torch.Tensor, optional
+        Density compensation function of shape ``(ncontrasts, nviews, nsamples)``.
+        The default is a tensor of ``1.0``.
+    width : int | Iterable[int], optional
+        Interpolation kernel full-width of shape ``(ndim,)``.
+        If scalar, isotropic kernel is assumed.
+        The default is ``3``.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``cpu``.
+
+    Returns
+    -------
+    toeplitz_kernel : GramMatrix
+        Structure containing Toeplitz kernel (i.e., Fourier transform of system tPSF).
+
+    """
+    return _interp.plan_toeplitz(coord, shape, basis, dcf, width, device)
+
+    
 def apply_nufft(
     image, nufft_plan, basis_adjoint=None, device=None, threadsperblock=128
 ):
@@ -150,6 +186,12 @@ def apply_nufft(
         Output Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
     """
+    # check if it is numpy
+    if isinstance(image, np.ndarray):
+        isnumpy = True
+    else:
+        isnumpy = False
+        
     # convert to tensor if nececessary
     image = torch.as_tensor(image)
 
@@ -209,6 +251,10 @@ def apply_nufft(
     # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
+    
+    # transform back to numpy if required
+    if isnumpy:
+        kspace = kspace.numpy(force=True)
 
     return kspace
 
@@ -239,6 +285,12 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
 
     """
+    # check if it is numpy
+    if isinstance(kspace, np.ndarray):
+        isnumpy = True
+    else:
+        isnumpy = False
+    
     # convert to tensor if nececessary
     kspace = torch.as_tensor(kspace)
 
@@ -295,6 +347,89 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
+    
+    # transform back to numpy if required
+    if isnumpy:
+        image = image.numpy(force=True)
+
+    return image
+
+
+def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
+    """
+    Apply adjoint Non-Uniform Fast Fourier Transform.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+    toeplitz_kern : dict
+        Pre-calculated NUFFT plan coefficients in sparse COO format.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    """
+    # check if it is numpy
+    if isinstance(image, np.ndarray):
+        isnumpy = True
+    else:
+        isnumpy = False
+        
+    # convert to tensor if nececessary
+    image = torch.as_tensor(image)
+
+    # make sure datatype is correct
+    if image.dtype in (torch.float16, torch.float32, torch.float64):
+        image = image.to(torch.float32)
+    else:
+        image = image.to(torch.complex64)
+
+    # cast to device is necessary
+    if device is not None:
+        toeplitz_kern.to(device)
+
+    # unpack plan
+    psf = toeplitz_kern.value
+    shape = toeplitz_kern.shape
+    device = toeplitz_kern.device
+    
+    # original shape
+    oshape = image.device
+
+    # original device
+    odevice = image.device
+    
+    # offload to computational device
+    image = image.to(device)
+
+    # # gridding
+    # kspace = _interp.apply_gridding(
+    #     kspace, interpolator, basis, device, threadsperblock
+    # )
+    # # kspace /= np.prod(width)
+
+    # # IFFT
+    # image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
+
+    # # crop
+    # image = _resize(image, list(image.shape[:-ndim]) + list(shape))
+
+    # # apodize
+    # _apodize(image, ndim, oversamp, width, beta)
+
+    # # bring back to original device
+    # kspace = kspace.to(odevice)
+    # image = image.to(odevice)
 
     return image
 
