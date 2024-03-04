@@ -50,6 +50,19 @@
 ```
 
 
+## Wavelet decomposition
+
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.fwt
+	deepmr.iwt
+```
+
+
 ## Signal compression
 
 ```{eval-rst}
