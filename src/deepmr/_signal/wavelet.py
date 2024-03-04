@@ -50,6 +50,8 @@ def fwt(input, ndim=None, device=None, wave_name="db4", level=None):
     -------
     output : np.ndarray | torch.Tensor
         Output wavelet decomposition.
+    shape : Iterable[int]
+        Input signal shape (``input.shape``) for synthesis.
 
     Examples
     --------
