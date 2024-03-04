@@ -144,7 +144,7 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
-        basis : torch.Tensor, optional
+    basis : torch.Tensor, optional
         Low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     dcf : torch.Tensor, optional
