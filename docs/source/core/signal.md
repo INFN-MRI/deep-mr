@@ -49,3 +49,16 @@
 	deepmr.patches2tensor
 ```
 
+
+## Signal compression
+
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.rss
+	deepmr.svd
+```
+
