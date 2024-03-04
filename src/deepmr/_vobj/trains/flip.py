@@ -7,7 +7,9 @@ import numpy as np
 import torch
 
 
-def piecewise_fa(fa_ref=[1.5556, 70.0, 0.7778], length=[350, 230], recovery=300, head=None):
+def piecewise_fa(
+    fa_ref=[1.5556, 70.0, 0.7778], length=[350, 230], recovery=300, head=None
+):
     """
     Design a multi-segment linear flip angle train.
 
@@ -29,15 +31,15 @@ def piecewise_fa(fa_ref=[1.5556, 70.0, 0.7778], length=[350, 230], recovery=300,
         The default is ``300``.
     head : Header, optional
         Pre-existing acquisition header.
-        If provided, interpolate FA train to ``ncontrast = head.traj.shape[0]`` 
+        If provided, interpolate FA train to ``ncontrast = head.traj.shape[0]``
         and include it in the ``head.FA`` field.
         The default is ``None``.
 
     Returns
     -------
-    torch.Tensor | deepmr.Header 
+    torch.Tensor | deepmr.Header
         If ``head`` is not provided, returns piecewise linear flip angle train in ``[deg]``
-        as a ``torch.Tensor``. If ``head`` is provided, insert flip angle train 
+        as a ``torch.Tensor``. If ``head`` is provided, insert flip angle train
         (linearly interpolated to ``ncontrast = head.traj.shape[0]``) in ``head.FA`` field.
 
     References
@@ -57,15 +59,19 @@ def piecewise_fa(fa_ref=[1.5556, 70.0, 0.7778], length=[350, 230], recovery=300,
     # add recovery
     if recovery > 0:
         rf_schedule = np.concatenate((rf_schedule, np.ones(recovery, dtype=np.float32)))
-        
-    if head is not None :
+
+    if head is not None:
         if head.traj is not None:
             ncontrasts = head.traj.shape[0]
-            rf_schedule = np.interp(np.linspace(0, 1, ncontrasts), np.linspace(0, 1, len(rf_schedule)), rf_schedule)
+            rf_schedule = np.interp(
+                np.linspace(0, 1, ncontrasts),
+                np.linspace(0, 1, len(rf_schedule)),
+                rf_schedule,
+            )
         head.FA = torch.as_tensor(rf_schedule)
-        
+
         return head
-        
+
     return torch.as_tensor(rf_schedule)
 
 
@@ -106,15 +112,15 @@ def sinusoidal_fa(
         Minimum flip angle in ``[deg]``. The default is ``5. [deg]``.
     head : Header, optional
         Pre-existing acquisition header.
-        If provided, interpolate FA train to ``ncontrast = head.traj.shape[0]`` 
+        If provided, interpolate FA train to ``ncontrast = head.traj.shape[0]``
         and include it in the ``head.FA`` field.
         The default is ``None``.
 
     Returns
     -------
-    torch.Tensor | deepmr.Header 
+    torch.Tensor | deepmr.Header
         If ``head`` is not provided, returns sinusoidal flip angle train in ``[deg]``
-        as a ``torch.Tensor``. If ``head`` is provided, insert flip angle train 
+        as a ``torch.Tensor``. If ``head`` is provided, insert flip angle train
         (linearly interpolated to ``ncontrast = head.traj.shape[0]``) in ``head.FA`` field.
 
     Examples
@@ -161,13 +167,17 @@ def sinusoidal_fa(
 
     # add back offset
     rf_schedule += offset
-    
-    if head is not None :
+
+    if head is not None:
         if head.traj is not None:
             ncontrasts = head.traj.shape[0]
-            rf_schedule = np.interp(np.linspace(0, 1, ncontrasts), np.linspace(0, 1, len(rf_schedule)), rf_schedule)
+            rf_schedule = np.interp(
+                np.linspace(0, 1, ncontrasts),
+                np.linspace(0, 1, len(rf_schedule)),
+                rf_schedule,
+            )
         head.FA = torch.as_tensor(rf_schedule)
-        
+
         return head
-        
+
     return torch.as_tensor(rf_schedule)

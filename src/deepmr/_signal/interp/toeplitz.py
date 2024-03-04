@@ -54,31 +54,34 @@ def plan_toeplitz(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
     coord = torch.as_tensor(coord, dtype=torch.float32)
     if basis is not None:
         basis = torch.as_tensor(basis)
-    
+
     # expand singleton dimensions
     ishape = list(coord.shape[:-1])
     ndim = coord.shape[-1]
-    
+
     while len(ishape) < 3:
         ishape = [1] + ishape
-    
+
     ishape = ishape[1:]
-    
+
     # kernel width
     if np.isscalar(width):
         width = np.asarray([width] * ndim, dtype=np.int16)
     else:
         width = np.asarray(width, dtype=np.int16)
-    
+
     # kernel oversampling
     oversamp = np.asarray([2.0] * ndim)
-    
+
+    # calculate Kaiser-Bessel beta parameter
+    beta = math.pi * (((width / oversamp) * (oversamp - 0.5)) ** 2 - 0.8) ** 0.5
+
     # shape
     if np.isscalar(shape):
         shape = np.asarray([shape] * ndim, dtype=np.int16)
     else:
         shape = np.asarray(shape, dtype=np.int16)[-ndim:]
-    
+
     # check for Cartesian axes
     is_cart = [
         np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax]))
@@ -89,10 +92,7 @@ def plan_toeplitz(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
     # Cartesian axes have osf = 1.0 and kernel width = 1 (no interpolation)
     oversamp[is_cart] = 1.0
     width[is_cart] = 1
-    
-    # calculate Kaiser-Bessel beta parameter
-    beta = math.pi * (((width / oversamp) * (oversamp - 0.5)) ** 2 - 0.8) ** 0.5
-    
+
     # scale coordinates
     coord = _scale_coord(coord, shape[::-1], oversamp[::-1])
 
@@ -104,7 +104,7 @@ def plan_toeplitz(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
         dcf = torch.ones(coord.shape[:-1], dtype=torch.float32, device=device)
     else:
         dcf = dcf.to(device)
-        
+
     # if spatio-temporal basis is provided, check reality and offload to device
     if basis is not None:
         islowrank = True
@@ -138,7 +138,7 @@ def plan_toeplitz(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
     # calculate interpolator
     interpolator = plan_interpolator(coord, shape, width, beta, device)
     st_kernel = apply_gridding(dcf * delta, interpolator, basis)
-    
+
     # squeeze
     if st_kernel.shape[0] == 1:
         st_kernel = st_kernel[0]
@@ -151,19 +151,23 @@ def plan_toeplitz(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
     st_kernel = torch.fft.ifftshift(st_kernel, dim=list(range(-ndim, 0)))
 
     if basis is not None:
-        st_kernel = st_kernel.reshape(*st_kernel.shape[:2], np.prod(st_kernel.shape[2:]))
+        st_kernel = st_kernel.reshape(
+            *st_kernel.shape[:2], np.prod(st_kernel.shape[2:])
+        )
         st_kernel = st_kernel.permute(2, 1, 0).contiguous()
-        
+
     # normalize
     st_kernel /= torch.mean(abs(st_kernel[st_kernel != 0]))
-    
+
     # remove NaN
     st_kernel = torch.nan_to_num(st_kernel)
 
-    return GramMatrix(st_kernel, tuple(shape), device, islowrank)
+    return GramMatrix(st_kernel, tuple(shape), ndim, device, islowrank)
 
 
-def apply_toeplitz(data_out, data_in, toeplitz_kernel, device=None, threadsperblock=128):
+def apply_toeplitz(
+    data_out, data_in, toeplitz_kernel, device=None, threadsperblock=128
+):
     """
     Perform in-place fast self-adjoint by multiplication in k-space with spatio-temporal kernel.
 
@@ -182,6 +186,9 @@ def apply_toeplitz(data_out, data_in, toeplitz_kernel, device=None, threadsperbl
         CUDA blocks size (for GPU only). The default is ``128``.
 
     """
+    # get number of dimensions
+    ndim = toeplitz_kernel.ndim
+
     # convert to tensor if nececessary
     data_in = torch.as_tensor(data_in, device=device)
 
@@ -194,18 +201,48 @@ def apply_toeplitz(data_out, data_in, toeplitz_kernel, device=None, threadsperbl
     # cast tp device is necessary
     if device is not None:
         toeplitz_kernel.to(device)
-        
+
     if toeplitz_kernel.islowrank is True:
+        # keep original shape
+        shape = data_in.shape
+
+        # reshape
+        data_out = data_out.reshape(
+            -1, data_out.shape[-ndim - 1], np.prod(data_out.shape[-ndim:])
+        )  # (nbatches, ncontrasts, nvoxels)
+        data_in = data_in.reshape(
+            -1, data_in.shape[-ndim - 1], np.prod(data_in.shape[-ndim:])
+        )  # (nbatches, ncontrasts, nvoxels)
+
+        # transpose
+        data_out = data_out.permute(
+            2, 0, 1
+        ).contiguous()  # (nvoxels, nbatches, ncontrasts)
+        data_in = data_in.permute(
+            2, 0, 1
+        ).contiguous()  # (nvoxels, nbatches, ncontrasts)
+
+        # actual interpolation
         if toeplitz_kernel.device == "cpu":
             do_selfadjoint_interpolation(data_out, data_in, toeplitz_kernel.value)
         else:
-            do_selfadjoint_interpolation_cuda(data_out, data_in, toeplitz_kernel.value)
+            do_selfadjoint_interpolation_cuda(
+                data_out, data_in, toeplitz_kernel.value, threadsperblock
+            )
+
+        # transpose
+        data_out = data_out.permute(1, 2, 0).contiguous()
+
+        # reshape back
+        data_out = data_out.reshape(*shape)
     else:
         data_out = toeplitz_kernel.value * data_in
-        
+
     # collect garbage
     gc.collect()
-        
+
+    return data_out
+
 
 # %% subroutines
 def _get_oversamp_shape(shape, oversamp, ndim):
@@ -228,8 +265,9 @@ def _scale_coord(coord, shape, oversamp):
 class GramMatrix:
     value: torch.Tensor
     shape: tuple
+    ndim: int
     device: str
-    islowrank : bool
+    islowrank: bool
 
     def to(self, device):
         """
@@ -242,7 +280,6 @@ class GramMatrix:
 
         """
         if device != self.device:
-            
             # zero-copy to torch
             self.value = backend.numba2pytorch(self.value)
 
@@ -253,8 +290,8 @@ class GramMatrix:
             self.value = backend.pytorch2numba(self.value)
 
             self.device = device
-            
-            
+
+
 def do_selfadjoint_interpolation(data_out, data_in, toeplitz_matrix):
     data_out = backend.pytorch2numba(data_out)
     data_in = backend.pytorch2numba(data_in)
@@ -265,22 +302,21 @@ def do_selfadjoint_interpolation(data_out, data_in, toeplitz_matrix):
     data_out = backend.numba2pytorch(data_out)
     data_in = backend.numba2pytorch(data_in)
     toeplitz_matrix = backend.numba2pytorch(toeplitz_matrix)
-    
-    
+
+
 @nb.njit(fastmath=True, cache=True)  # pragma: no cover
 def _dot_product(out, in_a, in_b):
-    row, col = in_a.shape
+    row, col = in_b.shape
 
     for i in range(row):
         for j in range(col):
-            out[j] += in_a[i][j] * in_b[j]
+            out[j] += in_b[i][j] * in_a[j]
 
     return out
 
 
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _interp_selfadjoint(data_out, data_in, toeplitz_matrix):
-
     # get data dimension
     nvoxels, batch_size, _ = data_in.shape
 
@@ -288,16 +324,18 @@ def _interp_selfadjoint(data_out, data_in, toeplitz_matrix):
         voxel = i // batch_size
         batch = i % batch_size
 
-        _dot_product(data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix)
+        _dot_product(
+            data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix[voxel]
+        )
 
-    return data_out
 
 # %% CUDA
 if torch.cuda.is_available():
     from numba import cuda
-    
-    def do_selfadjoint_interpolation_cuda(data_out, data_in, toeplitz_matrix, threadsperblock):
-        
+
+    def do_selfadjoint_interpolation_cuda(
+        data_out, data_in, toeplitz_matrix, threadsperblock
+    ):
         # calculate size
         nvoxels, batch_size, ncoeff = data_out.shape
 
@@ -311,26 +349,26 @@ if torch.cuda.is_available():
         toeplitz_matrix = backend.pytorch2numba(toeplitz_matrix)
 
         # run kernel
-        _interp_selfadjoint_cuda[blockspergrid, threadsperblock](data_out, data_in, toeplitz_matrix)
+        _interp_selfadjoint_cuda[blockspergrid, threadsperblock](
+            data_out, data_in, toeplitz_matrix
+        )
 
         data_out = backend.numba2pytorch(data_out)
         data_in = backend.numba2pytorch(data_in)
         toeplitz_matrix = backend.numba2pytorch(toeplitz_matrix)
-        
-        
+
     @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _dot_product_cuda(out, in_a, in_b):
-        row, col = in_a.shape
+        row, col = in_b.shape
+
         for i in range(row):
             for j in range(col):
-                out[j] += in_a[i][j] * in_b[j]
+                out[j] += in_b[i][j] * in_a[j]
 
         return out
-        
-    
+
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interp_selfadjoint_cuda(data_out, data_in, toeplitz_matrix):
-
         # get data dimension
         nvoxels, batch_size, _ = data_in.shape
 
@@ -339,8 +377,6 @@ if torch.cuda.is_available():
             voxel = i // batch_size
             batch = i % batch_size
 
-            _dot_product_cuda(data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix)
-
-        return data_out
-        
-        
+            _dot_product_cuda(
+                data_out[voxel][batch], data_in[voxel][batch], toeplitz_matrix[voxel]
+            )

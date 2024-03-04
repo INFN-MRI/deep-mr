@@ -41,7 +41,7 @@ def test_sparse_fft1(ncontrasts, ncoils, nslices, device, npix=4):
             (nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device
         )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
@@ -72,7 +72,7 @@ def test_sparse_fft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4):
         (nslices, ncoils, ncontrasts, 1, npix), dtype=torch.complex64, device=device
     )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
@@ -110,7 +110,7 @@ def test_sparse_fft2(ncontrasts, ncoils, nslices, device, npix=4):
             device=device,
         )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
@@ -143,7 +143,7 @@ def test_sparse_fft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4):
         device=device,
     )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
@@ -180,7 +180,7 @@ def test_sparse_fft3(ncontrasts, ncoils, device, npix=4):
             (ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device
         )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
@@ -210,7 +210,7 @@ def test_sparse_fft_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
         (ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device
     )
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
@@ -247,7 +247,7 @@ def test_sparse_ifft1(ncontrasts, ncoils, nslices, device, npix=4):
         )
     image_ground_truth[..., npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
@@ -288,7 +288,7 @@ def test_sparse_ifft_lowrank1(ncontrasts, ncoils, nslices, device, npix=4):
     )
     image_ground_truth[..., npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(1, ncontrasts, npix)
 
     # input
@@ -333,7 +333,7 @@ def test_sparse_ifft2(ncontrasts, ncoils, nslices, device, npix=4):
         )
     image_ground_truth[..., npix // 2, npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
@@ -376,7 +376,7 @@ def test_sparse_ifft_lowrank2(ncontrasts, ncoils, nslices, device, npix=4):
     )
     image_ground_truth[..., npix // 2, npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(2, ncontrasts, npix)
 
     # input
@@ -423,7 +423,7 @@ def test_sparse_ifft3(ncontrasts, ncoils, device, npix=4):
         )
     image_ground_truth[..., npix // 2, npix // 2, npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
@@ -464,7 +464,7 @@ def test_sparse_ifft_lowrank3(ncontrasts, ncoils, device, npix=4):
     )
     image_ground_truth[..., npix // 2, npix // 2, npix // 2] = 1.0
 
-    # k-space indexesinates
+    # k-space indexes
     indexes = _generate_indexes(3, ncontrasts, npix)
 
     # input
@@ -493,12 +493,130 @@ def test_sparse_ifft_lowrank3(ncontrasts, ncoils, device, npix=4):
     )
 
 
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[1, 2], ncoils, nslices, device])),
+)
+def test_sparse_fft_selfadjoint2(ncontrasts, ncoils, nslices, device, npix=4):
+    # k-space indexes
+    indexes = _generate_indexes(2, ncontrasts, npix)
+
+    # input
+    if ncontrasts == 1:
+        image_in = torch.zeros((nslices, ncoils, npix, npix), dtype=torch.complex64)
+    else:
+        image_in = torch.zeros(
+            (nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64
+        )
+    image_in[..., npix // 2, npix // 2] = 1.0
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_fft(indexes, npix, device=device)
+    image_out = deepmr.fft.apply_sparse_fft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[2, 3], ncoils, nslices, device])),
+)
+def test_sparse_fft_selfadjoint_lowrank2(ncontrasts, ncoils, nslices, device, npix=4):
+    # k-space indexes
+    indexes = _generate_indexes(2, ncontrasts, npix)
+
+    # input
+    image_in = torch.zeros(
+        (nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64
+    )
+    image_in[..., npix // 2, npix // 2] = 1.0
+
+    # get basis
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_fft(
+        indexes, npix, device=device, basis=basis_adjoint
+    )
+    image_out = deepmr.fft.apply_sparse_fft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, device", list(itertools.product(*[[1, 2], ncoils, device]))
+)
+def test_sparse_fft_selfadjoint3(ncontrasts, ncoils, device, npix=4):
+    # k-space indexes
+    indexes = _generate_indexes(3, ncontrasts, npix)
+
+    # input
+    if ncontrasts == 1:
+        image_in = torch.zeros((ncoils, npix, npix, npix), dtype=torch.complex64)
+    else:
+        image_in = torch.zeros(
+            (ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64
+        )
+    image_in[..., npix // 2, npix // 2, npix // 2] = 1.0
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_fft(indexes, npix, device=device)
+    image_out = deepmr.fft.apply_sparse_fft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, device", list(itertools.product(*[[2, 3], ncoils, device]))
+)
+def test_sparse_fft_selfadjoint_lowrank3(ncontrasts, ncoils, device, npix=4):
+    # k-space indexes
+    indexes = _generate_indexes(3, ncontrasts, npix)
+
+    # input
+    image_in = torch.zeros(
+        (ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64
+    )
+    image_in[..., npix // 2, npix // 2, npix // 2] = 1.0
+
+    # get basis
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_fft(
+        indexes, npix, device=device, basis=basis_adjoint
+    )
+    image_out = deepmr.fft.apply_sparse_fft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
 # %% local subroutines
 def _generate_indexes(ndim, ncontrasts, npix):
     # data type
     dtype = torch.float32
 
-    # build indexesinates
+    # build indexes
     nodes = torch.arange(npix, dtype=torch.int16)
 
     if ndim == 1:

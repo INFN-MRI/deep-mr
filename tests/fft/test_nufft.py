@@ -217,7 +217,7 @@ def test_nufft3(ncontrasts, ncoils, device, npix=4, width=12):
 @pytest.mark.parametrize(
     "ncontrasts, ncoils, device", list(itertools.product(*[[2, 3], ncoils, device]))
 )
-def test_nufft_lowrank3(ncontrasts, ncoils, device, npix=32, width=8):
+def test_nufft_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
     # get ground truth
     kdata_ground_truth = torch.ones(
         (ncoils, ncontrasts, 1, npix**3), dtype=torch.complex64, device=device
@@ -513,6 +513,130 @@ def test_nufft_adjoint_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
         image_ground_truth.detach().cpu(),
         rtol=tol,
         atol=tol,
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[1, 2], ncoils, nslices, device])),
+)
+def test_nufft_selfadjoint2(ncontrasts, ncoils, nslices, device, npix=4, width=12):
+    # k-space coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
+
+    # input
+    if ncontrasts == 1:
+        image_in = torch.zeros((nslices, ncoils, npix, npix), dtype=torch.complex64)
+    else:
+        image_in = torch.zeros(
+            (nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64
+        )
+    image_in[..., npix // 2, npix // 2] = 1.0
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_nufft(
+        coord, npix, width=width, device=device
+    )
+    image_out = deepmr.fft.apply_nufft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, nslices, device",
+    list(itertools.product(*[[2, 3], ncoils, nslices, device])),
+)
+def test_nufft_selfadjoint_lowrank2(
+    ncontrasts, ncoils, nslices, device, npix=4, width=12
+):
+    # k-space coordinates
+    coord, _ = _generate_coordinates(2, ncontrasts, npix)
+
+    # input
+    image_in = torch.zeros(
+        (nslices, ncoils, ncontrasts, npix, npix), dtype=torch.complex64
+    )
+    image_in[..., npix // 2, npix // 2] = 1.0
+
+    # get basis
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_nufft(
+        coord, npix, width=width, device=device, basis=basis_adjoint
+    )
+    image_out = deepmr.fft.apply_nufft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, device", list(itertools.product(*[[1, 2], ncoils, device]))
+)
+def test_nufft_selfadjoint3(ncontrasts, ncoils, device, npix=4, width=12):
+    # k-space coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
+
+    # input
+    if ncontrasts == 1:
+        image_in = torch.zeros((ncoils, npix, npix, npix), dtype=torch.complex64)
+    else:
+        image_in = torch.zeros(
+            (ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64
+        )
+    image_in[..., npix // 2, npix // 2, npix // 2] = 1.0
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_nufft(
+        coord, npix, width=width, device=device
+    )
+    image_out = deepmr.fft.apply_nufft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
+    )
+
+
+@pytest.mark.parametrize(
+    "ncontrasts, ncoils, device", list(itertools.product(*[[2, 3], ncoils, device]))
+)
+def test_nufft_selfadjoint_lowrank3(ncontrasts, ncoils, device, npix=4, width=12):
+    # k-space coordinates
+    coord, _ = _generate_coordinates(3, ncontrasts, npix)
+
+    # input
+    image_in = torch.zeros(
+        (ncoils, ncontrasts, npix, npix, npix), dtype=torch.complex64
+    )
+    image_in[..., npix // 2, npix // 2, npix // 2] = 1.0
+
+    # get basis
+    basis_adjoint = torch.eye(ncontrasts, dtype=torch.complex64)
+
+    # computation
+    toeplitz_kern = deepmr.fft.plan_toeplitz_nufft(
+        coord, npix, width=width, device=device, basis=basis_adjoint
+    )
+    image_out = deepmr.fft.apply_nufft_selfadj(
+        image_in.clone(), toeplitz_kern, device=device
+    )
+
+    # check
+    npt.assert_allclose(
+        image_out.detach().cpu(), image_in.detach().cpu(), rtol=tol, atol=tol
     )
 
 

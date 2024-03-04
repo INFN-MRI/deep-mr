@@ -22,6 +22,8 @@
 	
 	deepmr.fft.sparse_fft
 	deepmr.fft.sparse_ifft
+	deepmr.fft.plan_toeplitz_fft
+	deepmr.fft.apply_sparse_fft_selfadjoint
 ```
 
 ## Non-Uniform FFT (NUFFT)
@@ -32,4 +34,6 @@
 	
 	deepmr.fft.nufft
 	deepmr.fft.nufft_adj
+	deepmr.fft.plan_toeplitz_nufft
+	deepmr.fft.apply_nufft_selfadjoint
 ```

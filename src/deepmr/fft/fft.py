@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 
-def fft(input, axes=None, norm="ortho"):
+def fft(input, axes=None, norm="ortho", centered=True):
     """
     Centered Fast Fourier Transform.
 
@@ -21,6 +21,8 @@ def fft(input, axes=None, norm="ortho"):
         If not specified, apply FFT over all the axes.
     norm : str, optional
         FFT normalization. The default is ``ortho``.
+    centered : bool, optional
+        FFT centering. The default is ``True``.
 
     Returns
     -------
@@ -71,9 +73,13 @@ def fft(input, axes=None, norm="ortho"):
     # make sure this is a tensor
     input = torch.as_tensor(input)
     ax = _normalize_axes(axes, input.ndim)
-    output = torch.fft.fftshift(
-        torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
-    )
+    if centered:
+        output = torch.fft.fftshift(
+            torch.fft.fftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm),
+            dim=ax,
+        )
+    else:
+        output = torch.fft.fftn(input, dim=ax, norm=norm)
 
     if isnumpy:
         output = np.asarray(output)
@@ -81,7 +87,7 @@ def fft(input, axes=None, norm="ortho"):
     return output
 
 
-def ifft(input, axes=None, norm="ortho"):
+def ifft(input, axes=None, norm="ortho", centered=True):
     """
     Centered inverse Fast Fourier Transform.
 
@@ -96,6 +102,8 @@ def ifft(input, axes=None, norm="ortho"):
         If not specified, apply iFFT over all the axes.
     norm : str, optional
         FFT normalization. The default is ``ortho``.
+    centered : bool, optional
+        FFT centering. The default is ``True``.
 
     Returns
     -------
@@ -145,9 +153,13 @@ def ifft(input, axes=None, norm="ortho"):
     # make sure this is a tensor
     input = torch.as_tensor(input)
     ax = _normalize_axes(axes, input.ndim)
-    output = torch.fft.fftshift(
-        torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm), dim=ax
-    )
+    if centered:
+        output = torch.fft.fftshift(
+            torch.fft.ifftn(torch.fft.ifftshift(input, dim=ax), dim=ax, norm=norm),
+            dim=ax,
+        )
+    else:
+        output = torch.fft.ifftn(input, dim=ax, norm=norm)
 
     if isnumpy:
         output = np.asarray(output)

@@ -6,9 +6,10 @@ from . import dense2sparse
 from . import sparse2dense
 from . import plan
 
-from .dense2sparse import apply_sampling
-from .sparse2dense import apply_zerofill
-from .plan import plan_sampling
+from .dense2sparse import apply_sampling  # noqa
+from .sparse2dense import apply_zerofill  # noqa
+from .plan import plan_sampling  # noqa
+from .toeplitz import *  # noqa
 
 
 def sample(

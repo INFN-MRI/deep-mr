@@ -1,9 +1,18 @@
 """NUFFT subroutines."""
 
-__all__ = ["plan_nufft", "apply_nufft", "apply_nufft_adj"]
+__all__ = [
+    "plan_nufft",
+    "plan_toeplitz_nufft",
+    "apply_nufft",
+    "apply_nufft_adj",
+    "apply_nufft_selfadj",
+]
+
+
+import gc
+import math
 
 from dataclasses import dataclass
-import math
 
 import numpy as np
 import torch
@@ -40,7 +49,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
 
     Returns
     -------
-    interpolator : dict
+    interpolator : NUFFTPlan
         Structure containing sparse interpolator matrix:
 
         * ndim (``int``): number of spatial dimensions.
@@ -157,7 +166,7 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu
     """
     return _interp.plan_toeplitz(coord, shape, basis, dcf, width, device)
 
-    
+
 def apply_nufft(
     image, nufft_plan, basis_adjoint=None, device=None, threadsperblock=128
 ):
@@ -169,7 +178,7 @@ def apply_nufft(
     image : torch.Tensor
         Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-    nufft_plan : dict
+    nufft_plan : NUFFTPlan
         Pre-calculated NUFFT plan coefficients in sparse COO format.
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
@@ -191,7 +200,7 @@ def apply_nufft(
         isnumpy = True
     else:
         isnumpy = False
-        
+
     # convert to tensor if nececessary
     image = torch.as_tensor(image)
 
@@ -237,7 +246,6 @@ def apply_nufft(
     _apodize(image, ndim, oversamp, width, beta)
 
     # zero-pad
-    # image /= np.prod(image.shape[-ndim:])**0.5
     image = _resize(image, list(image.shape[:-ndim]) + list(os_shape))
 
     # FFT
@@ -251,10 +259,13 @@ def apply_nufft(
     # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
-    
+
     # transform back to numpy if required
     if isnumpy:
         kspace = kspace.numpy(force=True)
+
+    # collect garbage
+    gc.collect()
 
     return kspace
 
@@ -267,7 +278,7 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     ----------
     kspace : torch.Tensor
         Input kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
-    nufft_plan : dict
+    nufft_plan : NUFFTPlan
         Pre-calculated NUFFT plan coefficients in sparse COO format.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
@@ -290,7 +301,7 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
         isnumpy = True
     else:
         isnumpy = False
-    
+
     # convert to tensor if nececessary
     kspace = torch.as_tensor(kspace)
 
@@ -333,7 +344,6 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     kspace = _interp.apply_gridding(
         kspace, interpolator, basis, device, threadsperblock
     )
-    # kspace /= np.prod(width)
 
     # IFFT
     image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
@@ -347,25 +357,28 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     # bring back to original device
     kspace = kspace.to(odevice)
     image = image.to(odevice)
-    
+
     # transform back to numpy if required
     if isnumpy:
         image = image.numpy(force=True)
+
+    # collect garbage
+    gc.collect()
 
     return image
 
 
 def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
     """
-    Apply adjoint Non-Uniform Fast Fourier Transform.
+    Apply self-adjoint Non-Uniform Fast Fourier Transform via Toeplitz Convolution.
 
     Parameters
     ----------
     image : torch.Tensor
         Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-    toeplitz_kern : dict
-        Pre-calculated NUFFT plan coefficients in sparse COO format.
+    toeplitz_kern : GramMatrix
+        Pre-calculated Toeplitz kernel.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).
@@ -384,7 +397,7 @@ def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
         isnumpy = True
     else:
         isnumpy = False
-        
+
     # convert to tensor if nececessary
     image = torch.as_tensor(image)
 
@@ -399,37 +412,44 @@ def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
         toeplitz_kern.to(device)
 
     # unpack plan
-    psf = toeplitz_kern.value
     shape = toeplitz_kern.shape
+    ndim = toeplitz_kern.ndim
     device = toeplitz_kern.device
-    
+
     # original shape
-    oshape = image.device
+    oshape = image.shape[-ndim:]
 
     # original device
     odevice = image.device
-    
+
     # offload to computational device
     image = image.to(device)
 
-    # # gridding
-    # kspace = _interp.apply_gridding(
-    #     kspace, interpolator, basis, device, threadsperblock
-    # )
-    # # kspace /= np.prod(width)
+    # zero-pad
+    image = _resize(image, list(image.shape[:-ndim]) + list(shape))
 
-    # # IFFT
-    # image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
+    # FFT
+    kspace = _fft.fft(image, axes=range(-ndim, 0), norm="ortho", centered=False)
 
-    # # crop
-    # image = _resize(image, list(image.shape[:-ndim]) + list(shape))
+    # Toeplitz convolution
+    tmp = torch.zeros_like(kspace)
+    tmp = _interp.apply_toeplitz(tmp, kspace, toeplitz_kern, device, threadsperblock)
 
-    # # apodize
-    # _apodize(image, ndim, oversamp, width, beta)
+    # IFFT
+    image = _fft.ifft(tmp, axes=range(-ndim, 0), norm="ortho", centered=False)
 
-    # # bring back to original device
-    # kspace = kspace.to(odevice)
-    # image = image.to(odevice)
+    # crop
+    image = _resize(image, list(image.shape[:-ndim]) + list(oshape))
+
+    # bring back to original device
+    image = image.to(odevice)
+
+    # transform back to numpy if required
+    if isnumpy:
+        image = image.numpy(force=True)
+
+    # collect garbage
+    gc.collect()
 
     return image
 

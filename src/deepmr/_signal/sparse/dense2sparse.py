@@ -81,7 +81,7 @@ def apply_sampling(data_in, mask, basis_adjoint=None, device=None, threadsperblo
         batch_shape = data_in.shape[:-ndim]
     else:
         batch_shape = data_in.shape[: -ndim - 1]
-    batch_size = np.prod(batch_shape)  # ncoils * nslices * [int]
+    batch_size = int(np.prod(batch_shape))  # ncoils * nslices
 
     # reshape
     data_in = data_in.reshape([batch_size, nframes, *dshape])
