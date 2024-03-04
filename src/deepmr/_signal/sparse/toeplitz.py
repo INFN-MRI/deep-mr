@@ -29,7 +29,7 @@ def plan_toeplitz(indexes, shape, basis=None, device="cpu"):
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
-        basis : torch.Tensor, optional
+    basis : torch.Tensor, optional
         Low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
     device : str, optional
