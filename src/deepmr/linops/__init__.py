@@ -22,6 +22,6 @@ from .fft import *  # noqa
 from .nufft import *  # noqa
 
 __all__ = []
-__all__.extend(_coil.__all)
-__all__.extend(_fft.__all)
-__all__.extend(_nufft.__all)
+__all__.extend(_coil.__all__)
+__all__.extend(_fft.__all__)
+__all__.extend(_nufft.__all__)

@@ -8,6 +8,7 @@ __version__ = version("deepmr")
 from . import bloch
 from . import io
 from . import fft
+from . import linops
 
 # from . import optim
 # from . import prox
