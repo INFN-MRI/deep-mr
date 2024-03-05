@@ -99,7 +99,7 @@ def plan_toeplitz_fft(coord, shape, basis=None, device="cpu"):
 
 
 def apply_sparse_fft(
-    image, sampling_mask, basis_adjoint=None, device=None, threadsperblock=128
+    image, sampling_mask, basis_adjoint=None, weight=None, device=None, threadsperblock=128
 ):
     """
     Apply sparse Fast Fourier Transform.
@@ -114,6 +114,9 @@ def apply_sparse_fft(
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
         of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).
@@ -175,6 +178,11 @@ def apply_sparse_fft(
     kspace = _sparse.apply_sampling(
         kspace, sampling_mask, basis_adjoint, device, threadsperblock
     )
+    
+    # apply weight
+    if weight is not None:
+        weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
+        kspace = weight * kspace
 
     # Bring back to original device
     kspace = kspace.to(odevice)
@@ -191,7 +199,7 @@ def apply_sparse_fft(
 
 
 def apply_sparse_ifft(
-    kspace, sampling_mask, basis=None, device=None, threadsperblock=128
+    kspace, sampling_mask, basis=None, weight=None, device=None, threadsperblock=128
 ):
     """
     Apply adjoint Non-Uniform Fast Fourier Transform.
@@ -205,6 +213,9 @@ def apply_sparse_ifft(
     basis : torch.Tensor, optional
         Low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).
@@ -256,6 +267,11 @@ def apply_sparse_ifft(
 
     # Offload to computational device
     kspace = kspace.to(device)
+    
+    # apply weight
+    if weight is not None:
+        weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
+        kspace = weight * kspace
 
     # Gridding
     kspace = _sparse.apply_zerofill(

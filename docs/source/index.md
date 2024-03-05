@@ -35,6 +35,7 @@ core/fft.md
 core/bloch.md
 core/vobj.md
 core/io.md
+core/linops.md
 
 ```
 

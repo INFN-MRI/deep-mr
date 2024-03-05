@@ -168,14 +168,14 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu
 
 
 def apply_nufft(
-    image, nufft_plan, basis_adjoint=None, device=None, threadsperblock=128
+    image, nufft_plan, basis_adjoint=None, weight=None, device=None, threadsperblock=128
 ):
     """
     Apply Non-Uniform Fast Fourier Transform.
 
     Parameters
     ----------
-    image : torch.Tensor
+    image : np.ndarray | torch.Tensor
         Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
     nufft_plan : NUFFTPlan
@@ -183,6 +183,9 @@ def apply_nufft(
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None`` (same as interpolator).
@@ -191,7 +194,7 @@ def apply_nufft(
 
     Returns
     -------
-    kspace : torch.Tensor
+    kspace : np.ndarray | torch.Tensor
         Output Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
     """
@@ -203,7 +206,7 @@ def apply_nufft(
 
     # convert to tensor if nececessary
     image = torch.as_tensor(image)
-
+    
     # make sure datatype is correct
     if image.dtype in (torch.float16, torch.float32, torch.float64):
         image = image.to(torch.float32)
@@ -255,6 +258,11 @@ def apply_nufft(
     kspace = _interp.apply_interpolation(
         kspace, interpolator, basis_adjoint, device, threadsperblock
     )
+    
+    # apply weight
+    if weight is not None:
+        weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
+        kspace = weight * kspace
 
     # bring back to original device
     kspace = kspace.to(odevice)
@@ -270,7 +278,7 @@ def apply_nufft(
     return kspace
 
 
-def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock=128):
+def apply_nufft_adj(kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128):
     """
     Apply adjoint Non-Uniform Fast Fourier Transform.
 
@@ -283,6 +291,9 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
     basis : torch.Tensor, optional
         Low rank subspace projection operator
         of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``None ``(same as interpolator).
@@ -339,6 +350,11 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, device=None, threadsperblock
 
     # offload to computational device
     kspace = kspace.to(device)
+    
+    # apply weight
+    if weight is not None:
+        weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
+        kspace = weight * kspace
 
     # gridding
     kspace = _interp.apply_gridding(
