@@ -231,6 +231,8 @@ def write_dicom(
         if head.FA.size == 1:
             head.ref_dicom.FlipAngle = float(abs(head.FA))
             head.FA = None
+        elif head.FA.size == 0:
+            head.FA = None
         elif len(np.unique(head.FA)) == 1:
             head.ref_dicom.FlipAngle = float(abs(head.FA[0]))
             head.FA = None
@@ -239,6 +241,8 @@ def write_dicom(
     if head.TE is not None and not (np.isinf(np.sum(head.TE))):
         if head.TE.size == 1:
             head.ref_dicom.EchoTime = float(head.TE)
+            head.TE = None
+        elif head.TE.size == 0:
             head.TE = None
         elif len(np.unique(head.TE)) == 1:
             head.ref_dicom.EchoTime = float(head.TE[0])
@@ -251,6 +255,8 @@ def write_dicom(
         if head.TR.size == 1:
             head.ref_dicom.RepetitionTime = float(head.TR)
             head.TR = None
+        elif head.TR.size == 0:
+            head.TR = None
         elif len(np.unique(head.TR)) == 1:
             head.ref_dicom.RepetitionTime = float(head.TR[0])
             head.TR = None
@@ -261,6 +267,8 @@ def write_dicom(
     if head.TI is not None and not (np.isinf(np.sum(head.TI))):
         if head.TI.size == 1:
             head.ref_dicom.InversionTime = float(head.TI)
+            head.TI = None
+        elif head.TI.size == 0:
             head.TI = None
         elif len(np.unique(head.TI)) == 1:
             head.ref_dicom.InversionTime = float(head.TI[0])
