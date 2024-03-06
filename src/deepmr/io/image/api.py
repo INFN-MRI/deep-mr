@@ -308,8 +308,6 @@ def write_image(
     image : np.ndarray
         Complex image data of shape ``(ncontrasts, nslices, ny, n)``.
         See ``'Notes'`` for additional information.
-    filepath : str, optional
-        Path to file. The default is ``./``.
     head : Header, optional
         Structure containing trajectory of shape ``(ncontrasts, nviews, npts, ndim)``
         and meta information (shape, resolution, spacing, etc). If None,
@@ -317,6 +315,8 @@ def write_image(
         The default is None.
     dataformat : str, optional
         Available formats (``dicom`` or ``nifti``). The default is ``nifti``.
+    filepath : str, optional
+        Path to file. The default is ``./``.
     series_description : str, optional
         Custom series description. The default is ``""`` (empty string).
     series_number_offset : int, optional
