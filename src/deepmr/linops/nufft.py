@@ -4,12 +4,11 @@ __all__ = ["NUFFTOp", "NUFFTGramOp"]
 
 import torch
 
-import deepinv as dinv
-
 from .. import fft as _fft
 
+from . import base
 
-class NUFFTOp(dinv.physics.LinearPhysics):
+class NUFFTOp(base.Linop):
     """
     Non-Uniform Fast Fourier Transform operator.
     
@@ -82,7 +81,7 @@ class NUFFTOp(dinv.physics.LinearPhysics):
         return _fft.apply_nufft_adj(y, self._nufft_plan, self._basis, self._weight, threadsperblock=self._threadsperblock)
     
 
-class NUFFTGramOp(dinv.physics.LinearPhysics):
+class NUFFTGramOp(base.Linop):
     """
     Self-adjoint Non-Uniform Fast Fourier Transform operator.
     

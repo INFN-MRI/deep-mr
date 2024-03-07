@@ -43,6 +43,7 @@ def write_bart(input: np.ndarray, filename: str):
     return _writecfl(input, filename)
 
 
+# %% local utils
 # Copyright 2013-2015. The Regents of the University of California.
 # Copyright 2021. Uecker Lab. University Center Göttingen.
 # All rights reserved. Use of this source code is governed by
@@ -96,3 +97,98 @@ def _writecfl(name, array):
             array = array.astype(np.complex64)
         mm.write(np.ascontiguousarray(array.T))
         mm.close()
+        
+
+def _read_coo(fd, n):
+    header = fd.read(4096)
+    
+    if len(header) != 4096:
+        return -1
+
+    pos = 0
+    delta = 0
+
+    if not npsscanf(header + pos, "Type: float\n%n", delta):
+        return -1
+
+    if delta == 0:
+        return -1
+
+    pos += delta
+
+    dim = 0
+
+    if not npsscanf(header + pos, "Dimensions: %d\n%n", dim, delta):
+        return -1
+
+    pos += delta
+
+    # if n != dim:
+    #     return -1
+
+    dimensions = np.ones(n, dtype=np.long)
+
+    for i in range(dim):
+        val = 0
+
+        if not npsscanf(header + pos, "[%*d %*d %ld %*d]\n%n", val, delta):
+            return -1
+
+        pos += delta
+
+        if i < n:
+            dimensions[i] = val
+        elif val != 1:
+            return -1
+
+    return dimensions
+
+def npsscanf(s, fmt, *args):
+    try:
+        result = npsscanf_dict(fmt, s)
+        if result is None:
+            return False
+        for i, arg in enumerate(args):
+            arg[0] = result[i]
+        return True
+    except ValueError:
+        return False
+
+def npsscanf_dict(fmt, s):
+    items = fmt.split()
+    result = []
+    for item in items:
+        if item.startswith("%"):
+            conversion = item[-1]
+            if conversion == "d":
+                pos = s.find("%d")
+                if pos == -1:
+                    raise ValueError("Invalid format")
+                num_chars = 0
+                while pos + num_chars < len(s) and s[pos + num_chars].isdigit():
+                    num_chars += 1
+                result.append(int(s[pos:pos + num_chars]))
+                s = s[:pos] + s[pos + num_chars:]
+            elif conversion == "n":
+                pos = s.find("%n")
+                if pos == -1:
+                    raise ValueError("Invalid format")
+                result.append(pos)
+                s = s[:pos] + s[pos + 2:]
+            else:
+                raise ValueError("Unsupported conversion")
+        else:
+            pos = s.find(item)
+            if pos == -1:
+                raise ValueError("Invalid format")
+            s = s[:pos] + s[pos + len(item):]
+    return result
+
+# # Example usage:
+# with open("your_file.txt", "r") as file:
+#     n = 3  # Specify the desired value for n
+#     dimensions = read_coo(file, n)
+#     if dimensions == -1:
+#         print("Error reading COO format.")
+#     else:
+#         print("Dimensions:", dimensions)

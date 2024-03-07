@@ -5,12 +5,11 @@ __all__ = ["FFTOp", "FFTGramOp", "SparseFFTOp", "SparseFFTGramOp"]
 import numpy as np
 import torch
 
-import deepinv as dinv
-
 from .. import fft as _fft
 
+from . import base
 
-class FFTOp(dinv.physics.LinearPhysics):
+class FFTOp(base.Linop):
     """
     Fast Fourier Transform operator.
     
@@ -35,7 +34,7 @@ class FFTOp(dinv.physics.LinearPhysics):
     
     """
     
-    def __init__(self, mask, basis=None, device=None, **kwargs):
+    def __init__(self, mask=None, basis=None, device=None, **kwargs):
         super().__init__(**kwargs)
         self._device = device
         if device is None:
@@ -104,7 +103,7 @@ class FFTOp(dinv.physics.LinearPhysics):
             y = y[..., 0]
         
         # mask if required
-        if self._bask is not None:
+        if self._mask is not None:
             y = self._mask * y
             
         # cast back to numpy if required
@@ -148,7 +147,7 @@ class FFTOp(dinv.physics.LinearPhysics):
             self._basis = self._basis.to(self._device)
                         
         # mask if required
-        if self._bask is not None:
+        if self._mask is not None:
             y = self._mask * y
             
         # project
@@ -172,7 +171,7 @@ class FFTOp(dinv.physics.LinearPhysics):
         return x
 
 
-class FFTGramOp(dinv.physics.LinearPhysics):
+class FFTGramOp(base.Linop):
     """
     Self-adjoint Sparse Fast Fourier Transform operator.
     
@@ -192,7 +191,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
         
     """
     
-    def __init__(self, mask, basis=None, device=None, **kwargs):
+    def __init__(self, mask=None, basis=None, device=None, **kwargs):
         super().__init__(**kwargs)
         self._device = device
         if device is None:
@@ -252,7 +251,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
             self._toeplitz_kern = self._toeplitz_kern.to(self._device)
             
         # fourier transform
-        y = _fft.fft(x, axes=(-1, -2), center=False)
+        y = _fft.fft(x, axes=(-1, -2), norm="ortho", centered=False)
                                     
         # project if required
         if self._toeplitz_kern is not None:
@@ -266,7 +265,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
             y = y[..., 0] # (..., ncoeff, nz, ny) / # (..., ncoeff, ny, nx)
             
         # apply Fourier transform
-        x = _fft.ifft(y, axes=(-1, -2), norm="ortho")
+        x = _fft.ifft(y, axes=(-1, -2), norm="ortho", centered=False)
         
         # cast back to numpy if required
         if isnumpy:
@@ -310,7 +309,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
             self._toeplitz_kern = self._toeplitz_kern.to(self._device)
             
         # fourier transform
-        x = _fft.fft(y, axes=(-1, -2), center=False)
+        x = _fft.fft(y, axes=(-1, -2), norm="ortho", centered=False)
                                     
         # project if required
         if self._toeplitz_kern is not None:
@@ -324,7 +323,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
             x = x[..., 0] # (..., ncoeff, nz, ny) / # (..., ncoeff, ny, nx)
             
         # apply Fourier transform
-        y = _fft.ifft(x, axes=(-1, -2), norm="ortho")
+        y = _fft.ifft(x, axes=(-1, -2), norm="ortho", centered=False)
         
         # cast back to numpy if required
         if isnumpy:
@@ -333,7 +332,7 @@ class FFTGramOp(dinv.physics.LinearPhysics):
         return y
     
     
-class SparseFFTOp(dinv.physics.LinearPhysics):
+class SparseFFTOp(base.Linop):
     """
     Sparse Fast Fourier Transform operator.
     
@@ -406,7 +405,7 @@ class SparseFFTOp(dinv.physics.LinearPhysics):
         return _fft.apply_nufft_adj(y, self._nufft_plan, self._basis, self._weight, threadsperblock=self._threadsperblock)
     
 
-class SparseFFTGramOp(dinv.physics.LinearPhysics):
+class SparseFFTGramOp(base.Linop):
     """
     Self-adjoint Sparse Fast Fourier Transform operator.
     

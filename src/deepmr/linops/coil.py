@@ -5,10 +5,9 @@ __all__ = ["CoilOp"]
 import numpy as np
 import torch
 
-import deepinv as dinv
+from . import base
 
-
-class CoilOp(dinv.physics.LinearPhysics):
+class CoilOp(base.Linop):
     """
     Multiply input image by coil sensitivity profile.
     
