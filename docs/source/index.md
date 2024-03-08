@@ -41,6 +41,14 @@ core/linops.md
 
 ```{toctree}
 :hidden:
+:caption: MR Recon
+
+recon/calib.md
+
+```
+
+```{toctree}
+:hidden:
 :caption: Miscellaneous
 
 misc/changelog.md
