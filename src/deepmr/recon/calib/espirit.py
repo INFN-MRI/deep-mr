@@ -5,12 +5,12 @@ __all__ = ["espirit_cal"]
 import numpy as np
 import torch
 
-# from ... import fft as _fft
+from ... import fft as _fft
 from ... import _signal
 
 from . import acs as _acs
 
-def espirit_cal(data, coord=None, dcf=None, shape=None, k=6, r=24, t=0.02, c=0.95, nsets=1):
+def espirit_cal(data, coord=None, dcf=None, shape=None, k=6, r=24, t=0.02, c=0.9, nsets=1):
     """
     Derives the ESPIRiT [1] operator.
 
@@ -110,7 +110,7 @@ def espirit_cal(data, coord=None, dcf=None, shape=None, k=6, r=24, t=0.02, c=0.9
     
     # normalize
     maps_rss = _signal.rss(maps, axis=1, keepdim=True)
-    maps = maps / maps_rss
+    maps = maps / maps_rss[[0]]
     
     # reformat
     if ndim == 2: # Cartesian or 2D Non-Cartesian
@@ -124,83 +124,66 @@ def espirit_cal(data, coord=None, dcf=None, shape=None, k=6, r=24, t=0.02, c=0.9
     return maps
         
 # %% local utils
-fft  = lambda x, ax : np.fft.fftshift(np.fft.fftn(np.fft.ifftshift(x, axes=ax), axes=ax, norm='ortho'), axes=ax) 
-ifft = lambda X, ax : np.fft.fftshift(np.fft.ifftn(np.fft.ifftshift(X, axes=ax), axes=ax, norm='ortho'), axes=ax) 
-
 def _espirit(X, k, r, t, c):
-    """Adapted for convenience from https://github.com/mikgroup/espirit-python/tree/master"""
     
-    # MC
-    device = X.device
-    X = X.clone().numpy(force=True).T
-    # MC
-
-    sx = np.shape(X)[0]
-    sy = np.shape(X)[1]
-    sz = np.shape(X)[2]
-    nc = np.shape(X)[3]
+    # transpose
+    X = X.permute(3, 2, 1, 0)
+    
+    # get shape
+    sx, sy, sz, nc = X.shape
 
     sxt = (sx//2-r//2, sx//2+r//2) if (sx > 1) else (0, 1)
     syt = (sy//2-r//2, sy//2+r//2) if (sy > 1) else (0, 1)
     szt = (sz//2-r//2, sz//2+r//2) if (sz > 1) else (0, 1)
 
-    # Extract calibration region.    
-    C = X[sxt[0]:sxt[1], syt[0]:syt[1], szt[0]:szt[1], :].astype(np.complex64)
+    # Extract calibration region.
+    C = X[sxt[0]:sxt[1], syt[0]:syt[1], szt[0]:szt[1], :].to(dtype=torch.complex64)
 
     # Construct Hankel matrix.
     p = (sx > 1) + (sy > 1) + (sz > 1)
-    A = np.zeros([(r-k+1)**p, k**p * nc]).astype(np.complex64)
+    A = torch.zeros([(r-k+1)**p, k**p * nc], dtype=torch.complex64, device=X.device)
 
     idx = 0
     for xdx in range(max(1, C.shape[0] - k + 1)):
-      for ydx in range(max(1, C.shape[1] - k + 1)):
-        for zdx in range(max(1, C.shape[2] - k + 1)):
-          # numpy handles when the indices are too big
-          block = C[xdx:xdx+k, ydx:ydx+k, zdx:zdx+k, :].astype(np.complex64) 
-          A[idx, :] = block.flatten()
-          idx = idx + 1
+        for ydx in range(max(1, C.shape[1] - k + 1)):
+            for zdx in range(max(1, C.shape[2] - k + 1)):
+                block = C[xdx:xdx+k, ydx:ydx+k, zdx:zdx+k, :].to(dtype=torch.complex64)
+                A[idx, :] = block.flatten()
+                idx += 1
 
     # Take the Singular Value Decomposition.
-    U, S, VH = np.linalg.svd(A, full_matrices=True)
-    V = VH.conj().T
+    U, S, VH = torch.linalg.svd(A, full_matrices=True)
+    V = VH.conj().t()
 
-    # Select kernels.
-    n = np.sum(S >= t * S[0])
-    V = V[:, 0:n]
+    # Select kernels
+    n = torch.sum(S >= t * S[0])
+    V = V[:, :n]
 
     kxt = (sx//2-k//2, sx//2+k//2) if (sx > 1) else (0, 1)
     kyt = (sy//2-k//2, sy//2+k//2) if (sy > 1) else (0, 1)
     kzt = (sz//2-k//2, sz//2+k//2) if (sz > 1) else (0, 1)
 
     # Reshape into k-space kernel, flips it and takes the conjugate
-    kernels = np.zeros(np.append(np.shape(X), n)).astype(np.complex64)
-    kerdims = [(sx > 1) * k + (sx == 1) * 1, (sy > 1) * k + (sy == 1) * 1, (sz > 1) * k + (sz == 1) * 1, nc]
+    kernels = torch.zeros((sx, sy, sz, nc, n), dtype=torch.complex64, device=X.device)
+    kerdims = [((sx > 1) * k + (sx == 1) * 1), ((sy > 1) * k + (sy == 1) * 1), ((sz > 1) * k + (sz == 1) * 1), nc]
     for idx in range(n):
-        kernels[kxt[0]:kxt[1],kyt[0]:kyt[1],kzt[0]:kzt[1], :, idx] = np.reshape(V[:, idx], kerdims)
+        kernels[kxt[0]:kxt[1], kyt[0]:kyt[1], kzt[0]:kzt[1], :, idx] = V[:, idx].reshape(kerdims)
 
     # Take the iucfft
     axes = (0, 1, 2)
-    kerimgs = np.zeros(np.append(np.shape(X), n)).astype(np.complex64)
-    for idx in range(n):
-        for jdx in range(nc):
-            ker = kernels[::-1, ::-1, ::-1, jdx, idx].conj()
-            kerimgs[:,:,:,jdx,idx] = fft(ker, axes) * np.sqrt(sx * sy * sz) / np.sqrt(k**p)
+    kerimgs = _fft.fft(kernels.flip(0).flip(1).flip(2).conj(), axes) * (sx * sy * sz)**0.5 / (k**p)**0.5
 
     # Take the point-wise eigenvalue decomposition and keep eigenvalues greater than c
-    maps = np.zeros(np.append(np.shape(X), nc)).astype(np.complex64)
-    for idx in range(0, sx):
-        for jdx in range(0, sy):
-            for kdx in range(0, sz):
+    u, s, vh = torch.linalg.svd(kerimgs.view(sx, sy, sz, nc, n).reshape(-1, nc, n),  full_matrices=True)
+    mask = s**2 > c
+    
+    # mask u (nvoxels, neigen, neigen)
+    u = mask[:, None, :] * u
 
-                Gq = kerimgs[idx,jdx,kdx,:,:]
-
-                u, s, vh = np.linalg.svd(Gq, full_matrices=True)
-                for ldx in range(0, nc):
-                    if (s[ldx]**2 > c):
-                        maps[idx, jdx, kdx, :, ldx] = u[:, ldx]
-                        
-    # MC
-    maps = torch.as_tensor(maps.T.copy(), device=device, dtype=torch.complex64)
-    # MC
+    # Reshape back to the original shape and assign to maps
+    maps = u.view(sx, sy, sz, nc, nc)    
+    
+    # transpose
+    maps = maps.permute(4, 3, 2, 1, 0)
 
     return maps

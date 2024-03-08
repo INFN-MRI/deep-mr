@@ -106,7 +106,7 @@ def _find_cart_acs(kspace, shape):
         kspace = kspace[..., center-shape//2:center+shape//2]
     if kspace.shape[-1] > shape:
         kspace = kspace[..., center-shape//2:center+shape//2, :]
-    
+        
     return kspace.swapaxes(0, 1) # (ncoils, nz, ny, nx)
 
 

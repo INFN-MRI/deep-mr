@@ -1,16 +1,16 @@
 # Reconstruction Preprocessing
 
 ```{eval-rst}
-.. automodule:: deepmr.recon.calib
+.. automodule:: deepmr.recon.calub
 ```
 
 ## Coil sensitivity estimation
 ```{eval-rst}
-.. currentmodule:: deepmr.recon.calib 
+.. currentmodule:: deepmr 
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
 	deepmr.recon.espirit_cal
-	
+
 ```
