@@ -17,7 +17,7 @@ from . import coil as _coil
 from . import fft as _fft
 from . import nufft as _nufft
 
-from .coil import * # noqa
+from .coil import *  # noqa
 from .fft import *  # noqa
 from .nufft import *  # noqa
 

@@ -97,11 +97,11 @@ def _writecfl(name, array):
             array = array.astype(np.complex64)
         mm.write(np.ascontiguousarray(array.T))
         mm.close()
-        
+
 
 def _read_coo(fd, n):
     header = fd.read(4096)
-    
+
     if len(header) != 4096:
         return -1
 
@@ -143,6 +143,7 @@ def _read_coo(fd, n):
 
     return dimensions
 
+
 def npsscanf(s, fmt, *args):
     try:
         result = npsscanf_dict(fmt, s)
@@ -153,6 +154,7 @@ def npsscanf(s, fmt, *args):
         return True
     except ValueError:
         return False
+
 
 def npsscanf_dict(fmt, s):
     items = fmt.split()
@@ -167,22 +169,23 @@ def npsscanf_dict(fmt, s):
                 num_chars = 0
                 while pos + num_chars < len(s) and s[pos + num_chars].isdigit():
                     num_chars += 1
-                result.append(int(s[pos:pos + num_chars]))
-                s = s[:pos] + s[pos + num_chars:]
+                result.append(int(s[pos : pos + num_chars]))
+                s = s[:pos] + s[pos + num_chars :]
             elif conversion == "n":
                 pos = s.find("%n")
                 if pos == -1:
                     raise ValueError("Invalid format")
                 result.append(pos)
-                s = s[:pos] + s[pos + 2:]
+                s = s[:pos] + s[pos + 2 :]
             else:
                 raise ValueError("Unsupported conversion")
         else:
             pos = s.find(item)
             if pos == -1:
                 raise ValueError("Invalid format")
-            s = s[:pos] + s[pos + len(item):]
+            s = s[:pos] + s[pos + len(item) :]
     return result
+
 
 # # Example usage:
 # with open("your_file.txt", "r") as file:

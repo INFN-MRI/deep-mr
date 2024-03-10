@@ -99,7 +99,12 @@ def plan_toeplitz_fft(coord, shape, basis=None, device="cpu"):
 
 
 def apply_sparse_fft(
-    image, sampling_mask, basis_adjoint=None, weight=None, device=None, threadsperblock=128
+    image,
+    sampling_mask,
+    basis_adjoint=None,
+    weight=None,
+    device=None,
+    threadsperblock=128,
 ):
     """
     Apply sparse Fast Fourier Transform.
@@ -178,7 +183,7 @@ def apply_sparse_fft(
     kspace = _sparse.apply_sampling(
         kspace, sampling_mask, basis_adjoint, device, threadsperblock
     )
-    
+
     # apply weight
     if weight is not None:
         weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
@@ -267,7 +272,7 @@ def apply_sparse_ifft(
 
     # Offload to computational device
     kspace = kspace.to(device)
-    
+
     # apply weight
     if weight is not None:
         weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)

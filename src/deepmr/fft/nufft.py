@@ -21,6 +21,7 @@ from .._signal import resize as _resize
 from .._signal import interp as _interp
 
 from . import fft as _fft
+from . import toeplitz as _toeplitz
 
 
 def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
@@ -164,7 +165,7 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu
         Structure containing Toeplitz kernel (i.e., Fourier transform of system tPSF).
 
     """
-    return _interp.plan_toeplitz(coord, shape, basis, dcf, width, device)
+    return _toeplitz.plan_toeplitz(coord, shape, basis, dcf, width, device)
 
 
 def apply_nufft(
@@ -206,7 +207,7 @@ def apply_nufft(
 
     # convert to tensor if nececessary
     image = torch.as_tensor(image)
-    
+
     # make sure datatype is correct
     if image.dtype in (torch.float16, torch.float32, torch.float64):
         image = image.to(torch.float32)
@@ -258,7 +259,7 @@ def apply_nufft(
     kspace = _interp.apply_interpolation(
         kspace, interpolator, basis_adjoint, device, threadsperblock
     )
-    
+
     # apply weight
     if weight is not None:
         weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)
@@ -278,7 +279,9 @@ def apply_nufft(
     return kspace
 
 
-def apply_nufft_adj(kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128):
+def apply_nufft_adj(
+    kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128
+):
     """
     Apply adjoint Non-Uniform Fast Fourier Transform.
 
@@ -350,7 +353,7 @@ def apply_nufft_adj(kspace, nufft_plan, basis=None, weight=None, device=None, th
 
     # offload to computational device
     kspace = kspace.to(device)
-    
+
     # apply weight
     if weight is not None:
         weight = torch.as_tensor(weight, dtype=torch.float32, device=kspace.device)

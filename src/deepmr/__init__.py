@@ -5,11 +5,11 @@ from importlib.metadata import version
 
 __version__ = version("deepmr")
 
-from . import bloch # noqa
-from . import io # noqa
-from . import fft # noqa
-from . import linops # noqa
-from . import recon # noqa
+from . import bloch  # noqa
+from . import io  # noqa
+from . import fft  # noqa
+from . import linops  # noqa
+from . import recon  # noqa
 
 # from . import optim
 # from . import prox

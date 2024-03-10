@@ -22,7 +22,7 @@ def read_mrd_rawdata(filepath):
         Metadata for image reconstruction.
     """
     data, head = mrd.read_mrd(filepath)
-    
+
     # normalize trajectory
     if head.traj is not None:
         ndim = head.traj.shape[-1]
