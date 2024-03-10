@@ -33,9 +33,13 @@ class CoilOp(base.Linop):
     """
 
     def __init__(self, ndim, sensmap, device="cpu", **kwargs):
-        super().__init__(**kwargs)
-        self._ndim = ndim
+        super().__init__(ndim, **kwargs)
         self._sensmap = torch.as_tensor(sensmap, device=device)
+                
+        if self._ndim == 2:
+            self._sensmap = self._sensmap[:, :, :, None, ...]
+        if self._ndim == 3:
+            self._sensmap = self._sensmap[:, :, None, ...]
 
     def A(self, x):
         """
@@ -65,16 +69,6 @@ class CoilOp(base.Linop):
 
         # transfer to device
         self._sensmap = self._sensmap.to(x.device)
-
-        # expand input dim
-        naxis = len(x.shape)
-
-        if self._ndim == 2:
-            while len(self._sensmap.shape) < naxis:
-                self._sensmap = self._sensmap[:, :, :, None, ...]
-        if self._ndim == 3:
-            while len(self._sensmap.shape) < naxis:
-                self._sensmap = self._sensmap[:, :, None, ...]
 
         # project
         y = self._sensmap * x
@@ -111,23 +105,13 @@ class CoilOp(base.Linop):
         # convert to tensor
         y = torch.as_tensor(y)
 
-        # expand input dim
-        naxis = len(y.shape)
-
-        if self._ndim == 2:
-            while len(self._sensmap.shape) < naxis:
-                self._sensmap = self._sensmap[:, :, :, None, ...]
-        if self._ndim == 3:
-            while len(self._sensmap.shape) < naxis:
-                self._sensmap = self._sensmap[:, :, None, ...]
-
         # combine
         tmp = self._sensmap.conj() * y
         if self._ndim == 2:
             x = tmp.sum(axis=1, keepdim=True).sum(
                 axis=2, keepdim=True
             )  # sum over sets and channels
-        if self._ndim == 2:
+        if self._ndim == 3:
             x = tmp.sum(axis=0, keepdim=True).sum(
                 axis=1, keepdim=True
             )  # sum over sets and channels

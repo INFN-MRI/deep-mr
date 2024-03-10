@@ -1,215 +1,148 @@
 """Wavelet denoising prior."""
 
-__all__ = ["WaveletPrior"]
+__all__ = ["WaveletPrior", "wavelet_denoise"]
 
+import numpy as np
 import torch
-import torch.nn as nn
 
-import ptwt
-import pywt
+from deepinv.optim.prior import PnP
+from deepinv.optim.prior import WaveletPrior as _WaveletPrior
 
 
-class WaveletPrior(nn.Module):
+def WaveletPrior(ndim, wv="db4", device=None, p=1, level=3, *args, **kwargs):
     r"""
-    Wavelet denoising with the :math:`\ell_1` norm.
+    Wavelet prior :math:`\reg{x} = \|\Psi x\|_{p}`.
+    
+    This is simply a thin wrapper around ``deepinv.optim.prior.WaveletPrior``
+    used to force user to specify the input spatial dimensions.
 
-    This denoiser is defined as the solution to the optimization problem:
+    :math:`\Psi` is an orthonormal wavelet transform, and :math:`\|\cdot\|_{p}` is the :math:`p`-norm, with
+    :math:`p=0`, :math:`p=1`, or :math:`p=\infty`.
 
-    .. math::
+    Notes
+    -----
+    Following common practice in signal processing, only detail coefficients are regularized, and the approximation
+    coefficients are left untouched.
 
-        \underset{x}{\arg\min} \;  \|x-y\|^2 + \lambda \|\Psi x\|_n
-
-    where :math:`\Psi` is an orthonormal wavelet transform, :math:`\lambda>0` is a hyperparameter, and where
-    :math:`\|\cdot\|_n` is either the :math:`\ell_1` norm (``non_linearity="soft"``) or
-    the :math:`\ell_0` norm (``non_linearity="hard"``). A variant of the :math:`\ell_0` norm is also available
-    (``non_linearity="topk"``), where the thresholding is done by keeping the :math:`k` largest coefficients
-    in each wavelet subband and setting the others to zero.
-
-    The solution is available in closed-form, thus the denoiser is cheap to compute.
+    Warning
+    -------
+    For 3D data, the computational complexity of the wavelet transform cubically with the size of the support. For
+    large 3D data, it is recommended to use wavelets with small support (e.g. db1 to db4).
 
     Attributes
     ----------
-    dim: int
-        Number of spatial dimensions.
-    level : int, optional
-        Decomposition level of the wavelet transform. The default is 3.
-    wv : str, optional wv:
-        Mother wavelet (follows the `PyWavelets convention <https://pywavelets.readthedocs.io/en/latest/ref/wavelets.html>`_)
-        The default is "db8".
-    device : str, optional
-        ``"cpu"`` or ``"gpu"``. The default is ``"cpu"``.
-    non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
-        If ``"topk"``, only the top-k wavelet coefficients are kept.
-        The default is ``"soft"``.
-
+    ndim : int
+        Number of spatial dimensions, can be either ``2`` or ``3``. 
+    wv : str, optional 
+        Wavelet name to choose among those available in `pywt <https://pywavelets.readthedocs.io/en/latest/>`_. 
+        Default is ``"db4"``.
+    device : str, optional 
+        Device on which the wavelet transform is computed. Default is ``None``.
+    p : float, optional
+        :math:`p`-norm of the prior. Default is ``1``.
+    level: int, optional
+        Level of the wavelet transform. Default is ``None``.
+        
     """
+    return PnP(denoiser=ComplexWaveletDenoiser(ndim, wv, device, p, level, *args, **kwargs))
 
-    def __init__(self, dim, level=3, wv="db8", device="cpu", non_linearity="soft"):
+
+def wavelet_denoise(input, ndim, ths=0.1, wv="db4", device=None, p=1, level=3):
+    r"""
+    Apply wavelet denoising as :math:`\reg{x} = \|\Psi x\|_{p}`.
+    
+    This is simply a thin wrapper around ``deepinv.optim.prior.WaveletPrior``
+    used to force user to specify the input spatial dimensions.
+
+    :math:`\Psi` is an orthonormal wavelet transform, and :math:`\|\cdot\|_{p}` is the :math:`p`-norm, with
+    :math:`p=0`, :math:`p=1`, or :math:`p=\infty`.
+
+    Notes
+    -----
+    Following common practice in signal processing, only detail coefficients are regularized, and the approximation
+    coefficients are left untouched.
+
+    Warning
+    -------
+    For 3D data, the computational complexity of the wavelet transform cubically with the size of the support. For
+    large 3D data, it is recommended to use wavelets with small support (e.g. db1 to db4).
+
+    Arguments
+    ---------
+    input : np.ndarray | torch.Tensor
+        Input image of shape (..., n_ndim, ..., n_0).
+    ndim : int
+        Number of spatial dimensions, can be either ``2`` or ``3``. 
+    ths : float, optional
+        Denoise threshold. Degault is ``0.1``.
+    wv : str, optional 
+        Wavelet name to choose among those available in `pywt <https://pywavelets.readthedocs.io/en/latest/>`_. 
+        Default is ``"db4"``.
+    device : str, optional 
+        Device on which the wavelet transform is computed. Default is ``"cpu"``.
+    p : float, optional
+        :math:`p`-norm of the prior. Default is ``1``.
+    level: int, optional
+        Level of the wavelet transform. Default is ``None``.
+        
+    Returns
+    -------
+    output : np.ndarray | torch.Tensor
+        Denoised image of shape (..., n_ndim, ..., n_0).
+    
+    """
+    W = ComplexWaveletDenoiser(ndim, wv, device, p, level)
+    return W(input, ths)
+
+
+# %% local utils
+class ComplexWaveletDenoiser(torch.nn.Module):
+    def __init__(self, ndim, wv, device, p, level, *args, **kwargs):
         super().__init__()
-
-        # select correct wavelet transform
-        wavelet = pywt.Wavelet(wv)
-        if dim == 1:
-            dwt = ptwt.wavedec
-            iwt = ptwt.waverec
-        if dim == 2:
-            dwt = ptwt.wavedec2
-            iwt = ptwt.waverec2
-        if dim == 3:
-            dwt = ptwt.wavedec3
-            iwt = ptwt.waverec3
-
-        self.level = level
-        self.device = device
-        self.dwt = lambda x: dwt(
-            x.to(self.device), wavelet, mode="zero", level=self.level
-        )
-        self.iwt = lambda x: iwt(
-            x.to(self.device), wavelet, mode="zero", level=self.level
-        )
-        self.non_linearity = non_linearity
-
-    def _get_ths_map(self, ths):
-        if isinstance(ths, float) or isinstance(ths, int):
-            ths_map = ths
-        elif len(ths.shape) == 0 or ths.shape[0] == 1:
-            ths_map = ths.to(self.device)
+        self.denoiser = _WaveletPrior(level=level, wv=wv, p=p, device=device, wvdim=ndim, *args, **kwargs)
+    
+    def forward(self, input, ths):
+    
+        # cast to numpy if required
+        if isinstance(input, np.ndarray):
+            isnumpy = True
+            input = torch.as_tensor(input)
         else:
-            ths_map = (
-                ths.unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(-1)
-                .unsqueeze(-1)
-                .to(self.device)
-            )
-        return ths_map
-
-    def prox_l1(self, x, ths=0.1):
-        """
-        Soft thresholding of the wavelet coefficients.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Wavelet coefficients.
-        ths : float, torch.Tensor, optional
-            Threshold. The default is 0.1.
-
-        """
-        ths_map = self._get_ths_map(ths)
-        return torch.maximum(
-            torch.tensor([0], device=x.device).type(x.dtype), x - ths_map
-        ) + torch.minimum(torch.tensor([0], device=x.device).type(x.dtype), x + ths_map)
-
-    def prox_l0(self, x, ths=0.1):
-        """
-        Hard thresholding of the wavelet coefficients.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Wavelet coefficients.
-        ths : float, torch.Tensor, optional
-            Threshold. The default is 0.1.
-
-        """
-        if isinstance(ths, float):
-            ths_map = ths
+            isnumpy = False
+            
+        # get complex
+        if torch.is_complex(input):
+            iscomplex = True
         else:
-            ths_map = self._get_ths_map(ths)
-            ths_map = ths_map.repeat(
-                1, 1, 1, x.shape[-2], x.shape[-1]
-            )  # Reshaping to image wavelet shape
-        out = x.clone()
-        out[abs(out) < ths_map] = 0
-        return out
-
-    def hard_threshold_topk(self, x, ths=0.1):
-        r"""
-        Hard thresholding of the wavelet coefficients.
-
-        Keeps only the top-k coefficients and setting the others to 0.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            wavelet coefficients.
-        ths : float,  int, optional
-            top k coefficients to keep. If ``float``, it is interpreted as a proportion of the total
-            number of coefficients. If ``int``, it is interpreted as the number of coefficients to keep.
-            The default is 0.1.
-
-        """
-        if isinstance(ths, float):
-            k = int(ths * x.shape[-2] * x.shape[-1])
+            iscomplex = False
+            
+        # default device
+        idevice = input.device
+        if self.denoiser.device is None:
+            device = idevice
         else:
-            k = int(ths)
-
-        # Reshape arrays to 2D and initialize output to 0
-        x_flat = x.view(x.shape[0], -1)
-        out = torch.zeros_like(x_flat)
-
-        topk_indices_flat = torch.topk(abs(x_flat), k, dim=-1)[1]
-
-        # Convert the flattened indices to the original indices of x
-        batch_indices = (
-            torch.arange(x.shape[0], device=x.device).unsqueeze(1).repeat(1, k)
-        )
-        topk_indices = torch.stack([batch_indices, topk_indices_flat], dim=-1)
-
-        # Set output's top-k elements to values from original x
-        out[tuple(topk_indices.view(-1, 2).t())] = x_flat[
-            tuple(topk_indices.view(-1, 2).t())
-        ]
-        return torch.reshape(out, x.shape)
-
-    def forward(self, x, ths=0.1):
-        """
-        Run the model on a noisy image.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Noisy image.
-        ths : int, float, torch.Tensor, optional
-            Thresholding parameter.
-            If ``non_linearity`` equals ``"soft"`` or ``"hard"``, ``ths`` serves as a (soft or hard)
-            thresholding parameter for the wavelet coefficients. If ``non_linearity`` equals ``"topk"``,
-            ``ths`` can indicate the number of wavelet coefficients
-            that are kept (if ``int``) or the proportion of coefficients that are kept (if ``float``)
-            The default is 0.1.
-
-        """
-        # h, w = x.size()[-2:]
-        # padding_bottom = h % 2
-        # padding_right = w % 2
-        # x = torch.nn.ReplicationPad2d((0, padding_right, 0, padding_bottom))(x)
-
-        coeffs = self.dwt(x)
-        for l in range(self.level):
-            ths_cur = _get_threshold(ths, l)
-            if self.non_linearity == "soft":
-                coeffs[1][l] = self.prox_l1(coeffs[1][l], ths_cur)
-            elif self.non_linearity == "hard":
-                coeffs[1][l] = self.prox_l0(coeffs[1][l], ths_cur)
-            elif self.non_linearity == "topk":
-                coeffs[1][l] = self.hard_threshold_topk(coeffs[1][l], ths_cur)
-        y = self.iwt(coeffs)
-
-        # y = y[..., :h, :w]
-        return y
-
-
-def _get_threshold(ths, l):
-    ths_cur = (
-        ths
-        if (
-            isinstance(ths, int)
-            or isinstance(ths, float)
-            or len(ths.shape) == 0
-            or ths.shape[0] == 1
-        )
-        else ths[l]
-    )
-    return ths_cur
+            self.denoiser.device = device
+            
+        # get input shape
+        ndim = self.denoiser.wvdim
+        ishape = input.shape
+        
+        # reshape for computation
+        input = input.reshape(-1, *ishape[-ndim:])
+        if iscomplex:
+            input = torch.stack((input.real, input.imag), axis=1)
+            input = input.reshape(-1, *ishape[-ndim:])
+        
+        # apply denoising
+        output = self.denoiser.prox(input[:, None, ...].to(device), ths).to(idevice)  # perform the denoising on the real-valued tensor
+        
+        # reshape back
+        if iscomplex:
+            output = output[::2, ...] + 1j * output[1::2, ...]  # build the denoised complex data
+        output = output.reshape(ishape)
+        
+        # cast back to numpy if requried
+        if isnumpy:
+            output = output.numpy(force=True)
+        
+        return output

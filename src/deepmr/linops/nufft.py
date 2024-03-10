@@ -40,7 +40,7 @@ class NUFFTOp(base.Linop):
         oversamp=1.125,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(ndim=coord.shape[-1], **kwargs)
         self._nufft_plan = _fft.plan_nufft(coord, shape, width, oversamp, device)
         if weight is not None:
             self._weight = torch.as_tensor(weight**0.5, device=device)
@@ -129,7 +129,7 @@ class NUFFTGramOp(base.Linop):
         width=3,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(ndim=coord.shape[-1], **kwargs)
         self._toeplitz_kern = _fft.plan_toeplitz_nufft(
             coord, shape, basis, weight, width, device
         )

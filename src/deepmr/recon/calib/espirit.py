@@ -97,7 +97,7 @@ def espirit_cal(
         shape = list(data.shape[-2:])
 
     # extract calibration region
-    cshape = list(np.asarray(shape // 2, dtype=int))
+    cshape = list(np.asarray(shape, dtype=int) // 2)
     cal_data = _acs.find_acs(data, cshape, coord, dcf)
 
     # calculate maps

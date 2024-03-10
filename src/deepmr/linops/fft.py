@@ -36,7 +36,7 @@ class FFTOp(base.Linop):
     """
 
     def __init__(self, mask=None, basis=None, device=None, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(ndim=2, **kwargs)
         self._device = device
         if device is None:
             device = "cpu"
@@ -193,7 +193,7 @@ class FFTGramOp(base.Linop):
     """
 
     def __init__(self, mask=None, basis=None, device=None, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(ndim=2, **kwargs)
         self._device = device
         if device is None:
             device = "cpu"
@@ -386,7 +386,7 @@ class SparseFFTOp(base.Linop):
         threadsperblock=128,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(ndim=indexes.shape[-1], **kwargs)
         self._nufft_plan = _fft.prepare_sampling(indexes, shape, device)
         if weight is not None:
             self._weight = torch.as_tensor(weight**0.5, device=device)
@@ -466,7 +466,7 @@ class SparseFFTGramOp(base.Linop):
 
     def __init__(
         self,
-        coord,
+        indexes,
         shape,
         basis=None,
         weight=None,
@@ -474,9 +474,9 @@ class SparseFFTGramOp(base.Linop):
         threadsperblock=128,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(ndim=indexes.shape[-1], **kwargs)
         self._toeplitz_kern = _fft.plan_toeplitz_fft(
-            coord, shape, basis, weight, device
+            indexes, shape, basis, weight, device
         )
         self._threadsperblock = threadsperblock
 
