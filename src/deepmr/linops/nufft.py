@@ -105,7 +105,7 @@ class NUFFTOp(base.Linop):
         )
 
 
-class NUFFTGramOp(base.Linop):
+class NUFFTGramOp(base.NormalLinop):
     """
     Self-adjoint Non-Uniform Fast Fourier Transform operator.
 
@@ -154,27 +154,4 @@ class NUFFTGramOp(base.Linop):
         """
         return _fft.apply_nufft_selfadj(
             x, self._toeplitz_kern, threadsperblock=self._threadsperblock
-        )
-
-    def A_adjoint(self, y):
-        """
-        Apply Toeplitz convolution (``NUFFT.H * NUFFT``).
-
-        This is the same as the forward operator (i.e., self-adjoint).
-
-        Parameters
-        ----------
-        y : torch.Tensor
-            Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-        Returns
-        -------
-        x : np.ndarray | torch.Tensor
-            Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-        """
-        return _fft.apply_nufft_selfadj(
-            y, self._toeplitz_kern, threadsperblock=self._threadsperblock
         )

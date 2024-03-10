@@ -5,12 +5,11 @@ All the routines are based on the excellent Deep Inverse (https://github.com/dee
 
 """
 
-from . import admm as _admm
-from . import pgd as _pgd
+from . import data_fidelity as _data_fidelity
+# from . import admm as _admm
 
-from .admm import *  # noqa
-from .pgd import *  # noqa
+# from .admm import *  # noqa
+from .data_fidelity import * # noqa
 
 __all__ = []
-__all__.extend(_admm.__all__)
-__all__.extend(_pgd.__all__)
+__all__.extend(_data_fidelity.__all__)

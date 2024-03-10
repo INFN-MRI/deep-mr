@@ -1,6 +1,6 @@
 """Base linear operator."""
 
-__all__ = ["Linop"]
+__all__ = ["Linop", "NormalLinop"]
 
 import torch
 
@@ -62,6 +62,50 @@ class Linop(dinv.physics.LinearPhysics):
     def solve(self, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         return conjugate_gradient(self._ndim, self.A, b, max_iter, tol, lamda)
     
+    def A_dagger(self, y):
+        Aty = self.A_adjoint(y)
+
+        overcomplete = Aty.flatten().shape[0] < y.flatten().shape[0]
+
+        if not overcomplete:
+            A = lambda x: self.A(self.A_adjoint(x))
+            b = y
+        else:
+            A = lambda x: self.A_adjoint(self.A(x))
+            b = Aty
+
+        x = conjugate_gradient(A=A, b=b, max_iter=self.max_iter, tol=self.tol)
+
+        if not overcomplete:
+            x = self.A_adjoint(x)
+
+        return x
+    
+    def prox_l2(self, z, y, gamma):
+        b = self.A_adjoint(y) + 1 / gamma * z
+        H = lambda x: self.A_adjoint(self.A(x)) + 1 / gamma * x
+        x = conjugate_gradient(H, b, self.max_iter, self.tol)
+        return x
+    
+    
+class NormalLinop(Linop):
+    """
+    Special case of Linop where A.H = A (self-adjoint).
+
+    """
+    def __init__(self, ndim, *args, **kwargs):
+        super().__init__(ndim, *args, **kwargs)
+        self.A_adjoint = self.A
+        
+    def A_dagger(self, y):
+        return self.solve(self._ndim, self.A, y, self.max_iter, self.tol)
+    
+    def prox_l2(self, z, y, gamma):
+        b = y + 1 / gamma * z
+        H = lambda x: self.A(x) + 1 / gamma * x
+        x = conjugate_gradient(H, b, self.max_iter, self.tol)
+        return x
+        
     
 # %% local utils
 def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
@@ -93,7 +137,6 @@ def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         Solution of the problem.
 
     """
-
     def dot(s1, s2):
         dot = s1.conj() * s2
         dot = dot.reshape(*s1.shape[:-ndim], -1).sum(axis=-1)

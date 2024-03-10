@@ -172,7 +172,7 @@ class FFTOp(base.Linop):
         return x
 
 
-class FFTGramOp(base.Linop):
+class FFTGramOp(base.NormalLinop):
     """
     Self-adjoint Sparse Fast Fourier Transform operator.
 
@@ -290,72 +290,6 @@ class FFTGramOp(base.Linop):
 
         return x
 
-    def A_adjoint(self, y):
-        """
-        Apply Toeplitz convolution (``SparseFFT.H * SparseFFT``).
-
-        This is the same as the forward operator (i.e., self-adjoint).
-
-        Parameters
-        ----------
-        y : torch.Tensor
-            Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny)`` (3D).
-
-        Returns
-        -------
-        x : np.ndarray | torch.Tensor
-            Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny)`` (3D).
-
-        """
-        if isinstance(y, np.ndarray):
-            isnumpy = True
-        else:
-            isnumpy = False
-
-        # convert to tensor
-        y = torch.as_tensor(y)
-
-        if self._device is None:
-            self._device = y.device
-
-        # cast
-        y = y.to(self._device)
-        if self._toeplitz_kern is not None:
-            self._toeplitz_kern = self._toeplitz_kern.to(self._device)
-
-        # fourier transform
-        x = _fft.fft(y, axes=(-1, -2), norm="ortho", centered=False)
-
-        # project if required
-        if self._toeplitz_kern is not None:
-            x = x[..., None]  # (..., ncoeff, nz, ny, 1) / (..., ncoeff, ny, nx, 1)
-            x = x.swapaxes(
-                -4, -1
-            )  # (..., 1, nz, ny, ncoeff) / (..., 1, ny, nx, ncoeff)
-            xshape = list(x.shape)
-            x = x.reshape(
-                int(np.prod(xshape[:-4])), -1, x.shape[-1]
-            )  # (prod(y.shape[:-4]), nz*ny, ncoeff) / (prod(y.shape[:-4]), ny*nx, ncoeff)
-            x = torch.einsum("...bi,bij->...bj", x, self._toeplitz_kern)
-            x = x.reshape(
-                *xshape
-            )  # (..., 1, nz, ny, ncoeff) / # (..., 1, ny, nx, ncoeff)
-            x = x.swapaxes(
-                -4, -1
-            )  # (..., ncoeff, nz, ny, 1) / # (..., ncoeff, ny, nx, 1)
-            x = x[..., 0]  # (..., ncoeff, nz, ny) / # (..., ncoeff, ny, nx)
-
-        # apply Fourier transform
-        y = _fft.ifft(x, axes=(-1, -2), norm="ortho", centered=False)
-
-        # cast back to numpy if required
-        if isnumpy:
-            y = y.numpy(force=True)
-
-        return y
-
 
 class SparseFFTOp(base.Linop):
     """
@@ -451,7 +385,7 @@ class SparseFFTOp(base.Linop):
         )
 
 
-class SparseFFTGramOp(base.Linop):
+class SparseFFTGramOp(base.NormalLinop):
     """
     Self-adjoint Sparse Fast Fourier Transform operator.
 
@@ -499,27 +433,4 @@ class SparseFFTGramOp(base.Linop):
         """
         return _fft.apply_sparse_fft_selfadj(
             x, self._toeplitz_kern, threadsperblock=self._threadsperblock
-        )
-
-    def A_adjoint(self, y):
-        """
-        Apply Toeplitz convolution (``SparseFFT.H * SparseFFT``).
-
-        This is the same as the forward operator (i.e., self-adjoint).
-
-        Parameters
-        ----------
-        y : torch.Tensor
-            Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-        Returns
-        -------
-        x : np.ndarray | torch.Tensor
-            Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-            or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-        """
-        return _fft.apply_sparse_fft_selfadj(
-            y, self._toeplitz_kern, threadsperblock=self._threadsperblock
         )

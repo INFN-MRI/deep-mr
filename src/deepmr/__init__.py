@@ -9,11 +9,12 @@ from . import bloch  # noqa
 from . import io  # noqa
 from . import fft  # noqa
 from . import linops  # noqa
+from . import optim # noqa
 from . import prox # noqa
+
 
 from . import recon  # noqa
 
-# from . import optim
 from .testdata import testdata
 from ._types import Header
 
