@@ -2,13 +2,9 @@
 
 __all__ = ["admm"]
 
-import warnings
-
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    from deepinv.optim.data_fidelity import L2
-    from deepinv.optim.optimizers import optim_builder
-    from deepinv.optim.prior import PnP
+from deepinv.optim.data_fidelity import L2
+from deepinv.optim.optimizers import optim_builder
+from deepinv.optim.prior import PnP
 
 
 def admm(

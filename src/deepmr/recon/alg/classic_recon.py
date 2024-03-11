@@ -19,7 +19,7 @@ import warnings
 
 warnings.simplefilter('ignore', category=NumbaPerformanceWarning)
 
-def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prior_params=None, lamda=0.0, stepsize=None, basis=None, nsets=1, device=None, cal_data=None, toeplitz=True):
+def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prior_params=None, lamda=0.0, stepsize=1.0, basis=None, nsets=1, device=None, cal_data=None, toeplitz=True):
     """
     Classical MR reconstruction.    
 
@@ -134,7 +134,7 @@ def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prio
         # modify EHE
         if lamda != 0.0:
             img = img / lamda
-            prior_ths = prior_ths / lamda
+            # prior_ths = prior_ths / lamda
             tmp = copy.deepcopy(EHE)
             f = lambda x : tmp.A(x) + lamda * x
             EHE.A = f
@@ -143,12 +143,9 @@ def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prio
             lamda = 1.0
         
         # compute spectral norm
-        if stepsize is None:
-            max_eig = EHE.maxeig(img, max_iter=1)
-            if max_eig == 0.0:
-                stepsize = 1.0
-            else:
-                stepsize = 1.0 / float(max_eig)
+        max_eig = EHE.maxeig(img, max_iter=1)
+        if max_eig != 0.0:
+            stepsize = stepsize / float(max_eig)
         
         # solver parameters
         params_algo = {"stepsize": stepsize, "g_param": prior_ths, "lambda": lamda}
@@ -172,6 +169,7 @@ def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prio
         output = solver(img, EHE) * lamda
         if isnumpy:
             output = output.numpy(force=True)
+            
         return output
         
 
@@ -186,3 +184,36 @@ def _get_prior(ptype, ndim, device, **params):
             raise ValueError(f"Prior type = {ptype} not recognized; either specify 'L1Wave', 'TV' or 'deepinv.optim.Prior' object.")
     else:
         raise NotImplementedError("Direct prior object not implemented.")
+        
+# class FISTA(torch.nn.Module):
+#     def __init__(self, physics, data_fidelity, prior, niter, params_algo):
+#         super().__init__()
+#         self.niter = niter
+#         self.physics = physics
+#         self.data_fidelity = data_fidelity
+#         self.prior = prior
+#         self.params_algo = params_algo
+        
+#     def forward(self, back):
+#         # keep 
+#         x = back.clone()
+#         w = back.clone()
+#         u = back.clone()
+        
+#         for k in range(self.max_iter):
+        
+#             tk = (k+a-1)/a
+#             tk_ = (k+a)/a
+            
+#             x_prev = x.clone()
+            
+#             x = w - gamma*data_fidelity.grad(w, y, physics)
+#             x = denoiser(x, sigma*gamma)
+            
+#             w = (1-1/tk)*x+1/tk*u
+            
+#             u = x_prev+tk*(x-x_prev)
+            
+#             crit = torch.linalg.norm(x.flatten()-x_prev.flatten())
+
+#         return x.clone()

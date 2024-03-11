@@ -104,6 +104,9 @@ class CoilOp(base.Linop):
 
         # convert to tensor
         y = torch.as_tensor(y)
+        
+        # transfer to device
+        self._sensmap = self._sensmap.to(y.device)
 
         # combine
         tmp = self._sensmap.conj() * y
