@@ -10,6 +10,13 @@ from . import data_fidelity as _data_fidelity
 
 # from .admm import *  # noqa
 from .data_fidelity import * # noqa
+from deepinv.optim.optim_iterators import OptimIterator # noqa
+from deepinv.optim.optim_iterators import GDIteration # noqa
+from deepinv.optim.optim_iterators import PGDIteration # noqa
+from deepinv.optim.optim_iterators import CPIteration # noqa
+from deepinv.optim.optim_iterators import DRSIteration # noqa
+from deepinv.optim.optim_iterators import HQSIteration # noqa
 
 __all__ = []
 __all__.extend(_data_fidelity.__all__)
+__all__.extend(["OptimIterator, GDIteration", "PGDIteration", "CPIteration", "DRSIteration", "HQSIteration"])

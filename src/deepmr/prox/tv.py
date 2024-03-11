@@ -8,7 +8,7 @@ import torch
 from deepinv.optim.prior import PnP
 
 
-def TVPrior(ndim, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None):
+def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):
     r"""
     Proximal operator of the isotropic Total Variation operator.
 
@@ -39,7 +39,7 @@ def TVPrior(ndim, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None,
         Device on which the wavelet transform is computed. Default is ``None``.
     verbose : bool, optional
         Whether to print computation details or not. Default: ``False``.
-    n_it_max : int, optional,
+    niter : int, optional,
         Maximum number of iterations. Default: ``1000``.
     crit : float, optional 
         Convergence criterion. Default: 1e-5.
@@ -55,10 +55,10 @@ def TVPrior(ndim, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None,
     variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
 
     """  
-    return PnP(denoiser=ComplexTVDenoiser(ndim, device, verbose, n_it_max, crit, x2, u2))
+    return PnP(denoiser=ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2))
 
 
-def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None):
+def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):
     r"""
     Apply isotropic Total Variation denoising.
 
@@ -93,7 +93,7 @@ def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, n_it_max=1000, 
         Device on which the wavelet transform is computed. Default is ``None``.
     verbose : bool, optional
         Whether to print computation details or not. Default: ``False``.
-    n_it_max : int, optional,
+    niter : int, optional,
         Maximum number of iterations. Default: ``1000``.
     crit : float, optional 
         Convergence criterion. Default: 1e-5.
@@ -114,7 +114,7 @@ def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, n_it_max=1000, 
         Denoised image of shape (..., n_ndim, ..., n_0).
     
     """
-    TV = ComplexTVDenoiser(ndim, device, verbose, n_it_max, crit, x2, u2)
+    TV = ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2)
     return TV(input, ths)
 
 
@@ -144,7 +144,7 @@ class ComplexTVDenoiser(torch.nn.Module):
         if self.denoiser.device is None:
             device = idevice
         else:
-            self.denoiser.device = device
+            device = self.denoiser.device
             
         # get input shape
         ndim = self.denoiser.ndim

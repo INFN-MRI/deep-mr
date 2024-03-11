@@ -160,7 +160,7 @@ def resample(input, oshape, filt=True, polysmooth=False):
 
     # if required, apply filtering
     if filt is not None:
-        freq *= filt
+        freq *= filt.to(freq.device)
 
     # transform back
     output = _ifftc(freq, axes)

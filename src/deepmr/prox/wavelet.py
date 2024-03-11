@@ -100,6 +100,7 @@ class ComplexWaveletDenoiser(torch.nn.Module):
     def __init__(self, ndim, wv, device, p, level, *args, **kwargs):
         super().__init__()
         self.denoiser = _WaveletPrior(level=level, wv=wv, p=p, device=device, wvdim=ndim, *args, **kwargs)
+        self.denoiser.device = device
     
     def forward(self, input, ths):
     
@@ -121,7 +122,7 @@ class ComplexWaveletDenoiser(torch.nn.Module):
         if self.denoiser.device is None:
             device = idevice
         else:
-            self.denoiser.device = device
+            device = self.denoiser.device
             
         # get input shape
         ndim = self.denoiser.wvdim

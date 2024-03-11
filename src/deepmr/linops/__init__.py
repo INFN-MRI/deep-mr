@@ -23,12 +23,10 @@ from .coil import *  # noqa
 from .fft import *  # noqa
 from .nufft import *  # noqa
 
-__all__ = ["EncodingOp"]
+__all__ = []
 __all__.extend(_base.__all__)
 __all__.extend(_coil.__all__)
 __all__.extend(_fft.__all__)
 __all__.extend(_nufft.__all__)
 
-
-def EncodingOp():
-    pass
+    

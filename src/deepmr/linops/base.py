@@ -105,6 +105,10 @@ class NormalLinop(Linop):
         H = lambda x: self.A(x) + 1 / gamma * x
         x = conjugate_gradient(H, b, self.max_iter, self.tol)
         return x
+    
+    def maxeig(self, input, max_iter=10, tol=1e-6):
+        x = torch.randn(input.shape)
+        return power_iter(self.A, x, max_iter, tol)
         
     
 # %% local utils
@@ -169,4 +173,31 @@ def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         rsold = rsnew
 
     return x
+
+@torch.no_grad()
+def power_iter(A, x0, max_iter=2, tol=1e-6):
+    r"""
+    Use power iteration to calculate the spectral norm of a LinearMap.
+    
+    From MIRTorch (https://github.com/guanhuaw/MIRTorch/blob/master/mirtorch/alg/spectral.py)
+
+    Args:
+        A: a LinearMap
+        x0: initial guess of singular vector corresponding to max singular value
+        max_iter: maximum number of iterations
+        tol: stopping tolerance
+
+    Returns:
+        The spectral norm (sig1) and the principal right singular vector (x)
+        
+    """
+
+    x = x0
+    max_eig = float("inf")
+    for iter in range(max_iter):
+        Ax = A(x)
+        max_eig = torch.norm(Ax)
+        x = x / max_eig
+
+    return max_eig
 
