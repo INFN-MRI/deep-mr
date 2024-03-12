@@ -321,6 +321,7 @@ class EPGSimulator:
         if self.k is not None:
             # single pool voxels do not exchange
             idx = torch.isclose(self.weight, torch.tensor(1.0)).sum(axis=-1) == 1
+            self.k = self.k.clone()
             self.k[idx, :] = 0.0
 
         # chemical shift

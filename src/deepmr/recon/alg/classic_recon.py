@@ -134,9 +134,10 @@ def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prio
         # modify EHE
         if lamda != 0.0:
             img = img / lamda
-            # prior_ths = prior_ths / lamda
+            prior_ths = prior_ths / lamda
             tmp = copy.deepcopy(EHE)
-            f = lambda x : tmp.A(x) + lamda * x
+            # f = lambda x : tmp.A(x) + lamda * x
+            f = lambda x : tmp.A(x) / lamda + x
             EHE.A = f
             EHE.A_adjoint = f
         else:
@@ -148,7 +149,8 @@ def recon_lstsq(data, head, mask=None, niter=1, prior=None, prior_ths=0.01, prio
             stepsize = stepsize / float(max_eig)
         
         # solver parameters
-        params_algo = {"stepsize": stepsize, "g_param": prior_ths, "lambda": lamda}
+        t = _get_acceleration(niter)
+        params_algo = {"stepsize": stepsize, "g_param": prior_ths, "lambda": lamda, "beta": list(t+1)}
         
         # select the data fidelity term
         data_fidelity = _optim.L2()
@@ -185,35 +187,14 @@ def _get_prior(ptype, ndim, device, **params):
     else:
         raise NotImplementedError("Direct prior object not implemented.")
         
-# class FISTA(torch.nn.Module):
-#     def __init__(self, physics, data_fidelity, prior, niter, params_algo):
-#         super().__init__()
-#         self.niter = niter
-#         self.physics = physics
-#         self.data_fidelity = data_fidelity
-#         self.prior = prior
-#         self.params_algo = params_algo
-        
-#     def forward(self, back):
-#         # keep 
-#         x = back.clone()
-#         w = back.clone()
-#         u = back.clone()
-        
-#         for k in range(self.max_iter):
-        
-#             tk = (k+a-1)/a
-#             tk_ = (k+a)/a
-            
-#             x_prev = x.clone()
-            
-#             x = w - gamma*data_fidelity.grad(w, y, physics)
-#             x = denoiser(x, sigma*gamma)
-            
-#             w = (1-1/tk)*x+1/tk*u
-            
-#             u = x_prev+tk*(x-x_prev)
-            
-#             crit = torch.linalg.norm(x.flatten()-x_prev.flatten())
-
-#         return x.clone()
+def _get_acceleration(niter):
+    t = []
+    t_new = 1
+    
+    for n in range(niter):
+        t_old = t_new
+        t_new = (1 + (1 + 4 * t_old**2) ** 0.5) / 2
+        t.append((t_old - 1) / t_new)
+    
+    return np.asarray(t)
+    
