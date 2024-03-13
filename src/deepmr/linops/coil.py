@@ -35,7 +35,7 @@ class CoilOp(base.Linop):
     def __init__(self, ndim, sensmap, device="cpu", **kwargs):
         super().__init__(ndim, **kwargs)
         self._sensmap = torch.as_tensor(sensmap, device=device)
-                
+
         if self._ndim == 2:
             self._sensmap = self._sensmap[:, :, :, None, ...]
         if self._ndim == 3:
@@ -104,7 +104,7 @@ class CoilOp(base.Linop):
 
         # convert to tensor
         y = torch.as_tensor(y)
-        
+
         # transfer to device
         self._sensmap = self._sensmap.to(y.device)
 

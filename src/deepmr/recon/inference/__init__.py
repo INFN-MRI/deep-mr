@@ -3,8 +3,8 @@
 from . import fse as _fse
 from . import mpnrage as _mpnrage
 
-from .fse import * # noqa
-from .mpnrage import * # noqa
+from .fse import *  # noqa
+from .mpnrage import *  # noqa
 
 __all__ = []
 __all__.extend(_fse.__all__)

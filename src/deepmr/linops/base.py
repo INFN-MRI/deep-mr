@@ -7,6 +7,7 @@ import torch
 import deepinv as dinv
 from deepinv.utils import zeros_like
 
+
 class Linop(dinv.physics.LinearPhysics):
     """
     Abstraction class for Linear operators.
@@ -18,7 +19,7 @@ class Linop(dinv.physics.LinearPhysics):
     def __init__(self, ndim, *args, **kwargs):
         self._ndim = ndim
         super().__init__(*args, **kwargs)
-        
+
     @property
     def H(self):
         A = lambda x: self.A_adjoint(x)
@@ -58,10 +59,10 @@ class Linop(dinv.physics.LinearPhysics):
             max_iter=tmp.max_iter,
             tol=tmp.tol,
         )
-    
+
     def solve(self, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         return conjugate_gradient(self._ndim, self.A, b, max_iter, tol, lamda)
-    
+
     def A_dagger(self, y):
         Aty = self.A_adjoint(y)
 
@@ -80,42 +81,43 @@ class Linop(dinv.physics.LinearPhysics):
             x = self.A_adjoint(x)
 
         return x
-    
+
     def prox_l2(self, z, y, gamma):
         b = self.A_adjoint(y) + 1 / gamma * z
         H = lambda x: self.A_adjoint(self.A(x)) + 1 / gamma * x
         x = conjugate_gradient(H, b, self.max_iter, self.tol)
         return x
-    
-    
+
+
 class NormalLinop(Linop):
     """
     Special case of Linop where A.H = A (self-adjoint).
 
     """
+
     def __init__(self, ndim, *args, **kwargs):
         super().__init__(ndim, *args, **kwargs)
         self.A_adjoint = self.A
-        
+
     def A_dagger(self, y):
         return self.solve(self._ndim, self.A, y, self.max_iter, self.tol)
-    
+
     def prox_l2(self, z, y, gamma):
         b = y + 1 / gamma * z
         H = lambda x: self.A(x) + 1 / gamma * x
         x = conjugate_gradient(H, b, self.max_iter, self.tol)
         return x
-    
+
     def maxeig(self, input, max_iter=10, tol=1e-6):
         x = torch.randn(input.shape)
         return power_iter(self.A, x, max_iter, tol)
-        
-    
+
+
 # %% local utils
 def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
     """
     Batched Conjugata Gradient solver.
-    
+
     Supports complex inputs.
 
     Parameters
@@ -141,20 +143,24 @@ def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         Solution of the problem.
 
     """
+
     def dot(s1, s2):
         dot = s1.conj() * s2
         dot = dot.reshape(*s1.shape[:-ndim], -1).sum(axis=-1)
         for n in range(ndim):
             dot = dot[..., None]
         return dot
-    
+
     if lamda != 0:
+
         def A(x):
             return _A(x) + lamda * x
+
     else:
+
         def A(x):
             return _A(x)
-        
+
     x = zeros_like(b)
 
     r = b
@@ -174,11 +180,12 @@ def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
 
     return x
 
+
 @torch.no_grad()
 def power_iter(A, x0, max_iter=2, tol=1e-6):
     r"""
     Use power iteration to calculate the spectral norm of a LinearMap.
-    
+
     From MIRTorch (https://github.com/guanhuaw/MIRTorch/blob/master/mirtorch/alg/spectral.py)
 
     Args:
@@ -189,7 +196,7 @@ def power_iter(A, x0, max_iter=2, tol=1e-6):
 
     Returns:
         The spectral norm (sig1) and the principal right singular vector (x)
-        
+
     """
 
     x = x0
@@ -200,4 +207,3 @@ def power_iter(A, x0, max_iter=2, tol=1e-6):
         x = x / max_eig
 
     return max_eig
-

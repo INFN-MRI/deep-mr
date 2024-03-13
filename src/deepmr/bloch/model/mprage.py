@@ -345,7 +345,7 @@ class MPRAGE(epg.EPGSimulator):
 
         # magnetization prep
         states = Prep(states)
-        
+
         # actual sequence loop
         for n in range(npulses):
             # update phase

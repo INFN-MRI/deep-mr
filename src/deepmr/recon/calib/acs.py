@@ -130,7 +130,9 @@ def _find_noncart_acs(kspace, cal_shape, coord, dcf):
 
     # find subset of coord along nsamples dim
     cabs = (coord**2).sum(axis=-1) ** 0.5  # sqrt(kx**2 + ky**2 + kz**2)
-    ind = cabs[0, 0] <= min(cal_shape) // 2  # from (-mtx /2, mtx / 2) to (-cal / 2, cal / 2)
+    ind = (
+        cabs[0, 0] <= min(cal_shape) // 2
+    )  # from (-mtx /2, mtx / 2) to (-cal / 2, cal / 2)
 
     # select kspace and coordinates
     cal_ksp = kspace[..., ind]

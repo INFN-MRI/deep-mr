@@ -10,9 +10,9 @@ from . import llr as _llr
 from . import wavelet as _wavelet
 from . import tv as _tv
 
-from .llr import * # noqa
+from .llr import *  # noqa
 from .wavelet import *  # noqa
-from .tv import * # noqa
+from .tv import *  # noqa
 
 
 __all__ = []

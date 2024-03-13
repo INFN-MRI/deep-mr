@@ -18,7 +18,7 @@ from . import coil as _coil
 from . import fft as _fft
 from . import nufft as _nufft
 
-from .base import * # noqa
+from .base import *  # noqa
 from .coil import *  # noqa
 from .fft import *  # noqa
 from .nufft import *  # noqa
@@ -28,5 +28,3 @@ __all__.extend(_base.__all__)
 __all__.extend(_coil.__all__)
 __all__.extend(_fft.__all__)
 __all__.extend(_nufft.__all__)
-
-    

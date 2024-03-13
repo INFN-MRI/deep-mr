@@ -35,13 +35,13 @@ def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=
     ---------
     ndim : int
         Number of spatial dimensions, can be either ``2`` or ``3``.
-    device : str, optional 
+    device : str, optional
         Device on which the wavelet transform is computed. Default is ``None``.
     verbose : bool, optional
         Whether to print computation details or not. Default: ``False``.
     niter : int, optional,
         Maximum number of iterations. Default: ``1000``.
-    crit : float, optional 
+    crit : float, optional
         Convergence criterion. Default: 1e-5.
     x2 : torch.Tensor, optional
         Primary variable for warm restart. Default: ``None``.
@@ -54,11 +54,21 @@ def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=
     :math:`\sqrt{8}`, see e.g. A. Beck and M. Teboulle, "Fast gradient-based algorithms for constrained total
     variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
 
-    """  
+    """
     return PnP(denoiser=ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2))
 
 
-def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):
+def tv_denoise(
+    input,
+    ndim,
+    ths=0.1,
+    device=None,
+    verbose=False,
+    niter=100,
+    crit=1e-5,
+    x2=None,
+    u2=None,
+):
     r"""
     Apply isotropic Total Variation denoising.
 
@@ -86,16 +96,16 @@ def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, niter=100, crit
     input : np.ndarray | torch.Tensor
         Input image of shape (..., n_ndim, ..., n_0).
     ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``. 
+        Number of spatial dimensions, can be either ``2`` or ``3``.
     ths : float, optional
         Denoise threshold. Default is ``0.1``.
-    device : str, optional 
+    device : str, optional
         Device on which the wavelet transform is computed. Default is ``None``.
     verbose : bool, optional
         Whether to print computation details or not. Default: ``False``.
     niter : int, optional,
         Maximum number of iterations. Default: ``1000``.
-    crit : float, optional 
+    crit : float, optional
         Convergence criterion. Default: 1e-5.
     x2 : torch.Tensor, optional
         Primary variable for warm restart. Default: ``None``.
@@ -107,12 +117,12 @@ def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, niter=100, crit
     The regularization term :math:`\|Dx\|_{1,2}` is implicitly normalized by its Lipschitz constant, i.e.
     :math:`\sqrt{8}`, see e.g. A. Beck and M. Teboulle, "Fast gradient-based algorithms for constrained total
     variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
-        
+
     Returns
     -------
     output : np.ndarray | torch.Tensor
         Denoised image of shape (..., n_ndim, ..., n_0).
-    
+
     """
     TV = ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2)
     return TV(input, ths)
@@ -120,62 +130,84 @@ def tv_denoise(input, ndim, ths=0.1, device=None, verbose=False, niter=100, crit
 
 # %% local utils
 class ComplexTVDenoiser(torch.nn.Module):
-    def __init__(self, ndim, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None):
+    def __init__(
+        self,
+        ndim,
+        device=None,
+        verbose=False,
+        n_it_max=1000,
+        crit=1e-5,
+        x2=None,
+        u2=None,
+    ):
         super().__init__()
         self.denoiser = _TVDenoiser(ndim, device, verbose, n_it_max, crit, x2, u2)
-    
+
     def forward(self, input, ths):
-    
         # cast to numpy if required
         if isinstance(input, np.ndarray):
             isnumpy = True
             input = torch.as_tensor(input)
         else:
             isnumpy = False
-            
+
         # get complex
         if torch.is_complex(input):
             iscomplex = True
         else:
             iscomplex = False
-            
+
         # default device
         idevice = input.device
         if self.denoiser.device is None:
             device = idevice
         else:
             device = self.denoiser.device
-            
+
         # get input shape
         ndim = self.denoiser.ndim
         ishape = input.shape
-        
+
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
             input = torch.stack((input.real, input.imag), axis=1)
             input = input.reshape(-1, *ishape[-ndim:])
-        
+
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), ths).to(idevice)  # perform the denoising on the real-valued tensor
-        
+        output = self.denoiser(input[:, None, ...].to(device), ths).to(
+            idevice
+        )  # perform the denoising on the real-valued tensor
+
         # reshape back
         if iscomplex:
-            output = output[::2, ...] + 1j * output[1::2, ...]  # build the denoised complex data
+            output = (
+                output[::2, ...] + 1j * output[1::2, ...]
+            )  # build the denoised complex data
         output = output.reshape(ishape)
-        
+
         # cast back to numpy if requried
         if isnumpy:
             output = output.numpy(force=True)
-        
+
         return output
-    
+
+
 class _TVDenoiser(torch.nn.Module):
-    def __init__(self, ndim, device=None, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None):
+    def __init__(
+        self,
+        ndim,
+        device=None,
+        verbose=False,
+        n_it_max=1000,
+        crit=1e-5,
+        x2=None,
+        u2=None,
+    ):
         super().__init__()
         self.device = device
         self.ndim = ndim
-        
+
         if ndim == 2:
             self.nabla = self.nabla2
             self.nabla_adjoint = self.nabla2_adjoint
@@ -281,7 +313,7 @@ class _TVDenoiser(torch.nn.Module):
         u[..., :-1] = u[..., :-1] - x[..., :-1, 1]
         u[..., 1:] = u[..., 1:] + x[..., :-1, 1]
         return u
-    
+
     @staticmethod
     def nabla3(x):
         r"""
@@ -290,12 +322,12 @@ class _TVDenoiser(torch.nn.Module):
         b, c, d, h, w = x.shape
         u = torch.zeros((b, c, d, h, w, 3), device=x.device).type(x.dtype)
         u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] - x[:, :, :-1]
-        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] + x[:, :, 1:]        
+        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] + x[:, :, 1:]
         u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] - x[:, :, :, :-1]
-        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] + x[:, :, :, 1:]        
+        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] + x[:, :, :, 1:]
         u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
         u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] + x[:, :, :, :, 1:]
-        
+
         return u
 
     @staticmethod
@@ -304,12 +336,12 @@ class _TVDenoiser(torch.nn.Module):
         Applies the adjoint of the finite difference operator.
         """
         b, c, d, h, w = x.shape
-        u = torch.zeros((b, c, d, h, w), device=x.device).type(x.dtype)        
+        u = torch.zeros((b, c, d, h, w), device=x.device).type(x.dtype)
         u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] - x[:, :, :-1]
-        u[:, :, 1:, :, 0] = u[:, :, 1:, :, 0] + x[:, :, :-1]        
+        u[:, :, 1:, :, 0] = u[:, :, 1:, :, 0] + x[:, :, :-1]
         u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] - x[:, :, :, :-1]
         u[:, :, :, 1:, 1] = u[:, :, :, 1:, 1] + x[:, :, :, :-1]
         u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
         u[:, :, :, :, 1:, 2] = u[:, :, :, :, 1:, 2] + x[:, :, :, :, :-1]
-        
+
         return u
