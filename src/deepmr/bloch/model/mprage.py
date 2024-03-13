@@ -35,8 +35,6 @@ def mprage(
         Number of pulse in the ``Inversion`` block.
     flip : float | np.ndarray | torch.Tensor
         Flip angle in ``[deg]`` of shape ``(npulses,)`` or ``(npulses, nmodes)``.
-    ESP : float
-        Echo spacing in [ms].
     TR : float
         Repetition time in [ms].
     T1 : float | np.ndarray | torch.Tensor
@@ -347,7 +345,7 @@ class MPRAGE(epg.EPGSimulator):
 
         # magnetization prep
         states = Prep(states)
-
+        
         # actual sequence loop
         for n in range(npulses):
             # update phase
@@ -355,7 +353,7 @@ class MPRAGE(epg.EPGSimulator):
             phi = (phi + dphi) % 360.0
 
             # apply pulse
-            states = RF(states, flip, phi)
+            states = RF(states, flip[n], phi)
 
             # relax, recover and record signal for each TE
             states = X(states)

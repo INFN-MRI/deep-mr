@@ -22,7 +22,7 @@
 ## Custom signal models
 
 DeepMR also contains helper classes to define custom signal models. The main class for analytical and numerical models are `deepmr.bloch.AnalyticalSimulator`
-and `deepmr.bloch.EPGSimulator`, respectively
+and `deepmr.bloch.EPGSimulator`, respectively.
 
 Users can define a custom signal model by subclassing it and overloading ``sequence`` method. Base class already handle spin parameters (e.g., ``T1``, ``T2``, ...)
 as well as simulation properties (e.g., computational ``device``, maximum ``number of batches``...) so the user has only to care about specific sequence arguments (e.g., ``flip angle``, ``TR``, ... for GRE or ``flip angle``, ``ETL``, for FSE). In order to work properly, ``sequence`` method must be a ``staticmethod`` and the arguments must follow this order:

@@ -5,25 +5,11 @@ __all__ = ["LLRPrior"]
 import torch
 import torch.nn as nn
 
-import ptwt
-import pywt
-
+from .. import _signal
 
 class LLRPrior(nn.Module):
     r"""
     Local Low Rank denoising with the :math:`\ell_1` norm.
-
-    This denoiser is defined as the solution to the optimization problem:
-
-    .. math::
-
-        \underset{x}{\arg\min} \;  \|x-y\|^2 + \lambda \|\Psi x\|_n
-
-    where :math:`\Psi` is an orthonormal wavelet transform, :math:`\lambda>0` is a hyperparameter, and where
-    :math:`\|\cdot\|_n` is either the :math:`\ell_1` norm (``non_linearity="soft"``) or
-    the :math:`\ell_0` norm (``non_linearity="hard"``). A variant of the :math:`\ell_0` norm is also available
-    (``non_linearity="topk"``), where the thresholding is done by keeping the :math:`k` largest coefficients
-    in each wavelet subband and setting the others to zero.
 
     The solution is available in closed-form, thus the denoiser is cheap to compute.
 
@@ -45,29 +31,9 @@ class LLRPrior(nn.Module):
 
     """
 
-    def __init__(self, dim, level=3, wv="db8", device="cpu", non_linearity="soft"):
+    def __init__(self, dim, axis=None, non_linearity="soft"):
         super().__init__()
 
-        # select correct wavelet transform
-        wavelet = pywt.Wavelet(wv)
-        if dim == 1:
-            dwt = ptwt.wavedec
-            iwt = ptwt.waverec
-        if dim == 2:
-            dwt = ptwt.wavedec2
-            iwt = ptwt.waverec2
-        if dim == 3:
-            dwt = ptwt.wavedec3
-            iwt = ptwt.waverec3
-
-        self.level = level
-        self.device = device
-        self.dwt = lambda x: dwt(
-            x.to(self.device), wavelet, mode="zero", level=self.level
-        )
-        self.iwt = lambda x: iwt(
-            x.to(self.device), wavelet, mode="zero", level=self.level
-        )
         self.non_linearity = non_linearity
 
     def get_ths_map(self, ths):
@@ -181,11 +147,6 @@ class LLRPrior(nn.Module):
             The default is 0.1.
 
         """
-        # h, w = x.size()[-2:]
-        # padding_bottom = h % 2
-        # padding_right = w % 2
-        # x = torch.nn.ReplicationPad2d((0, padding_right, 0, padding_bottom))(x)
-
         coeffs = self.dwt(x)
         for l in range(self.level):
             ths_cur = _get_threshold(ths, l)
@@ -197,10 +158,9 @@ class LLRPrior(nn.Module):
                 coeffs[1][l] = self.hard_threshold_topk(coeffs[1][l], ths_cur)
         y = self.iwt(coeffs)
 
-        # y = y[..., :h, :w]
         return y
 
-
+# %% local utils
 def _get_threshold(ths, l):
     ths_cur = (
         ths
