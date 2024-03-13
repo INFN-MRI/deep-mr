@@ -6,17 +6,16 @@ All the routines are based on the excellent Deep Inverse (https://github.com/dee
 """
 
 
-# from . import llr as _llr
+from . import llr as _llr
 from . import wavelet as _wavelet
 from . import tv as _tv
 
-# from .llr import * # noqa
+from .llr import * # noqa
 from .wavelet import *  # noqa
 from .tv import * # noqa
 
-# __all__ = ["BM3D", "TV", "TGV"]
 
-# __all__.extend(_llr.__all__)
 __all__ = []
-__all__ = [_wavelet.__all__]
-__all__ = [_tv.__all__]
+__all__.extend(_llr.__all__)
+__all__.extend(_wavelet.__all__)
+__all__.extend(_tv.__all__)

@@ -47,7 +47,7 @@ def WaveletPrior(ndim, wv="db4", device=None, p=1, level=3, *args, **kwargs):
     return PnP(denoiser=ComplexWaveletDenoiser(ndim, wv, device, p, level, *args, **kwargs))
 
 
-def wavelet_denoise(input, ndim, ths=0.1, wv="db4", device=None, p=1, level=3):
+def wavelet_denoise(input, ndim, ths, wv="db4", device=None, p=1, level=3):
     r"""
     Apply wavelet denoising as :math:`\reg{x} = \|\Psi x\|_{p}`.
     
@@ -73,8 +73,8 @@ def wavelet_denoise(input, ndim, ths=0.1, wv="db4", device=None, p=1, level=3):
         Input image of shape (..., n_ndim, ..., n_0).
     ndim : int
         Number of spatial dimensions, can be either ``2`` or ``3``. 
-    ths : float, optional
-        Denoise threshold. Degault is ``0.1``.
+    ths : float
+        Denoise threshold.
     wv : str, optional 
         Wavelet name to choose among those available in `pywt <https://pywavelets.readthedocs.io/en/latest/>`_. 
         Default is ``"db4"``.

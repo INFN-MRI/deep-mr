@@ -64,12 +64,11 @@ def tensor2patches(image, patch_shape, patch_stride=None):
 
     # count number of patches for each dimension
     ishape = np.asarray(image.shape[-ndim:])
-    remainder = (ishape - patch_shape) % patch_stride
-    num_patches = 1 + (ishape - patch_shape - remainder) / patch_stride
+    num_patches = np.ceil(ishape / patch_stride)
     num_patches = num_patches.astype(int)
 
     # pad if required
-    padsize = remainder
+    padsize = (num_patches * patch_shape) - ishape
     padsize = np.stack((0 * padsize, padsize), axis=-1)
     padsize = padsize.ravel()
     patches = torch.nn.functional.pad(image, tuple(padsize))
@@ -158,12 +157,11 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
 
     # count number of patches for each dimension
     ishape = np.asarray(shape)
-    remainder = (ishape - patch_shape) % patch_stride
-    num_patches = 1 + (ishape - patch_shape - remainder) / patch_stride
+    num_patches = np.ceil(ishape / patch_stride)
     num_patches = num_patches.astype(int)
 
     # pad if required
-    padsize = remainder
+    padsize = (num_patches * patch_shape) - ishape
     padded_shape = shape + padsize
 
     # perform unfolding

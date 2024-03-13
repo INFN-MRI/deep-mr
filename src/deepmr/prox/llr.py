@@ -1,6 +1,8 @@
 """Local Low Rank denoising prior."""
 
-__all__ = ["LLRPrior"]
+__all__ = ["LLRPrior", "llr_denoise"]
+
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -9,126 +11,42 @@ from .. import _signal
 
 class LLRPrior(nn.Module):
     r"""
-    Local Low Rank denoising with the :math:`\ell_1` norm.
+    Local Low Rank denoising.
 
     The solution is available in closed-form, thus the denoiser is cheap to compute.
 
     Attributes
     ----------
-    dim: int,
+    ndim : int,
         Number of spatial dimensions.
-    level : int, optional
-        Decomposition level of the wavelet transform. The default is 3.
-    wv : str, optional wv:
-        Mother wavelet (follows the `PyWavelets convention <https://pywavelets.readthedocs.io/en/latest/ref/wavelets.html>`_)
-        The default is "db8".
-    device : str, optional
-        ``"cpu"`` or ``"gpu"``. The default if ``"cpu"``.
-    non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
-        If ``"topk"``, only the top-k wavelet coefficients are kept.
-        The default is ``"soft"``.
+    W : int
+        Patch size (assume isotropic).
+    S : int
+        Patch stride (assume isotropic).
+    rand_shift : bool, optional
+        If True, randomly shift across spatial dimensions before denoising.
+    axis : bool, optional
+        Axis assumed as coefficient axis (e.g., coils or contrasts).
+        If not provided, use first axis to the left of spatial dimensions.
+    device : str, optional 
+        Device on which the wavelet transform is computed. Default is ``None``.
 
     """
 
-    def __init__(self, dim, axis=None, non_linearity="soft"):
+    def __init__(self, ndim, W, S=None, rand_shift=True, axis=None, device=None):
         super().__init__()
-
-        self.non_linearity = non_linearity
-
-    def get_ths_map(self, ths):
-        if isinstance(ths, float) or isinstance(ths, int):
-            ths_map = ths
-        elif len(ths.shape) == 0 or ths.shape[0] == 1:
-            ths_map = ths.to(self.device)
+        self.ndim = ndim
+        self.W = [W] * ndim
+        if S is None:
+            self.S = [W] * ndim
         else:
-            ths_map = (
-                ths.unsqueeze(0)
-                .unsqueeze(0)
-                .unsqueeze(-1)
-                .unsqueeze(-1)
-                .to(self.device)
-            )
-        return ths_map
-
-    def prox_l1(self, x, ths=0.1):
-        """
-        Soft thresholding of the wavelet coefficients.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Wavelet coefficients.
-        ths : float, torch.Tensor, optional
-            Threshold. The default is 0.1.
-
-        """
-        ths_map = self.get_ths_map(ths)
-        return torch.maximum(
-            torch.tensor([0], device=x.device).type(x.dtype), x - ths_map
-        ) + torch.minimum(torch.tensor([0], device=x.device).type(x.dtype), x + ths_map)
-
-    def prox_l0(self, x, ths=0.1):
-        """
-        Hard thresholding of the wavelet coefficients.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Wavelet coefficients.
-        ths : float, torch.Tensor, optional
-            Threshold. The default is 0.1.
-
-        """
-        if isinstance(ths, float):
-            ths_map = ths
+            self.S = [S] * ndim
+        self.rand_shift = rand_shift
+        if axis is None:
+            self.axis = -self.ndim-1
         else:
-            ths_map = self.get_ths_map(ths)
-            ths_map = ths_map.repeat(
-                1, 1, 1, x.shape[-2], x.shape[-1]
-            )  # Reshaping to image wavelet shape
-        out = x.clone()
-        out[abs(out) < ths_map] = 0
-        return out
-
-    def hard_threshold_topk(self, x, ths=0.1):
-        r"""
-        Hard thresholding of the wavelet coefficients.
-
-        Keeps only the top-k coefficients and setting the others to 0.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            wavelet coefficients.
-        ths : float,  int, optional
-            top k coefficients to keep. If ``float``, it is interpreted as a proportion of the total
-            number of coefficients. If ``int``, it is interpreted as the number of coefficients to keep.
-            The default is 0.1.
-
-        """
-        if isinstance(ths, float):
-            k = int(ths * x.shape[-2] * x.shape[-1])
-        else:
-            k = int(ths)
-
-        # Reshape arrays to 2D and initialize output to 0
-        x_flat = x.view(x.shape[0], -1)
-        out = torch.zeros_like(x_flat)
-
-        topk_indices_flat = torch.topk(abs(x_flat), k, dim=-1)[1]
-
-        # Convert the flattened indices to the original indices of x
-        batch_indices = (
-            torch.arange(x.shape[0], device=x.device).unsqueeze(1).repeat(1, k)
-        )
-        topk_indices = torch.stack([batch_indices, topk_indices_flat], dim=-1)
-
-        # Set output's top-k elements to values from original x
-        out[tuple(topk_indices.view(-1, 2).t())] = x_flat[
-            tuple(topk_indices.view(-1, 2).t())
-        ]
-        return torch.reshape(out, x.shape)
+            self.axis = axis
+        self.device = device
 
     def forward(self, x, ths=0.1):
         """
@@ -140,36 +58,102 @@ class LLRPrior(nn.Module):
             Noisy image.
         ths : int, float, torch.Tensor, optional
             Thresholding parameter.
-            If ``non_linearity`` equals ``"soft"`` or ``"hard"``, ``ths`` serves as a (soft or hard)
-            thresholding parameter for the wavelet coefficients. If ``non_linearity`` equals ``"topk"``,
-            ``ths`` can indicate the number of wavelet coefficients
-            that are kept (if ``int``) or the proportion of coefficients that are kept (if ``float``)
             The default is 0.1.
 
         """
-        coeffs = self.dwt(x)
-        for l in range(self.level):
-            ths_cur = _get_threshold(ths, l)
-            if self.non_linearity == "soft":
-                coeffs[1][l] = self.prox_l1(coeffs[1][l], ths_cur)
-            elif self.non_linearity == "hard":
-                coeffs[1][l] = self.prox_l0(coeffs[1][l], ths_cur)
-            elif self.non_linearity == "topk":
-                coeffs[1][l] = self.hard_threshold_topk(coeffs[1][l], ths_cur)
-        y = self.iwt(coeffs)
+        # cast to torch if required
+        if isinstance(x, np.ndarray):
+            isnumpy = True
+            x = torch.as_tensor(x)
+        else:
+            isnumpy = False
+                        
+        # default device
+        idevice = x.device
+        if self.device is None:
+            device = idevice
+        else:
+            device = self.device
+        x = x.to(device)
+            
+        # circshift randomly
+        if self.rand_shift is True:
+            shift = tuple(np.random.randint(0, self.W, size=self.ndim))
+            axes = tuple(range(-self.ndim, 0))
+            x = torch.roll(x, shift, axes)
+        
+        # reshape to (..., ncoeff, ny, nx), (..., ncoeff, nz, ny, nx)
+        x = x.swapaxes(self.axis, -self.ndim-1)
+        x0shape = x.shape
+        x = x.reshape(-1, *x0shape[-self.ndim-1:])
+        x1shape = x.shape
+        
+        # build patches
+        patches = _signal.tensor2patches(x, self.W, self.S)
+        pshape = patches.shape
+        patches = patches.reshape(*pshape[:1], -1, int(np.prod(pshape[-self.ndim:])))
+                
+        # perform SVD and soft-threshold S matrix
+        u, s, vh = torch.linalg.svd(patches, full_matrices=False)
+        s_st = _soft_thresh(s, ths)
+        patches = u * s_st[..., None, :] @ vh
+        patches = patches.reshape(*pshape)
+        output = _signal.patches2tensor(patches, x1shape[-self.ndim:], self.W, self.S)
+        output = output.reshape(x0shape)
+        output = output.swapaxes(self.axis, -self.ndim-1)
+        
+        # randshift back
+        if self.rand_shift is True:
+            shift = tuple([-s for s in shift])
+            output = torch.roll(output, shift, axes)
+            
+        # cast back to numpy if requried
+        if isnumpy:
+            output = output.numpy(force=True)
+        else:
+            output = output.to(idevice)
 
-        return y
+        return output
+      
+def llr_denoise(input, ndim, ths, w, s=None, rand_shift=True, axis=None, device=None):
+    """
+    Apply Local Low Rank denoising.
+
+    The solution is available in closed-form, thus the denoiser is cheap to compute.
+
+    Attributes
+    ----------
+    ndim : int,
+        Number of spatial dimensions.
+    W : int
+        Patch size (assume isotropic).
+    S : int
+        Patch stride (assume isotropic).
+    rand_shift : bool, optional
+        If True, randomly shift across spatial dimensions before denoising.
+    axis : bool, optional
+        Axis assumed as coefficient axis (e.g., coils or contrasts).
+        If not provided, use first axis to the left of spatial dimensions.
+    device : str, optional 
+        Device on which the wavelet transform is computed. Default is ``None``.
+    
+    Returns
+    -------
+    output : np.ndarray | torch.Tensor
+        Denoised image of shape (..., n_ndim, ..., n_0).
+    
+    """
+    LLR = LLRPrior(ndim, w, s, rand_shift, axis, device)
+    return LLR(input, ths)
+
 
 # %% local utils
-def _get_threshold(ths, l):
-    ths_cur = (
-        ths
-        if (
-            isinstance(ths, int)
-            or isinstance(ths, float)
-            or len(ths.shape) == 0
-            or ths.shape[0] == 1
-        )
-        else ths[l]
+def _soft_thresh(input, ths):
+    mask1 = input > ths
+    mask2 = input < -ths
+    return (
+        mask1.float() * (-ths)
+        + mask1.float() * input
+        + mask2.float() * ths
+        + mask2.float() * input
     )
-    return ths_cur

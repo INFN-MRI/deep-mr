@@ -1,7 +1,7 @@
 # Reconstruction Preprocessing
 
 ```{eval-rst}
-.. automodule:: deepmr.recon.calub
+.. automodule:: deepmr.recon.calib
 ```
 
 ## Coil sensitivity estimation

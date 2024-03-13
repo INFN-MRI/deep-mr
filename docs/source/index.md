@@ -36,14 +36,18 @@ core/bloch.md
 core/vobj.md
 core/io.md
 core/linops.md
+core/prox.md
+core/optim.md
 
 ```
 
 ```{toctree}
 :hidden:
-:caption: MR Recon
+:caption: MR Reconstruction
 
 recon/calib.md
+recon/alg.md
+recon/inference.md
 
 ```
 
