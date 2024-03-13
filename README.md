@@ -36,7 +36,7 @@ pip install -e .
 
 ## Usage
 
-- TODO
+- See [documentation](https://infn-predator.github.io/deep-mr/) for API and usage examples.
 
 ## Contributing
 
