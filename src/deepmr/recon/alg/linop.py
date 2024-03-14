@@ -84,9 +84,9 @@ def EncodingOp(
             return F, _linops.NormalLinop(FHF._ndim, A=FHF.A)
         else:
             if cal_data is not None:
-                sensmap = _calib.espirit_cal(cal_data.to(device), nsets=nsets)
+                sensmap, _ = _calib.espirit_cal(cal_data.to(device), nsets=nsets)
             else:
-                sensmap = _calib.espirit_cal(data.to(device), nsets=nsets)
+                sensmap, _ = _calib.espirit_cal(data.to(device), nsets=nsets)
             C = _linops.CoilOp(2, sensmap)
             EHE = C.H * FHF * C
             return F * C, _linops.NormalLinop(EHE._ndim, A=EHE.A)
@@ -109,11 +109,11 @@ def EncodingOp(
             return F, _linops.NormalLinop(FHF._ndim, A=FHF.A)
         else:
             if cal_data is not None:
-                sensmap = _calib.espirit_cal(
+                sensmap, _ = _calib.espirit_cal(
                     cal_data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
                 )
             else:
-                sensmap = _calib.espirit_cal(
+                sensmap, _ = _calib.espirit_cal(
                     data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
                 )
             C = _linops.CoilOp(2, sensmap)

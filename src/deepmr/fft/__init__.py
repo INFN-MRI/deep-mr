@@ -45,10 +45,6 @@ def sparse_fft(
         or ``(..., ncontrasts, nz, ny, nx)`` (3D).
     indexes : torch.Tensor
         Sampled k-space points indexes of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-    shape : int | Iterable[int], optional
-        Oversampled grid size of shape ``(ndim,)``.
-        If scalar, isotropic matrix is assumed.
-        The default is ``None`` (grid size equals to input data size, i.e. ``osf = 1``).
     basis_adjoint : torch.Tensor, optional
         Adjoint low rank subspace projection operator
         of shape ``(ncoeffs, ncontrasts)``; can be ``None``. The default is ``None``.
@@ -108,7 +104,7 @@ def sparse_ifft(
     indexes : torch.Tensor
         Sampled k-space points indexes of shape ``(ncontrasts, nviews, nsamples, ndims)``.
     shape : int | Iterable[int]
-        Oversampled grid size of shape ``(ndim,)``.
+        Cartesian grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
     basis : torch.Tensor, optional
         Low rank subspace projection operator
@@ -154,7 +150,7 @@ def nufft(
     device="cpu",
     threadsperblock=128,
     width=3,
-    oversamp=1.125,
+    oversamp=1.25,
 ):
     """
     N-dimensional Non-Uniform Fast Fourier Transform.
@@ -168,7 +164,7 @@ def nufft(
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
         Coordinates must be normalized between ``(-0.5 * shape, 0.5 * shape)``.
     shape : int | Iterable[int], optional
-        Oversampled grid size of shape ``(ndim,)``.
+        Cartesian grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
         The default is ``None`` (grid size equals to input data size, i.e. ``osf = 1``).
     basis_adjoint : torch.Tensor, optional
@@ -230,7 +226,7 @@ def nufft_adj(
     device="cpu",
     threadsperblock=128,
     width=3,
-    oversamp=1.125,
+    oversamp=1.25,
 ):
     """
     N-dimensional adjoint Non-Uniform Fast Fourier Transform.
@@ -243,7 +239,7 @@ def nufft_adj(
         K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
         Coordinates must be normalized between ``(-0.5 * shape, 0.5  * shape)``.
     shape : int | Iterable[int]
-        Oversampled grid size of shape ``(ndim,)``.
+        Cartesian grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.
     basis : torch.Tensor, optional
         Low rank subspace projection operator

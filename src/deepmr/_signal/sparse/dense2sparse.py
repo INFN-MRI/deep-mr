@@ -85,7 +85,7 @@ def apply_sampling(data_in, mask, basis_adjoint=None, device=None, threadsperblo
 
     # reshape
     data_in = data_in.reshape([batch_size, nframes, *dshape])
-    data_in = data_in.swapaxes(0, 1)
+    data_in = data_in.swapaxes(0, 1).contiguous()
 
     # collect garbage
     gc.collect()

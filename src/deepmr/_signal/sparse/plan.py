@@ -71,16 +71,16 @@ def plan_sampling(indexes, shape, device="cpu"):
     if np.isscalar(shape):
         shape = ndim * [shape]
 
-    # revert axis (z, y, x) -> (x, y, z)
-    shape = shape[::-1]
-
     # arg reshape
     indexes = indexes.reshape([nframes, npts, ndim])
     indexes = indexes.permute(2, 0, 1)
-
+    
     # send to numba
     index = [backend.pytorch2numba(idx) for idx in indexes]
-
+    
+    # revert axis (x, y, z) > (z, y, x)
+    index = index[::-1]
+    
     # transform to tuples
     index = tuple(index)
     dshape = tuple(shape)

@@ -24,7 +24,7 @@ from . import fft as _fft
 from . import toeplitz as _toeplitz
 
 
-def plan_nufft(coord, shape, width=3, oversamp=1.125, device="cpu"):
+def plan_nufft(coord, shape, width=3, oversamp=1.25, device="cpu"):
     """
     Precompute NUFFT object.
 

@@ -25,9 +25,7 @@
 	deepmr.fermi
 ```
 
-
 ## Tensor folding and unfolding
-
 ```{eval-rst}
 .. currentmodule:: deepmr 
 .. autosummary::
@@ -38,9 +36,7 @@
 	deepmr.patches2tensor
 ```
 
-
 ## Wavelet decomposition
-
 ```{eval-rst}
 .. currentmodule:: deepmr 
 .. autosummary::
@@ -51,9 +47,7 @@
 	deepmr.iwt
 ```
 
-
 ## Signal compression
-
 ```{eval-rst}
 .. currentmodule:: deepmr 
 .. autosummary::
@@ -62,5 +56,15 @@
 	
 	deepmr.rss
 	deepmr.svd
+```
+
+## Interpolation
+```{eval-rst}
+.. currentmodule:: deepmr 
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.grog_interp
 ```
 

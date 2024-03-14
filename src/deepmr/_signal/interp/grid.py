@@ -93,7 +93,7 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
 
     # argument reshape
     data_in = data_in.reshape(batch_size, nframes, npts)
-    data_in = data_in.swapaxes(0, 1)
+    data_in = data_in.swapaxes(0, 1).contiguous()
 
     # collect garbage
     gc.collect()

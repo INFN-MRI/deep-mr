@@ -125,7 +125,7 @@ def espirit_cal(
     if isnumpy:
         maps = maps.numpy(force=True)
 
-    return maps
+    return maps, _signal.resize(cal_data, ndim * [r])
 
 
 # %% local utils
