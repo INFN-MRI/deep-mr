@@ -8,19 +8,17 @@
 
 Operators representing single iterations of classical optimization algorithms.
 
-DeepMR expose these operators as ``torch.nn`` objects to be chained e.g., in unrolled Neural Network architectures.
-
-Currently available optimizers are wrappers around the corresponding [DeepInverse](https://deepinv.github.io/deepinv/) implementations.
+DeepMR expose these operators as ``torch.nn`` objects to be chained e.g., in unrolled Neural Network architectures
+and the corresponding functional versions for standalone usage.
 
 ```{eval-rst}
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.optim.ADMMIteration
-	deepmr.optim.PGDIteration
-	deepmr.optim.GDIteration
-	deepmr.optim.CPIteration
-	deepmr.optim.DRSIteration
-	deepmr.optim.HQSIteration
+	deepmr.optim.ADMMStep
+	deepmr.optim.PGDStep
+
+	deepmr.optim.admm_solve
+	deepmr.optim.pgd_solve
 ```

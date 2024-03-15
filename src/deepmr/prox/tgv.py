@@ -39,19 +39,20 @@ class TGVDenoiser(nn.Module):
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
+        Device on which the wavelet transform is computed. 
+        The default is ``None`` (infer from input).
     verbose : bool, optional
-        Whether to print computation details or not. Default: ``False``.
+        Whether to print computation details or not. The default is ``False``.
     niter : int, optional,
-        Maximum number of iterations. Default: ``1000``.
+        Maximum number of iterations. The default is ``1000``.
     crit : float, optional
-        Convergence criterion. Default: 1e-5.
+        Convergence criterion. The default is 1e-5.
     x2 : torch.Tensor, optional
-        Primary variable for warm restart. Default: ``None``.
+        Primary variable for warm restart. The default is ``None``.
     u2 : torch.Tensor, optional
-        Dual variable for warm restart. Default: ``None``.
+        Dual variable for warm restart. The default is ``None``.
     r2 : torch.Tensor, optional
-        Auxiliary variable for warm restart. Default: ``None``.
+        Auxiliary variable for warm restart. The default is ``None``.
     
     Notes
     -----
@@ -61,7 +62,7 @@ class TGVDenoiser(nn.Module):
 
     """
     
-    def __init__(self, ndim, ths=0.1, trainable=False, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):    
+    def __init__(self, ndim, ths=0.1, trainable=False, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None, r2=None):    
         super().__init__()
         
         if trainable:
@@ -69,8 +70,8 @@ class TGVDenoiser(nn.Module):
         else:
             self.ths = ths
         
-        self.denoiser = _TVGDenoiser(
-            ndim=ndim, device=device, verbose=verbose, niter=niter, crit=crit, x2=x2, u2=u2,
+        self.denoiser = _TGVDenoiser(
+            ndim=ndim, device=device, verbose=verbose, niter=niter, crit=crit, x2=x2, u2=u2, r2=r2,
         )
         self.denoiser.device = device
         
@@ -124,82 +125,7 @@ def tgv_denoise(
     u2=None,
 ):
     r"""
-    Apply isotropic Total Variation denoising.
-
-    This algorithm converges to the unique image :math:`x` that is the solution of
-
-    .. math::
-
-        \underset{x}{\arg\min} \;  \frac{1}{2}\|x-y\|_2^2 + \gamma \|Dx\|_{1,2},
-
-    where :math:`D` maps an image to its gradient field.
-
-    The problem is solved with an over-relaxed Chambolle-Pock algorithm (see L. Condat, "A primal-dual splitting method
-    for convex optimization  involving Lipschitzian, proximable and linear composite terms", J. Optimization Theory and
-    Applications, vol. 158, no. 2, pp. 460-479, 2013.
-
-    Code (and description) adapted from ``deepinv``, in turn adapted from
-    Laurent Condat's matlab version (https://lcondat.github.io/software.html) and
-    Daniil Smolyakov's `code <https://github.com/RoundedGlint585/TGVDenoising/blob/master/TGV%20WithoutHist.ipynb>`_.
-
-    This algorithm is implemented with warm restart, i.e. the primary and dual variables are kept in memory
-    between calls to the forward method. This speeds up the computation when using this class in an iterative algorithm.
-
-    Arguments
-    ---------
-    input : np.ndarray | torch.Tensor
-        Input image of shape (..., n_ndim, ..., n_0).
-    ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
-    ths : float, optional
-        Denoise threshold. Default is ``0.1``.
-    device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
-    verbose : bool, optional
-        Whether to print computation details or not. Default: ``False``.
-    niter : int, optional,
-        Maximum number of iterations. Default: ``1000``.
-    crit : float, optional
-        Convergence criterion. Default: 1e-5.
-    x2 : torch.Tensor, optional
-        Primary variable for warm restart. Default: ``None``.
-    u2 : torch.Tensor, optional
-        Dual variable for warm restart. Default: ``None``.
-
-    Notes
-    -----
-    The regularization term :math:`\|Dx\|_{1,2}` is implicitly normalized by its Lipschitz constant, i.e.
-    :math:`\sqrt{8}`, see e.g. A. Beck and M. Teboulle, "Fast gradient-based algorithms for constrained total
-    variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
-
-    Returns
-    -------
-    output : np.ndarray | torch.Tensor
-        Denoised image of shape (..., n_ndim, ..., n_0).
-
-    """
-    # cast to numpy if required
-    if isinstance(input, np.ndarray):
-        isnumpy = True
-        input = torch.as_tensor(input)
-    else:
-        isnumpy = False
-           
-    # initialize denoiser
-    TV = TVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
-    output = TV(input, ths)
-    
-    # cast back to numpy if requried
-    if isnumpy:
-        output = output.numpy(force=True)
-        
-    return output
-
-
-# %% local utils
-class _TVGDenoiser(nn.Module):
-    r"""
-    Proximal operator of (2nd order) Total Generalised Variation operator.
+    Apply Total Generalized Variation denoising.
 
     (see K. Bredies, K. Kunisch, and T. Pock, "Total generalized variation," SIAM J. Imaging Sci., 3(3), 492-526, 2010.)
 
@@ -220,20 +146,63 @@ class _TVGDenoiser(nn.Module):
     Code (and description) adapted from Laurent Condat's matlab version (https://lcondat.github.io/software.html) and
     Daniil Smolyakov's `code <https://github.com/RoundedGlint585/TGVDenoising/blob/master/TGV%20WithoutHist.ipynb>`_.
 
+    Arguments
+    ---------
+    input : np.ndarray | torch.Tensor
+        Input image of shape (..., n_ndim, ..., n_0).
+    ndim : int
+        Number of spatial dimensions, can be either ``2`` or ``3``.
+    ths : float, optional
+        Denoise threshold. Default is ``0.1``.
+    ndim : int
+        Number of spatial dimensions, can be either ``2`` or ``3``.
+    ths : float, optional
+        Denoise threshold. The default is ``0.1``.
+    trainable : bool, optional
+        If ``True``, threshold value is trainable, otherwise it is not.
+        The default is ``False``.
+    device : str, optional
+        Device on which the wavelet transform is computed. 
+        The default is ``None`` (infer from input).
+    verbose : bool, optional
+        Whether to print computation details or not. The default is ``False``.
+    niter : int, optional,
+        Maximum number of iterations. The default is ``1000``.
+    crit : float, optional
+        Convergence criterion. The default is 1e-5.
+    x2 : torch.Tensor, optional
+        Primary variable for warm restart. The default is ``None``.
+    u2 : torch.Tensor, optional
+        Dual variable for warm restart. The default is ``None``.
+    r2 : torch.Tensor, optional
+        Auxiliary variable for warm restart. The default is ``None``.
 
-    .. note::
-        The regularization term :math:`\|r\|_{1,2} + \|J(Dx-r)\|_{1,F}` is implicitly normalized by its Lipschitz
-        constant, i.e. :math:`\sqrt{72}`, see e.g. K. Bredies et al., "Total generalized variation," SIAM J. Imaging
-        Sci., 3(3), 492-526, 2010.
+    Returns
+    -------
+    output : np.ndarray | torch.Tensor
+        Denoised image of shape (..., n_ndim, ..., n_0).
 
-    :param bool verbose: Whether to print computation details or not. Default: False.
-    :param int n_it_max: Maximum number of iterations. Default: 1000.
-    :param float crit: Convergence criterion. Default: 1e-5.
-    :param torch.Tensor, None x2: Primary variable. Default: None.
-    :param torch.Tensor, None u2: Dual variable. Default: None.
-    :param torch.Tensor, None r2: Auxiliary variable. Default: None.
     """
+    # cast to numpy if required
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+        input = torch.as_tensor(input)
+    else:
+        isnumpy = False
+           
+    # initialize denoiser
+    TV = TGVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
+    output = TV(input, ths)
+    
+    # cast back to numpy if requried
+    if isnumpy:
+        output = output.numpy(force=True)
+        
+    return output
 
+
+# %% local utils
+class _TGVDenoiser(nn.Module):
     def __init__(
         self, ndim, device, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None, r2=None
     ):

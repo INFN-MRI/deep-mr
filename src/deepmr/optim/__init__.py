@@ -1,32 +1,16 @@
 """Sub-package containing optimization routines.
 
-DeepMR provides optimization routines for compressed sensing.
-All the routines are based on the excellent Deep Inverse (https://github.com/deepinv/deepinv) package.
+DeepMR provides optimization routines for compressed sensing and
+network unfolding.
 
 """
 
-from . import data_fidelity as _data_fidelity
+from . import admm as _admm
+from . import pgd as _pgd
 
-from .data_fidelity import *  # noqa
-
-from deepinv.optim.optim_iterators import OptimIterator  # noqa
-from deepinv.optim.optim_iterators import ADMMIteration  # noqa
-from deepinv.optim.optim_iterators import PGDIteration  # noqa
-from deepinv.optim.optim_iterators import GDIteration  # noqa
-from deepinv.optim.optim_iterators import CPIteration  # noqa
-from deepinv.optim.optim_iterators import DRSIteration  # noqa
-from deepinv.optim.optim_iterators import HQSIteration  # noqa
+from .admm import *  # noqa
+from .pgd import *  # noqa
 
 __all__ = []
-__all__.extend(_data_fidelity.__all__)
-__all__.extend(
-    [
-        "OptimIterator",
-        "ADMMIteration",
-        "PGDIteration",
-        "GDIteration",
-        "CPIteration",
-        "DRSIteration",
-        "HQSIteration",
-    ]
-)
+__all__.extend(_admm.__all__)
+__all__.extend(_pgd.__all__)

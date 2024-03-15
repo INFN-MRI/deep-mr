@@ -39,17 +39,18 @@ class TVDenoiser(nn.Module):
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
+        Device on which the wavelet transform is computed. 
+        The default is ``None`` (infer from input).
     verbose : bool, optional
-        Whether to print computation details or not. Default: ``False``.
+        Whether to print computation details or not. The default is ``False``.
     niter : int, optional,
-        Maximum number of iterations. Default: ``1000``.
+        Maximum number of iterations. The default is ``1000``.
     crit : float, optional
-        Convergence criterion. Default: 1e-5.
+        Convergence criterion. The default is 1e-5.
     x2 : torch.Tensor, optional
-        Primary variable for warm restart. Default: ``None``.
+        Primary variable for warm restart. The default is ``None``.
     u2 : torch.Tensor, optional
-        Dual variable for warm restart. Default: ``None``.
+        Dual variable for warm restart. The default is ``None``.
 
     Notes
     -----
@@ -150,19 +151,20 @@ def tv_denoise(
     ndim : int
         Number of spatial dimensions, can be either ``2`` or ``3``.
     ths : float, optional
-        Denoise threshold. Default is ``0.1``.
+        Denoise threshold. The default is``0.1``.
     device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
+        Device on which the wavelet transform is computed. 
+        The default is ``None`` (infer from input).
     verbose : bool, optional
-        Whether to print computation details or not. Default: ``False``.
+        Whether to print computation details or not. The default is ``False``.
     niter : int, optional,
-        Maximum number of iterations. Default: ``1000``.
+        Maximum number of iterations. The default is ``1000``.
     crit : float, optional
-        Convergence criterion. Default: 1e-5.
+        Convergence criterion. The default is 1e-5.
     x2 : torch.Tensor, optional
-        Primary variable for warm restart. Default: ``None``.
+        Primary variable for warm restart. The default is ``None``.
     u2 : torch.Tensor, optional
-        Dual variable for warm restart. Default: ``None``.
+        Dual variable for warm restart. The default is ``None``.
 
     Notes
     -----
