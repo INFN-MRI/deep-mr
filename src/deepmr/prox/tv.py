@@ -1,14 +1,12 @@
 """Total variation denoising prior."""
 
-__all__ = ["TVPrior", "tv_denoise"]
+__all__ = ["TVDenoiser", "tv_denoise"]
 
 import numpy as np
 import torch
+import torch.nn as nn
 
-from deepinv.optim.prior import PnP
-
-
-def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):
+class TVDenoiser(nn.Module):
     r"""
     Proximal operator of the isotropic Total Variation operator.
 
@@ -35,6 +33,11 @@ def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=
     ---------
     ndim : int
         Number of spatial dimensions, can be either ``2`` or ``3``.
+    ths : float, optional
+        Denoise threshold. The default is ``0.1``.
+    trainable : bool, optional
+        If ``True``, threshold value is trainable, otherwise it is not.
+        The default is ``False``.
     device : str, optional
         Device on which the wavelet transform is computed. Default is ``None``.
     verbose : bool, optional
@@ -55,8 +58,57 @@ def TVPrior(ndim, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=
     variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
 
     """
-    return PnP(denoiser=ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2))
+    
+    def __init__(self, ndim, ths=0.1, trainable=False, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):    
+        super().__init__()
+        
+        if trainable:
+            self.ths = nn.Parameter(ths)
+        else:
+            self.ths = ths
+        
+        self.denoiser = _TVDenoiser(
+            ndim=ndim, device=device, verbose=verbose, niter=niter, crit=crit, x2=x2, u2=u2,
+        )
+        self.denoiser.device = device
+        
+    def forward(self, input):
+        # get complex
+        if torch.is_complex(input):
+            iscomplex = True
+        else:
+            iscomplex = False
 
+        # default device
+        idevice = input.device
+        if self.denoiser.device is None:
+            device = idevice
+        else:
+            device = self.denoiser.device
+
+        # get input shape
+        ndim = self.denoiser.wvdim
+        ishape = input.shape
+
+        # reshape for computation
+        input = input.reshape(-1, *ishape[-ndim:])
+        if iscomplex:
+            input = torch.stack((input.real, input.imag), axis=1)
+            input = input.reshape(-1, *ishape[-ndim:])
+
+        # apply denoising
+        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+            idevice
+        )  # perform the denoising on the real-valued tensor
+
+        # reshape back
+        if iscomplex:
+            output = (
+                output[::2, ...] + 1j * output[1::2, ...]
+            )  # build the denoised complex data
+        output = output.reshape(ishape)
+
+        return output.to(idevice)
 
 def tv_denoise(
     input,
@@ -124,76 +176,26 @@ def tv_denoise(
         Denoised image of shape (..., n_ndim, ..., n_0).
 
     """
-    TV = ComplexTVDenoiser(ndim, device, verbose, niter, crit, x2, u2)
-    return TV(input, ths)
+    # cast to numpy if required
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+        input = torch.as_tensor(input)
+    else:
+        isnumpy = False
+           
+    # initialize denoiser
+    TV = TVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
+    output = TV(input, ths)
+    
+    # cast back to numpy if requried
+    if isnumpy:
+        output = output.numpy(force=True)
+        
+    return output
 
 
 # %% local utils
-class ComplexTVDenoiser(torch.nn.Module):
-    def __init__(
-        self,
-        ndim,
-        device=None,
-        verbose=False,
-        n_it_max=1000,
-        crit=1e-5,
-        x2=None,
-        u2=None,
-    ):
-        super().__init__()
-        self.denoiser = _TVDenoiser(ndim, device, verbose, n_it_max, crit, x2, u2)
-
-    def forward(self, input, ths):
-        # cast to numpy if required
-        if isinstance(input, np.ndarray):
-            isnumpy = True
-            input = torch.as_tensor(input)
-        else:
-            isnumpy = False
-
-        # get complex
-        if torch.is_complex(input):
-            iscomplex = True
-        else:
-            iscomplex = False
-
-        # default device
-        idevice = input.device
-        if self.denoiser.device is None:
-            device = idevice
-        else:
-            device = self.denoiser.device
-
-        # get input shape
-        ndim = self.denoiser.ndim
-        ishape = input.shape
-
-        # reshape for computation
-        input = input.reshape(-1, *ishape[-ndim:])
-        if iscomplex:
-            input = torch.stack((input.real, input.imag), axis=1)
-            input = input.reshape(-1, *ishape[-ndim:])
-
-        # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), ths).to(
-            idevice
-        )  # perform the denoising on the real-valued tensor
-
-        # reshape back
-        if iscomplex:
-            output = (
-                output[::2, ...] + 1j * output[1::2, ...]
-            )  # build the denoised complex data
-        output = output.reshape(ishape)
-
-        # cast back to numpy if requried
-        if isnumpy:
-            output = output.numpy(force=True)
-
-        return output
-
-
-class _TVDenoiser(torch.nn.Module):
+class _TVDenoiser(nn.Module):
     def __init__(
         self,
         ndim,
@@ -242,13 +244,6 @@ class _TVDenoiser(torch.nn.Module):
         )
 
     def forward(self, y, ths=None):
-        r"""
-        Computes the proximity operator of the TV norm.
-
-        :param torch.Tensor y: Noisy image.
-        :param float, torch.Tensor ths: Regularization parameter :math:`\gamma`.
-        :return: Denoised image.
-        """
         restart = (
             True
             if (self.restart or self.x2 is None or self.x2.shape != y.shape)

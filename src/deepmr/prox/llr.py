@@ -1,6 +1,6 @@
-"""Local Low Rank denoising prior."""
+"""Local Low Rank denoisining."""
 
-__all__ = ["LLRPrior", "llr_denoise"]
+__all__ = ["LLRDenoiser", "llr_denoise"]
 
 import numpy as np
 
@@ -9,8 +9,9 @@ import torch.nn as nn
 
 from .. import _signal
 
+from . import threshold
 
-class LLRPrior(nn.Module):
+class LLRDenoiser(nn.Module):
     r"""
     Local Low Rank denoising.
 
@@ -20,22 +21,35 @@ class LLRPrior(nn.Module):
     ----------
     ndim : int,
         Number of spatial dimensions.
-    W : int
+    W : int, optional
         Patch size (assume isotropic).
-    S : int
+    ths : float, optional
+        Denoise threshold. The default is ``0.1``.
+    trainable : bool, optional
+        If ``True``, threshold value is trainable, otherwise it is not.
+        The default is ``False``.
+    S : int, optional
         Patch stride (assume isotropic).
+        If not provided, use non-overlapping patches.
     rand_shift : bool, optional
         If True, randomly shift across spatial dimensions before denoising.
     axis : bool, optional
         Axis assumed as coefficient axis (e.g., coils or contrasts).
         If not provided, use first axis to the left of spatial dimensions.
     device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
+        Device on which the wavelet transform is computed. 
+        The default is ``None`` (infer from input).
 
     """
 
-    def __init__(self, ndim, W, S=None, rand_shift=True, axis=None, device=None):
+    def __init__(self, ndim, W, ths=0.1, trainable=False, S=None, rand_shift=True, axis=None, device=None):
         super().__init__()
+        
+        if trainable:
+            self.ths = nn.Parameter(ths)
+        else:
+            self.ths = ths
+            
         self.ndim = ndim
         self.W = [W] * ndim
         if S is None:
@@ -49,26 +63,7 @@ class LLRPrior(nn.Module):
             self.axis = axis
         self.device = device
 
-    def forward(self, x, ths=0.1):
-        """
-        Run the model on a noisy image.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Noisy image.
-        ths : int, float, torch.Tensor, optional
-            Thresholding parameter.
-            The default is 0.1.
-
-        """
-        # cast to torch if required
-        if isinstance(x, np.ndarray):
-            isnumpy = True
-            x = torch.as_tensor(x)
-        else:
-            isnumpy = False
-
+    def forward(self, x):
         # default device
         idevice = x.device
         if self.device is None:
@@ -96,7 +91,7 @@ class LLRPrior(nn.Module):
 
         # perform SVD and soft-threshold S matrix
         u, s, vh = torch.linalg.svd(patches, full_matrices=False)
-        s_st = _soft_thresh(s, ths)
+        s_st = threshold.soft_thresh(s, self.ths)
         patches = u * s_st[..., None, :] @ vh
         patches = patches.reshape(*pshape)
         output = _signal.patches2tensor(patches, x1shape[-self.ndim :], self.W, self.S)
@@ -108,16 +103,10 @@ class LLRPrior(nn.Module):
             shift = tuple([-s for s in shift])
             output = torch.roll(output, shift, axes)
 
-        # cast back to numpy if requried
-        if isnumpy:
-            output = output.numpy(force=True)
-        else:
-            output = output.to(idevice)
-
-        return output
+        return output.to(idevice)
 
 
-def llr_denoise(input, ndim, ths, w, s=None, rand_shift=True, axis=None, device=None):
+def llr_denoise(input, ndim, ths, W, S=None, rand_shift=True, axis=None, device=None):
     """
     Apply Local Low Rank denoising.
 
@@ -129,15 +118,19 @@ def llr_denoise(input, ndim, ths, w, s=None, rand_shift=True, axis=None, device=
         Number of spatial dimensions.
     W : int
         Patch size (assume isotropic).
-    S : int
+    ths : float, optional
+        Denoise threshold. The default is ``0.1``.
+    S : int, optional
         Patch stride (assume isotropic).
+        If not provided, use non-overlapping patches.
     rand_shift : bool, optional
         If True, randomly shift across spatial dimensions before denoising.
     axis : bool, optional
         Axis assumed as coefficient axis (e.g., coils or contrasts).
         If not provided, use first axis to the left of spatial dimensions.
     device : str, optional
-        Device on which the wavelet transform is computed. Default is ``None``.
+        Device on which the wavelet transform is computed. 
+        The default is ``None``.
 
     Returns
     -------
@@ -145,17 +138,18 @@ def llr_denoise(input, ndim, ths, w, s=None, rand_shift=True, axis=None, device=
         Denoised image of shape (..., n_ndim, ..., n_0).
 
     """
-    LLR = LLRPrior(ndim, w, s, rand_shift, axis, device)
-    return LLR(input, ths)
-
-
-# %% local utils
-def _soft_thresh(input, ths):
-    mask1 = input > ths
-    mask2 = input < -ths
-    return (
-        mask1.float() * (-ths)
-        + mask1.float() * input
-        + mask2.float() * ths
-        + mask2.float() * input
-    )
+    # cast to torch if required
+    if isinstance(input, np.ndarray):
+        isnumpy = True
+        input = torch.as_tensor(input)
+    else:
+        isnumpy = False
+            
+    LLR = LLRDenoiser(ndim, W, ths, False, S, rand_shift, axis, device)
+    output = LLR(input)
+    
+    # cast back to numpy if requried
+    if isnumpy:
+        output = output.numpy(force=True)
+        
+    return output
