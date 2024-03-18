@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from .. import backend
+from ..._utils import backend
 
 
 def plan_sampling(indexes, shape, device="cpu"):
@@ -74,13 +74,13 @@ def plan_sampling(indexes, shape, device="cpu"):
     # arg reshape
     indexes = indexes.reshape([nframes, npts, ndim])
     indexes = indexes.permute(2, 0, 1)
-    
+
     # send to numba
     index = [backend.pytorch2numba(idx) for idx in indexes]
-    
+
     # revert axis (x, y, z) > (z, y, x)
     index = index[::-1]
-    
+
     # transform to tuples
     index = tuple(index)
     dshape = tuple(shape)

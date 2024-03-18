@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+
 class TVDenoiser(nn.Module):
     r"""
     Proximal operator of the isotropic Total Variation operator.
@@ -39,7 +40,7 @@ class TVDenoiser(nn.Module):
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     verbose : bool, optional
         Whether to print computation details or not. The default is ``False``.
@@ -59,20 +60,37 @@ class TVDenoiser(nn.Module):
     variation image denoising and deblurring problems", IEEE T. on Image Processing. 18(11), 2419-2434, 2009.
 
     """
-    
-    def __init__(self, ndim, ths=0.1, trainable=False, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None):    
+
+    def __init__(
+        self,
+        ndim,
+        ths=0.1,
+        trainable=False,
+        device=None,
+        verbose=False,
+        niter=100,
+        crit=1e-5,
+        x2=None,
+        u2=None,
+    ):
         super().__init__()
-        
+
         if trainable:
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-        
+
         self.denoiser = _TVDenoiser(
-            ndim=ndim, device=device, verbose=verbose, niter=niter, crit=crit, x2=x2, u2=u2,
+            ndim=ndim,
+            device=device,
+            verbose=verbose,
+            niter=niter,
+            crit=crit,
+            x2=x2,
+            u2=u2,
         )
         self.denoiser.device = device
-        
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -110,6 +128,7 @@ class TVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
+
 
 def tv_denoise(
     input,
@@ -153,7 +172,7 @@ def tv_denoise(
     ths : float, optional
         Denoise threshold. The default is``0.1``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     verbose : bool, optional
         Whether to print computation details or not. The default is ``False``.
@@ -184,15 +203,15 @@ def tv_denoise(
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-           
+
     # initialize denoiser
     TV = TVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
     output = TV(input, ths)
-    
+
     # cast back to numpy if requried
     if isnumpy:
         output = output.numpy(force=True)
-        
+
     return output
 
 

@@ -10,7 +10,7 @@ import torch
 from .. import fft as _fft
 from .. import _signal
 
-from .._signal import backend
+from .._utils import backend
 
 
 def plan_toeplitz(

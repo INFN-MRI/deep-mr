@@ -11,6 +11,7 @@ from .. import _signal
 
 from . import threshold
 
+
 class LLRDenoiser(nn.Module):
     r"""
     Local Low Rank denoising.
@@ -37,19 +38,29 @@ class LLRDenoiser(nn.Module):
         Axis assumed as coefficient axis (e.g., coils or contrasts).
         If not provided, use first axis to the left of spatial dimensions.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
 
     """
 
-    def __init__(self, ndim, W, ths=0.1, trainable=False, S=None, rand_shift=True, axis=None, device=None):
+    def __init__(
+        self,
+        ndim,
+        W,
+        ths=0.1,
+        trainable=False,
+        S=None,
+        rand_shift=True,
+        axis=None,
+        device=None,
+    ):
         super().__init__()
-        
+
         if trainable:
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-            
+
         self.ndim = ndim
         self.W = [W] * ndim
         if S is None:
@@ -129,7 +140,7 @@ def llr_denoise(input, ndim, ths, W, S=None, rand_shift=True, axis=None, device=
         Axis assumed as coefficient axis (e.g., coils or contrasts).
         If not provided, use first axis to the left of spatial dimensions.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None``.
 
     Returns
@@ -144,12 +155,12 @@ def llr_denoise(input, ndim, ths, W, S=None, rand_shift=True, axis=None, device=
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-            
+
     LLR = LLRDenoiser(ndim, W, ths, False, S, rand_shift, axis, device)
     output = LLR(input)
-    
+
     # cast back to numpy if requried
     if isnumpy:
         output = output.numpy(force=True)
-        
+
     return output

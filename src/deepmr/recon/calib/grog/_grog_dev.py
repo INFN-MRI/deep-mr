@@ -28,5 +28,6 @@ img = deepmr.fft.nufft_adj(head.dcf * ksp, head.traj, head.shape)
 smap, cal_data = deepmr.recon.espirit_cal(ksp, head.traj, head.dcf, head.shape)
 
 # get cartesian ksp and indexes
-d, indexes, weights = grogop.grappa_interp(ksp, cal_data, head.traj, head.shape, lamda=0.05)
-
+d, indexes, weights = grogop.grappa_interp(
+    ksp, cal_data, head.traj, head.shape, lamda=0.05
+)

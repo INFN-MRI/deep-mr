@@ -1,6 +1,11 @@
 """Wavelet denoising."""
 
-__all__ = ["WaveletDenoiser", "wavelet_denoise", "WaveletDictDenoiser", "wavelet_dict_denoise"]
+__all__ = [
+    "WaveletDenoiser",
+    "wavelet_denoise",
+    "WaveletDictDenoiser",
+    "wavelet_dict_denoise",
+]
 
 import numpy as np
 import torch
@@ -11,13 +16,14 @@ import pywt
 
 from . import threshold
 
+
 class WaveletDenoiser(nn.Module):
     r"""
-    Orthogonal Wavelet denoising with the :math:`\ell_1` norm. 
-    
+    Orthogonal Wavelet denoising with the :math:`\ell_1` norm.
+
     Adapted from :func:``deepinv.denoisers.WaveletDenoiser``
     to support complex-valued inputs.
-    
+
     This denoiser is defined as the solution to the optimization problem:
 
     .. math::
@@ -55,29 +61,46 @@ class WaveletDenoiser(nn.Module):
         Wavelet name to choose among those available in `pywt <https://pywavelets.readthedocs.io/en/latest/>`_.
         The default is ``"db4"``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding. 
+        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
 
     """
-    
-    def __init__(self, ndim, ths=0.1, trainable=False, wv="db4", device=None, non_linearity="soft", level=3, *args, **kwargs):
+
+    def __init__(
+        self,
+        ndim,
+        ths=0.1,
+        trainable=False,
+        wv="db4",
+        device=None,
+        non_linearity="soft",
+        level=3,
+        *args,
+        **kwargs
+    ):
         super().__init__()
-        
+
         if trainable:
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-        
+
         self.denoiser = _WaveletDenoiser(
-            level=level, wv=wv, device=device, non_linearity=non_linearity, wvdim=ndim, *args, **kwargs
+            level=level,
+            wv=wv,
+            device=device,
+            non_linearity=non_linearity,
+            wvdim=ndim,
+            *args,
+            **kwargs
         )
         self.denoiser.device = device
-        
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -115,15 +138,17 @@ class WaveletDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-    
 
-def wavelet_denoise(input, ndim, ths, wv="db4", device=None, non_linearity="soft", level=3):
+
+def wavelet_denoise(
+    input, ndim, ths, wv="db4", device=None, non_linearity="soft", level=3
+):
     r"""
-    Apply orthogonal Wavelet denoising with the :math:`\ell_1` norm. 
+    Apply orthogonal Wavelet denoising with the :math:`\ell_1` norm.
 
     Adapted from :func:``deepinv.denoisers.WaveletDenoiser``
     to support complex-valued inputs.
-    
+
     This denoiser is defined as the solution to the optimization problem:
 
     .. math::
@@ -150,10 +175,10 @@ def wavelet_denoise(input, ndim, ths, wv="db4", device=None, non_linearity="soft
         Wavelet name to choose among those available in `pywt <https://pywavelets.readthedocs.io/en/latest/>`_.
         The default is ``"db4"``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding. 
+        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
@@ -170,15 +195,15 @@ def wavelet_denoise(input, ndim, ths, wv="db4", device=None, non_linearity="soft
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-           
+
     # initialize denoiser
     W = WaveletDenoiser(ndim, ths, False, wv, device, non_linearity, level)
     output = W(input)
-    
+
     # cast back to numpy if requried
     if isnumpy:
         output = output.numpy(force=True)
-        
+
     return output
 
 
@@ -200,7 +225,7 @@ class WaveletDictDenoiser(nn.Module):
     more details.
 
     The solution is not available in closed-form, thus the denoiser runs an optimization algorithm for each test image.
-    
+
     Attributes
     ----------
     ndim : int
@@ -211,36 +236,55 @@ class WaveletDictDenoiser(nn.Module):
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     wv : Iterable[str], optional
-        List of mother wavelets. The names of the wavelets can be found in `here <https://wavelets.pybytes.com/>`_. 
+        List of mother wavelets. The names of the wavelets can be found in `here <https://wavelets.pybytes.com/>`_.
         The default is ``["db8", "db4"]``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding. 
+        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
     max_iter : int, optional
         Number of iterations of the optimization algorithm.
         The default is ``10``.
-    
+
     """
-    
-    def __init__(self, ndim, ths=0.1, trainable=False, wv=None, device=None, non_linearity="soft", level=3, max_iter=10, *args, **kwargs):
+
+    def __init__(
+        self,
+        ndim,
+        ths=0.1,
+        trainable=False,
+        wv=None,
+        device=None,
+        non_linearity="soft",
+        level=3,
+        max_iter=10,
+        *args,
+        **kwargs
+    ):
         super().__init__()
-                
+
         if trainable:
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
- 
+
         self.denoiser = _WaveletDictDenoiser(
-            level=level, wv=wv, device=device, max_iter=max_iter, non_linearity=non_linearity, wvdim=ndim, *args, **kwargs
+            level=level,
+            wv=wv,
+            device=device,
+            max_iter=max_iter,
+            non_linearity=non_linearity,
+            wvdim=ndim,
+            *args,
+            **kwargs
         )
-        
+
         self.denoiser.device = device
-        
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -280,7 +324,9 @@ class WaveletDictDenoiser(nn.Module):
         return output.to(idevice)
 
 
-def wavelet_dict_denoise(input, ndim, ths, wv=None, device=None, non_linearity="soft", level=3, max_iter=10):
+def wavelet_dict_denoise(
+    input, ndim, ths, wv=None, device=None, non_linearity="soft", level=3, max_iter=10
+):
     r"""
     Apply overcomplete Wavelet denoising with the :math:`\ell_1` norm.
 
@@ -298,7 +344,7 @@ def wavelet_dict_denoise(input, ndim, ths, wv=None, device=None, non_linearity="
     more details.
 
     The solution is not available in closed-form, thus the denoiser runs an optimization algorithm for each test image.
-    
+
     Attributes
     ----------
     input : np.ndarray | torch.Tensor
@@ -308,20 +354,20 @@ def wavelet_dict_denoise(input, ndim, ths, wv=None, device=None, non_linearity="
     ths : float
         Denoise threshold.
     wv : Iterable[str], optional
-        List of mother wavelets. The names of the wavelets can be found in `here <https://wavelets.pybytes.com/>`_. 
+        List of mother wavelets. The names of the wavelets can be found in `here <https://wavelets.pybytes.com/>`_.
         The default is ``["db8", "db4"]``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     non_linearity : str, optional
-        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding. 
+        ``"soft"``, ``"hard"`` or ``"topk"`` thresholding.
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
     max_iter : int, optional
         Number of iterations of the optimization algorithm.
         The default is ``10``.
-    
+
     Returns
     -------
     output : np.ndarray | torch.Tensor
@@ -334,15 +380,17 @@ def wavelet_dict_denoise(input, ndim, ths, wv=None, device=None, non_linearity="
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-           
+
     # initialize denoiser
-    WD = WaveletDictDenoiser(ndim, ths, False, wv, device, non_linearity, level, max_iter)
+    WD = WaveletDictDenoiser(
+        ndim, ths, False, wv, device, non_linearity, level, max_iter
+    )
     output = WD(input)
-    
+
     # cast back to numpy if requried
     if isnumpy:
         output = output.numpy(force=True)
-        
+
     return output
 
 
@@ -395,7 +443,7 @@ class _WaveletDenoiser(nn.Module):
         elif dimension == 3:
             dec = ptwt.wavedec3(x, pywt.Wavelet(wavelet), mode="zero", level=level)
             dec = [list(t) if isinstance(t, tuple) else t for t in dec]
-            vec = [dec[l][key].flatten() for l in range(1, len(dec)) for key in dec[l]]       
+            vec = [dec[l][key].flatten() for l in range(1, len(dec)) for key in dec[l]]
         return vec
 
     def iwt(self, coeffs):
@@ -406,48 +454,48 @@ class _WaveletDenoiser(nn.Module):
         if self.dimension == 2:
             rec = ptwt.waverec2(coeffs, pywt.Wavelet(self.wv))
         elif self.dimension == 3:
-            rec = ptwt.waverec3(coeffs, pywt.Wavelet(self.wv))      
+            rec = ptwt.waverec3(coeffs, pywt.Wavelet(self.wv))
         return rec
 
     def prox_l1(self, x, ths):
         r"""
         Soft thresholding of the wavelet coefficients.
-        
+
         Arguments
         ---------
-        x : torch.Tensor 
+        x : torch.Tensor
             Wavelet coefficients.
         ths : float, optional
             Threshold. It can be element-wise, in which case
             it is assumed to be broadcastable with ``input``.
             The default is ``0.1``.
-            
+
         Returns
         -------
         torch.Tensor
             Thresholded wavelet coefficients.
-            
+
         """
         return threshold.soft_thresh(x, ths)
 
     def prox_l0(self, x, ths):
         r"""
         Hard thresholding of the wavelet coefficients.
-        
+
         Arguments
         ---------
-        x : torch.Tensor 
+        x : torch.Tensor
             Wavelet coefficients.
         ths : float, optional
             Threshold. It can be element-wise, in which case
             it is assumed to be broadcastable with ``input``.
             The default is ``0.1``.
-            
+
         Returns
         -------
         torch.Tensor
             Thresholded wavelet coefficients.
-            
+
         """
         if isinstance(ths, float):
             ths_map = ths
@@ -465,18 +513,18 @@ class _WaveletDenoiser(nn.Module):
 
         Arguments
         ---------
-        x : torch.Tensor 
+        x : torch.Tensor
             Wavelet coefficients.
-        ths : float | int, optional 
+        ths : float | int, optional
             Top k coefficients to keep. If ``float``, it is interpreted as a proportion of the total
             number of coefficients. If ``int``, it is interpreted as the number of coefficients to keep.
             The default is ``0.1`.
-            
+
         Returns
         -------
         torch.Tensor
             Thresholded wavelet coefficients.
-            
+
         """
         if isinstance(ths, float):
             k = int(ths * x.shape[-3] * x.shape[-2] * x.shape[-1])
@@ -685,5 +733,3 @@ class _WaveletDictDenoiser(nn.Module):
             if rel_crit < 1e-3:
                 break
         return x
-    
-

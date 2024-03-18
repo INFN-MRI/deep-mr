@@ -8,7 +8,6 @@ __all__ = [
     "apply_nufft_selfadj",
 ]
 
-
 import gc
 import math
 
@@ -16,11 +15,12 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
+import torch.autograd as autograd
 
 from .._signal import resize as _resize
-from .._signal import interp as _interp
 
 from . import fft as _fft
+from . import _interp
 from . import toeplitz as _toeplitz
 
 
@@ -168,6 +168,47 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu
     return _toeplitz.plan_toeplitz(coord, shape, basis, dcf, width, device)
 
 
+class ApplyNUFFT(autograd.Function):
+    @staticmethod
+    def forward(image, nufft_plan, basis_adjoint, weight, device, threadsperblock):
+        return _apply_nufft(
+            image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+        )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, nufft_plan, basis_adjoint, weight, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.nufft_plan = nufft_plan
+        ctx.basis_adjoint = basis_adjoint
+        ctx.weight = weight
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, kspace):
+        nufft_plan = ctx.nufft_plan
+        basis_adjoint = ctx.basis_adjoint
+        if basis_adjoint is not None:
+            basis = basis_adjoint.conj().t()
+        else:
+            basis = None
+        weight = ctx.weight
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+
+        return (
+            _apply_nufft_adj(
+                kspace, nufft_plan, basis, weight, device, threadsperblock
+            ),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+
 def apply_nufft(
     image, nufft_plan, basis_adjoint=None, weight=None, device=None, threadsperblock=128
 ):
@@ -199,6 +240,212 @@ def apply_nufft(
         Output Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
     """
+    return ApplyNUFFT.apply(
+        image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+    )
+
+
+class ApplyNUFFTAdjoint(autograd.Function):
+    @staticmethod
+    def forward(kspace, nufft_plan, basis, weight, device, threadsperblock):
+        return _apply_nufft_adj(
+            kspace, nufft_plan, basis, weight, device, threadsperblock
+        )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, nufft_plan, basis, weight, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.nufft_plan = nufft_plan
+        ctx.basis = basis
+        ctx.weight = weight
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, image):
+        nufft_plan = ctx.nufft_plan
+        basis = ctx.basis
+        if basis is not None:
+            basis_adjoint = basis.conj().t()
+        else:
+            basis_adjoint = None
+        weight = ctx.weight
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+
+        return (
+            _apply_nufft(
+                image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+            ),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+
+def apply_nufft_adj(
+    kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128
+):
+    """
+    Apply adjoint Non-Uniform Fast Fourier Transform.
+
+    Parameters
+    ----------
+    kspace : torch.Tensor
+        Input kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+    nufft_plan : NUFFTPlan
+        Pre-calculated NUFFT plan coefficients in sparse COO format.
+    basis : torch.Tensor, optional
+        Low rank subspace projection operator
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    """
+    return ApplyNUFFTAdjoint.apply(
+        kspace, nufft_plan, basis, weight, device, threadsperblock
+    )
+
+
+class ApplyNUFFTSelfAdjoint(autograd.Function):
+    @staticmethod
+    def forward(image, toeplitz_kern, device, threadsperblock):
+        return _apply_nufft_selfadj(image, toeplitz_kern, device, threadsperblock)
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, toeplitz_kern, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.toeplitz_kern = toeplitz_kern
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, image):
+        toeplitz_kern = ctx.toeplitz_kern
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+        return (
+            _apply_nufft_selfadj(image, toeplitz_kern, device, threadsperblock),
+            None,
+            None,
+            None,
+        )
+
+
+def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
+    """
+    Apply self-adjoint Non-Uniform Fast Fourier Transform via Toeplitz Convolution.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+    toeplitz_kern : GramMatrix
+        Pre-calculated Toeplitz kernel.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    """
+    return ApplyNUFFTSelfAdjoint.apply(image, toeplitz_kern, device, threadsperblock)
+
+
+# %% local utils
+@dataclass
+class NUFFTPlan:
+    ndim: int
+    oversamp: tuple
+    width: tuple
+    beta: tuple
+    os_shape: tuple
+    shape: tuple
+    interpolator: object
+    device: str
+
+    def to(self, device):
+        """
+        Dispatch internal attributes to selected device.
+
+        Parameters
+        ----------
+        device : str
+            Computational device ("cpu" or "cuda:n", with n=0, 1,...nGPUs).
+
+        """
+        if device != self.device:
+            self.interpolator.to(device)
+            self.device = device
+
+
+def _get_oversamp_shape(shape, oversamp, ndim):
+    return np.ceil(oversamp * shape).astype(np.int16)
+
+
+def _scale_coord(coord, shape, oversamp):
+    ndim = coord.shape[-1]
+    output = coord.clone()
+    for i in range(-ndim, 0):
+        scale = np.ceil(oversamp[i] * shape[i]) / shape[i]
+        shift = np.ceil(oversamp[i] * shape[i]) // 2
+        output[..., i] *= scale
+        output[..., i] += shift
+
+    return output
+
+
+def _apodize(data_in, ndim, oversamp, width, beta):
+    data_out = data_in
+    for n in range(1, ndim + 1):
+        axis = -n
+        if width[axis] != 1:
+            i = data_out.shape[axis]
+            os_i = np.ceil(oversamp[axis] * i)
+            idx = torch.arange(i, dtype=torch.float32, device=data_in.device)
+
+            # Calculate apodization
+            apod = (
+                beta[axis] ** 2 - (math.pi * width[axis] * (idx - i // 2) / os_i) ** 2
+            ) ** 0.5
+            apod /= torch.sinh(apod)
+
+            # normalize by DC
+            apod = apod / apod[int(i // 2)]
+
+            # avoid NaN
+            apod = torch.nan_to_num(apod, nan=1.0)
+
+            # apply to axis
+            data_out *= apod.reshape([i] + [1] * (-axis - 1))
+
+    return data_out
+
+
+def _apply_nufft(image, nufft_plan, basis_adjoint, weight, device, threadsperblock):
     # check if it is numpy
     if isinstance(image, np.ndarray):
         isnumpy = True
@@ -279,37 +526,7 @@ def apply_nufft(
     return kspace
 
 
-def apply_nufft_adj(
-    kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128
-):
-    """
-    Apply adjoint Non-Uniform Fast Fourier Transform.
-
-    Parameters
-    ----------
-    kspace : torch.Tensor
-        Input kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
-    nufft_plan : NUFFTPlan
-        Pre-calculated NUFFT plan coefficients in sparse COO format.
-    basis : torch.Tensor, optional
-        Low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
-    weight : np.ndarray | torch.Tensor, optional
-        Optional weight for output data samples. Useful to force adjointeness.
-        The default is ``None``.
-    device : str, optional
-        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
-        The default is ``None ``(same as interpolator).
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
-
-    Returns
-    -------
-    image : torch.Tensor
-        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-    """
+def _apply_nufft_adj(kspace, nufft_plan, basis, weight, device, threadsperblock):
     # check if it is numpy
     if isinstance(kspace, np.ndarray):
         isnumpy = True
@@ -387,30 +604,7 @@ def apply_nufft_adj(
     return image
 
 
-def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
-    """
-    Apply self-adjoint Non-Uniform Fast Fourier Transform via Toeplitz Convolution.
-
-    Parameters
-    ----------
-    image : torch.Tensor
-        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-    toeplitz_kern : GramMatrix
-        Pre-calculated Toeplitz kernel.
-    device : str, optional
-        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
-        The default is ``None ``(same as interpolator).
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
-
-    Returns
-    -------
-    image : torch.Tensor
-        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-    """
+def _apply_nufft_selfadj(image, toeplitz_kern, device, threadsperblock):
     # check if it is numpy
     if isinstance(image, np.ndarray):
         isnumpy = True
@@ -471,73 +665,3 @@ def apply_nufft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
     gc.collect()
 
     return image
-
-
-# %% local utils
-@dataclass
-class NUFFTPlan:
-    ndim: int
-    oversamp: tuple
-    width: tuple
-    beta: tuple
-    os_shape: tuple
-    shape: tuple
-    interpolator: object
-    device: str
-
-    def to(self, device):
-        """
-        Dispatch internal attributes to selected device.
-
-        Parameters
-        ----------
-        device : str
-            Computational device ("cpu" or "cuda:n", with n=0, 1,...nGPUs).
-
-        """
-        if device != self.device:
-            self.interpolator.to(device)
-            self.device = device
-
-
-def _get_oversamp_shape(shape, oversamp, ndim):
-    return np.ceil(oversamp * shape).astype(np.int16)
-
-
-def _scale_coord(coord, shape, oversamp):
-    ndim = coord.shape[-1]
-    output = coord.clone()
-    for i in range(-ndim, 0):
-        scale = np.ceil(oversamp[i] * shape[i]) / shape[i]
-        shift = np.ceil(oversamp[i] * shape[i]) // 2
-        output[..., i] *= scale
-        output[..., i] += shift
-
-    return output
-
-
-def _apodize(data_in, ndim, oversamp, width, beta):
-    data_out = data_in
-    for n in range(1, ndim + 1):
-        axis = -n
-        if width[axis] != 1:
-            i = data_out.shape[axis]
-            os_i = np.ceil(oversamp[axis] * i)
-            idx = torch.arange(i, dtype=torch.float32, device=data_in.device)
-
-            # Calculate apodization
-            apod = (
-                beta[axis] ** 2 - (math.pi * width[axis] * (idx - i // 2) / os_i) ** 2
-            ) ** 0.5
-            apod /= torch.sinh(apod)
-
-            # normalize by DC
-            apod = apod / apod[int(i // 2)]
-
-            # avoid NaN
-            apod = torch.nan_to_num(apod, nan=1.0)
-
-            # apply to axis
-            data_out *= apod.reshape([i] + [1] * (-axis - 1))
-
-    return data_out

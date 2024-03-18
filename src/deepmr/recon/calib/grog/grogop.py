@@ -13,7 +13,10 @@ import scipy
 
 from .. import backend
 
-def grog_interp(input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, threadsperblock=128):
+
+def grog_interp(
+    input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, threadsperblock=128
+):
     """
     GRAPPA Operator Gridding (GROP) interpolation of Non-Cartesian datasets.
 
@@ -64,57 +67,59 @@ def grog_interp(input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, 
     .. [1] Griswold, Mark A., et al. "Parallel magnetic resonance
            imaging using the GRAPPA operator formalism." Magnetic
            resonance in medicine 54.6 (2005): 1553-1556.
-           
+
     """
     if isinstance(input, np.ndarray):
         isnumpy = True
     else:
         isnumpy = False
         input = torch.as_tensor(input)
-        
+
     # get device
     if device is None:
         device = input.device
-        
+
     # cast everything
     idevice = input.device
     input = input.to(device)
     coord = torch.as_tensor(coord, device=device)
     calib = torch.as_tensor(calib, device=device)
-    
+
     # default to odds steps to explicitly have 0
     nsteps = 2 * (nsteps // 2) + 1
-    
+
     # get number of spatial dimes
     ndim = coord.shape[-1]
-    
+
     # get grappa operator
     kern = _calc_grappaop(calib, ndim, lamda)
-    
+
     # get coord shape
     cshape = coord.shape
-    
+
     # reshape coordinates
     ishape = input.shape
-    input = input.reshape(*ishape[:-(len(cshape)-1)], int(np.prod(cshape[:-1])))
-    
+    input = input.reshape(*ishape[: -(len(cshape) - 1)], int(np.prod(cshape[:-1])))
+
     # bring coil axes to the front
     input = input[..., None]
     input = input.swapaxes(-3, -1)
     dshape = input.shape
-    input = input.reshape(-1, *input.shape[-2:]) # (nslices, nsamples, ncoils) or (nsamples, ncoils)
-    
+    input = input.reshape(
+        -1, *input.shape[-2:]
+    )  # (nslices, nsamples, ncoils) or (nsamples, ncoils)
+
     # perform product
-    deltas = (np.arange(nsteps) - (nsteps-1) // 2) / (nsteps-1)
-    
+    deltas = (np.arange(nsteps) - (nsteps - 1) // 2) / (nsteps - 1)
+
     # get Gx, Gy, Gz
-    Gx = _weight_grid(kern.Gx, deltas) # (nslices, nsteps, nc, nc)
-    Gy = _weight_grid(kern.Gy, deltas) # (nslices, nsteps, nc, nc)
+    Gx = _weight_grid(kern.Gx, deltas)  # (nslices, nsteps, nc, nc)
+    Gy = _weight_grid(kern.Gy, deltas)  # (nslices, nsteps, nc, nc)
     if ndim == 3:
-        Gz = _weight_grid(kern.Gz, deltas) # (nslices, nsteps, nc, nc)
+        Gz = _weight_grid(kern.Gz, deltas)  # (nslices, nsteps, nc, nc)
     else:
         Gz = None
-        
+
     # build G
     if ndim == 2:
         Gx = Gx[None, ...]
@@ -138,67 +143,70 @@ def grog_interp(input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, 
         Gy = Gy.reshape(-1, *Gy.shape[-2:])
         Gz = Gz.reshape(-1, *Gz.shape[-2:])
         G = Gx @ Gy @ Gz
-            
+
     # build indexes
     indexes = torch.round(coord)
     lut = indexes - coord
     lut = torch.floor(10 * lut).to(int) + int(nsteps // 2)
-    lut = lut.reshape(-1, ndim) # (nsamples, ndim)
+    lut = lut.reshape(-1, ndim)  # (nsamples, ndim)
     lut = lut * torch.as_tensor([1, nsteps, nsteps**2])[:ndim]
     lut = lut.sum(axis=-1)
-    
+
     if ndim == 2:
-        input = input.swapaxes(0, 1) # (nsamples, nslices, ncoils)
-        
+        input = input.swapaxes(0, 1)  # (nsamples, nslices, ncoils)
+
     # perform interpolation
     if device == "cpu":
         output = do_interpolation(input, G, lut)
     else:
         output = do_interpolation_cuda(input, G, lut, threadsperblock)
-    
+
     # finalize indexes
     if np.isscalar(shape):
         shape = [shape] * ndim
     indexes = indexes + torch.as_tensor(list(shape[-ndim:])[::-1]) // 2
     indexes = indexes.to(int)
-    
+
     # flatten indexes
-    unfolding = [1] + list(np.cumprod(list(shape)[::-1]))[:ndim-1]
+    unfolding = [1] + list(np.cumprod(list(shape)[::-1]))[: ndim - 1]
     flattened_idx = torch.as_tensor(unfolding, dtype=int) * indexes
     flattened_idx = flattened_idx.sum(axis=-1).flatten()
 
-    # count elements        
-    _, idx, counts = torch.unique(flattened_idx, return_inverse=True, return_counts=True)
+    # count elements
+    _, idx, counts = torch.unique(
+        flattened_idx, return_inverse=True, return_counts=True
+    )
     weights = counts[idx]
-    
+
     # count
     # max_value = torch.max(weights)
     # counts = torch.bincount(weights, minlength=max_value+1)
     # weights = counts[weights]
-    
+
     weights = weights.reshape(*indexes.shape[:-1])
     weights = weights.to(torch.float32)
     weights = 1 / weights
-    
+
     # finalize data
     if ndim == 2:
-        output = output.swapaxes(0, 1) # (nslices, nsamples, ncoils)
+        output = output.swapaxes(0, 1)  # (nslices, nsamples, ncoils)
     output = output.reshape(*dshape)
     output = output.swapaxes(-3, -1)
     output = output[..., 0]
     output = output.reshape(ishape)
-    
+
     output = output.to(idevice)
     indexes = indexes.to(idevice)
     weights = weights.to(idevice)
-    
+
     if isnumpy:
         output = output.numpy(force=True)
         indexes = indexes.to(idevice)
         weights = weights.to(idevice)
 
     return output, indexes, weights
-    
+
+
 # %% subroutines
 def _calc_grappaop(calib, ndim, lamda):
     # as Tensor
@@ -298,15 +306,15 @@ def _bdot(a, b):
 
 def _weight_grid(A, weight):
     return np.stack([_matrix_power(A, w) for w in weight], axis=0)
-    
+
 
 def _matrix_power(A, t):
     if len(A.shape) == 2:
         return scipy.linalg.fractional_matrix_power(A, t)
     else:
         return np.stack([scipy.linalg.fractional_matrix_power(a, t) for a in A])
-    
-    
+
+
 def do_interpolation(noncart, G, lut):
     cart = torch.zeros(noncart.shape, dtype=noncart.dtype, device=noncart.device)
     cart = backend.pytorch2numba(cart)
@@ -318,7 +326,7 @@ def do_interpolation(noncart, G, lut):
     noncart = backend.numba2pytorch(noncart)
     cart = backend.numba2pytorch(cart)
     lut = backend.numba2pytorch(lut)
-    
+
     return cart
 
 
@@ -346,15 +354,13 @@ def _interp(data_out, data_in, interp, lut):
         _dot_product(
             data_out[sample][batch], data_in[sample][batch], interp[idx][batch]
         )
-        
-        
+
+
 # %% CUDA
 if torch.cuda.is_available():
     from numba import cuda
 
-    def do_interpolation_cuda(
-        noncart, G, lut, threadsperblock
-    ):
+    def do_interpolation_cuda(noncart, G, lut, threadsperblock):
         # calculate size
         nsamples, batch_size, ncoils = noncart.shape
 
@@ -369,16 +375,13 @@ if torch.cuda.is_available():
         lut = backend.pytorch2numba(lut)
 
         # run kernel
-        _interp_cuda[blockspergrid, threadsperblock](
-            cart, noncart, G, lut
-        )
+        _interp_cuda[blockspergrid, threadsperblock](cart, noncart, G, lut)
 
         noncart = backend.numba2pytorch(noncart)
         cart = backend.numba2pytorch(cart)
         lut = backend.numba2pytorch(lut)
-        
-        return cart
 
+        return cart
 
     @cuda.jit(device=True, inline=True)  # pragma: no cover
     def _dot_product_cuda(out, in_a, in_b):
@@ -389,7 +392,6 @@ if torch.cuda.is_available():
                 out[j] += in_b[i][j] * in_a[j]
 
         return out
-
 
     @cuda.jit(fastmath=True)  # pragma: no cover
     def _interp_cuda(data_out, data_in, interp, lut):
@@ -405,5 +407,3 @@ if torch.cuda.is_available():
             _dot_product_cuda(
                 data_out[sample][batch], data_in[sample][batch], interp[idx][batch]
             )
-
-

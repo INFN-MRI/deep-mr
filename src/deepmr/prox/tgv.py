@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+
 class TGVDenoiser(nn.Module):
     r"""
     Proximal operator of (2nd order) Total Generalised Variation operator.
@@ -39,7 +40,7 @@ class TGVDenoiser(nn.Module):
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     verbose : bool, optional
         Whether to print computation details or not. The default is ``False``.
@@ -53,7 +54,7 @@ class TGVDenoiser(nn.Module):
         Dual variable for warm restart. The default is ``None``.
     r2 : torch.Tensor, optional
         Auxiliary variable for warm restart. The default is ``None``.
-    
+
     Notes
     -----
     The regularization term :math:`\|r\|_{1,2} + \|J(Dx-r)\|_{1,F}` is implicitly normalized by its Lipschitz
@@ -61,20 +62,39 @@ class TGVDenoiser(nn.Module):
     Sci., 3(3), 492-526, 2010.
 
     """
-    
-    def __init__(self, ndim, ths=0.1, trainable=False, device=None, verbose=False, niter=100, crit=1e-5, x2=None, u2=None, r2=None):    
+
+    def __init__(
+        self,
+        ndim,
+        ths=0.1,
+        trainable=False,
+        device=None,
+        verbose=False,
+        niter=100,
+        crit=1e-5,
+        x2=None,
+        u2=None,
+        r2=None,
+    ):
         super().__init__()
-        
+
         if trainable:
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-        
+
         self.denoiser = _TGVDenoiser(
-            ndim=ndim, device=device, verbose=verbose, niter=niter, crit=crit, x2=x2, u2=u2, r2=r2,
+            ndim=ndim,
+            device=device,
+            verbose=verbose,
+            niter=niter,
+            crit=crit,
+            x2=x2,
+            u2=u2,
+            r2=r2,
         )
         self.denoiser.device = device
-        
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -112,6 +132,7 @@ class TGVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
+
 
 def tgv_denoise(
     input,
@@ -162,7 +183,7 @@ def tgv_denoise(
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
     device : str, optional
-        Device on which the wavelet transform is computed. 
+        Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
     verbose : bool, optional
         Whether to print computation details or not. The default is ``False``.
@@ -189,22 +210,30 @@ def tgv_denoise(
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-           
+
     # initialize denoiser
     TV = TGVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
     output = TV(input, ths)
-    
+
     # cast back to numpy if requried
     if isnumpy:
         output = output.numpy(force=True)
-        
+
     return output
 
 
 # %% local utils
 class _TGVDenoiser(nn.Module):
     def __init__(
-        self, ndim, device, verbose=False, n_it_max=1000, crit=1e-5, x2=None, u2=None, r2=None
+        self,
+        ndim,
+        device,
+        verbose=False,
+        n_it_max=1000,
+        crit=1e-5,
+        x2=None,
+        u2=None,
+        r2=None,
     ):
         super().__init__()
         self.device = device
@@ -349,7 +378,7 @@ class _TGVDenoiser(nn.Module):
                     )
 
         return self.x2
-    
+
     @staticmethod
     def nabla2(x):
         r"""
@@ -409,7 +438,7 @@ class _TGVDenoiser(nn.Module):
         u[:, :, :, :, 1:, 2] = u[:, :, :, :, 1:, 2] + x[:, :, :, :, :-1]
 
         return u
-    
+
     @staticmethod
     def epsilon2(I):  # Simplified
         r"""
@@ -443,7 +472,7 @@ class _TGVDenoiser(nn.Module):
         I[:, :, :-1, :, 1] = I[:, :, :-1, :, 1] - G[:, :, :-1, :, 3]
         I[:, :, 1:, :, 1] = I[:, :, 1:, :, 1] + G[:, :, :-1, :, 3]
         return I
-    
+
     @staticmethod
     def epsilon3(I):  # Adapted for 3D matrices
         r"""
@@ -465,7 +494,7 @@ class _TGVDenoiser(nn.Module):
         G[:, :, :, :, :-1, 5] = G[:, :, :, :, :-1, 5] - I[:, :, :, :, :-1, 2]  # xdy
         G[:, :, :, 1:, :, 5] = G[:, :, :, 1:, :, 5] + I[:, :, :, :, :-1, 2]
         return G
-    
+
     @staticmethod
     def epsilon3_adjoint(G):  # Adapted for 3D matrices
         r"""
