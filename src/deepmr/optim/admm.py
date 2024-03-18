@@ -34,7 +34,7 @@ def admm_solve(
     D : Callable
         Signal denoiser for plug-n-play restoration.
     niter : int, optional
-        Number of iterations. The default is 10.
+        Number of iterations. The default is ``10``.
     accelerate : bool, optional
         Toggle Nesterov acceleration (``True``, i.e., FISTA) or
         not (``False``, ISTA). The default is ``True``.
@@ -76,6 +76,9 @@ def admm_solve(
     # initialize algorithm
     ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol)
 
+    # initialize
+    input = 0 * input
+
     # run algorithm
     for n in range(niter):
         output = ADMM(input)
@@ -93,7 +96,7 @@ def admm_solve(
 
 class ADMMStep(nn.Module):
     """
-    Alternate Direction of Multipliers  Method step.
+    Alternate Direction of Multipliers Method step.
 
     This represents propagation through a single iteration of a
     ADMM algorithm; can be used to build

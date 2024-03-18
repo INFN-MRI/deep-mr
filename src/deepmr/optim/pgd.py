@@ -24,7 +24,7 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
     D : Callable
         Signal denoiser for plug-n-play restoration.
     niter : int, optional
-        Number of iterations. The default is 10.
+        Number of iterations. The default is ``10``.
     accelerate : bool, optional
         Toggle Nesterov acceleration (``True``, i.e., FISTA) or
         not (``False``, ISTA). The default is ``True``.
@@ -72,6 +72,9 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
     else:
         compute_residual = False
     PGD = PGDStep(step, AHA, AHy, D)
+
+    # initialize
+    input = 0 * input
 
     # run algorithm
     for n in range(niter):
