@@ -68,7 +68,7 @@ def tensor2patches(image, patch_shape, patch_stride=None):
     num_patches = num_patches.astype(int)
 
     # pad if required
-    padsize = (num_patches * patch_shape) - ishape
+    padsize = ((num_patches - 1) * patch_stride + patch_shape) - ishape
     padsize = np.stack((0 * padsize, padsize), axis=-1)
     padsize = padsize.ravel()
     patches = torch.nn.functional.pad(image, tuple(padsize))
@@ -161,7 +161,7 @@ def patches2tensor(patches, shape, patch_shape, patch_stride=None):
     num_patches = num_patches.astype(int)
 
     # pad if required
-    padsize = (num_patches * patch_shape) - ishape
+    padsize = ((num_patches - 1) * patch_stride + patch_shape) - ishape
     padded_shape = shape + padsize
 
     # perform unfolding

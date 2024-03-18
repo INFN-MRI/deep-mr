@@ -1,116 +1,239 @@
 """Base linear operator."""
 
-__all__ = ["Linop", "NormalLinop"]
+__all__ = ["Linop"]
 
+import numpy as np
 import torch
-
-import deepinv as dinv
-from deepinv.utils import zeros_like
+import torch.nn as nn
 
 
-class Linop(dinv.physics.LinearPhysics):
+class Linop(nn.Module):
+    r"""
+    Abstraction of linear operators as matrices :math:`y = A*x`.
+
+    This is adapted from `MIRTorch <https://github.com/guanhuaw/MIRTorch>`_. The following is copied from the corresponding docstring.
+    The implementation follow the `SigPy <https://github.com/mikgroup/sigpy>`_ and `LinearmapAA <https://github.com/JeffFessler/LinearMapsAA.jl>`_.
+
+    Common operators, including +, -, *, are overloaded. One may freely compose operators as long as the size matches.
+
+    New linear operators require to implement `_apply` (forward, :math:`A`) and `_adjoint` (conjugate adjoint, :math:`A'`) functions, as well as size.
+    Recommendation for efficient backpropagation (but you do not have to do this if the AD is efficient enough):
+
+    .. code-block:: python
+
+        class forward(torch.autograd.Function):
+            @staticmethod
+            def forward(ctx, data_in):
+                return forward_func(data_in)
+            @staticmethod
+            def backward(ctx, grad_data_in):
+                return adjoint_func(grad_data_in)
+        forward_op = forward.apply
+
+        class adjoint(torch.autograd.Function):
+            @staticmethod
+            def forward(ctx, data_in):
+                return forward_func(data_in)
+            @staticmethod
+            def backward(ctx, grad_data_in):
+                return adjoint_func(grad_data_in)
+        adjoint_op = adjoint.apply
+
+
     """
-    Abstraction class for Linear operators.
 
-    This is an alias for ``deepinv.physics.LinearPhysics``,
-    but provides a convenient method for ``A_adjoint`` (i.e., ``Linop.H``)
-    """
+    def __init__(self, ndim):
+        r"""
+        Initiate the linear operator.
+        """
+        super().__init__()
+        self.ndim = ndim
 
-    def __init__(self, ndim, *args, **kwargs):
-        self._ndim = ndim
-        super().__init__(*args, **kwargs)
+    def _adjoint_linop(self):
+        raise NotImplementedError
 
     @property
     def H(self):
-        A = lambda x: self.A_adjoint(x)
-        A_adjoint = lambda x: self.A(x)
-        noise = self.noise_model
-        sensor = self.sensor_model
-        return Linop(
-            self._ndim,
-            A=A,
-            A_adjoint=A_adjoint,
-            noise_model=noise,
-            sensor_model=sensor,
-            max_iter=self.max_iter,
-            tol=self.tol,
-        )
+        r"""
+        Return adjoint linear operator.
+
+        An adjoint linear operator :math:`A^H` for
+        a linear operator :math:`A` is defined as:
+
+        .. math:
+            \left< A x, y \right> = \left< x, A^H, y \right>
+
+        Returns
+        -------
+        Linop
+            Adjoint linear operator.
+
+        """
+        return self._adjoint_linop()
 
     def __add__(self, other):
-        tmp = super().__add__(other)
-        return Linop(
-            self._ndim,
-            A=tmp.A,
-            A_adjoint=tmp.A_adjoint,
-            noise_model=tmp.noise_model,
-            sensor_model=tmp.sensor_model,
-            max_iter=tmp.max_iter,
-            tol=tmp.tol,
-        )
+        r"""
+        Reload the + symbol.
+        """
+        return Add(self, other)
 
     def __mul__(self, other):
-        tmp = super().__mul__(other)
-        return Linop(
-            self._ndim,
-            A=tmp.A,
-            A_adjoint=tmp.A_adjoint,
-            noise_model=tmp.noise_model,
-            sensor_model=tmp.sensor_model,
-            max_iter=tmp.max_iter,
-            tol=tmp.tol,
-        )
-
-    def solve(self, b, max_iter=1e2, tol=1e-5, lamda=0.0):
-        return conjugate_gradient(self._ndim, self.A, b, max_iter, tol, lamda)
-
-    def A_dagger(self, y):
-        Aty = self.A_adjoint(y)
-
-        overcomplete = Aty.flatten().shape[0] < y.flatten().shape[0]
-
-        if not overcomplete:
-            A = lambda x: self.A(self.A_adjoint(x))
-            b = y
+        r"""
+        Reload the * symbol.
+        """
+        if np.isscalar(other):
+            return Multiply(self, other)
+        elif isinstance(other, Linop):
+            return Compose(self, other)
+        elif isinstance(other, torch.Tensor):
+            if not other.shape:
+                return Multiply(self, other)
+            return self.apply(other)
         else:
-            A = lambda x: self.A_adjoint(self.A(x))
-            b = Aty
+            raise NotImplementedError(
+                f"Only scalers, Linearmaps or Tensors, rather than '{type(other)}' are allowed as arguments for this function."
+            )
 
-        x = conjugate_gradient(A=A, b=b, max_iter=self.max_iter, tol=self.tol)
+    def __rmul__(self, other):
+        r"""
+        Reload the * symbol.
+        """
+        if np.isscalar(other):
+            return Multiply(self, other)
+        elif isinstance(other, torch.Tensor) and not other.shape:
+            return Multiply(self, other)
+        else:
+            return NotImplemented
 
-        if not overcomplete:
-            x = self.A_adjoint(x)
+    def __sub__(self, other):
+        r"""
+        Reload the - symbol.
+        """
+        return self.__add__(-other)
 
-        return x
+    def __neg__(self):
+        r"""
+        Reload the - symbol.
+        """
+        return -1 * self
 
-    def prox_l2(self, z, y, gamma):
-        b = self.A_adjoint(y) + 1 / gamma * z
-        H = lambda x: self.A_adjoint(self.A(x)) + 1 / gamma * x
-        x = conjugate_gradient(H, b, self.max_iter, self.tol)
-        return x
+    def to(self, *args, **kwargs):
+        r"""
+        Copy to different devices
+        """
+        for prop in self.__dict__.keys():
+            try:
+                self.__dict__[prop] = self.__dict__[prop].to(*args, **kwargs)
+            except Exception:
+                pass
 
 
-class NormalLinop(Linop):
+class Add(Linop):
+    r"""
+    Addition of linear operators.
+
+    .. math::
+         (A+B)*x = A(x) + B(x)
+
+    Attributes
+    ----------
+    linops : Iterable(Linop)
+        List of linear operators to be summed.
+
     """
-    Special case of Linop where A.H = A (self-adjoint).
+
+    def __init__(self, linops):
+        self.linops = linops
+        ndim = np.unique([linop.ndim for linop in self.linops])
+        assert (
+            len(ndim) == 1
+        ), "Error! All linops must have the same spatial dimensionality."
+        super().__init__(ndim.item())
+
+    def forward(self, input):
+        output = 0
+        for linop in self.linops:
+            output += linop(input)
+
+    def _adjoint_linop(self):
+        return Add([linop.H for linop in self.linops])
+
+
+class Compose(Linop):
+    r"""
+    Matrix multiplication of linear operators.
+
+    .. math::
+        A*B*x = A(B(x))
 
     """
 
-    def __init__(self, ndim, *args, **kwargs):
-        super().__init__(ndim, *args, **kwargs)
-        self.A_adjoint = self.A
+    def __init__(self, linops):
+        self.linops = linops
+        ndim = np.unique([linop.ndim for linop in self.linops])
+        assert (
+            len(ndim) == 1
+        ), "Error! All linops must have the same spatial dimensionality."
+        super().__init__(ndim.item())
 
-    def A_dagger(self, y):
-        return self.solve(self._ndim, self.A, y, self.max_iter, self.tol)
+    def forward(self, input):
+        output = input
+        for linop in self.linops[::-1]:
+            output = linop(output)
+        return output
 
-    def prox_l2(self, z, y, gamma):
-        b = y + 1 / gamma * z
-        H = lambda x: self.A(x) + 1 / gamma * x
-        x = conjugate_gradient(H, b, self.max_iter, self.tol)
-        return x
+    def _adjoint_linop(self):
+        return Compose([linop.H for linop in self.linops[::-1]])
 
-    def maxeig(self, input, max_iter=10, tol=1e-6):
-        x = torch.randn(input.shape)
-        return power_iter(self.A, x, max_iter, tol)
+
+class Multiply(Linop):
+    r"""
+    Scaling linear operators.
+
+    .. math::
+        a*A*x = A(ax)
+
+    Attributes
+    ----------
+    a : float, int
+        Scaling factor.
+    linop : Linop
+        Linear operator A.
+
+    """
+
+    def __init__(self, linop, a):
+        self.a = a
+        self.linop = linop
+        super().__init__(linop.ndim)
+
+    def forward(self, input):
+        ax = input * self.a
+        return self.linop(ax)
+
+    def _adjoint_linop(self):
+        return Multiply(self.linop, self.a)
+
+
+class Identity(Linop):
+    """I
+    dentity linear operator.
+
+    Returns input directly.
+
+    """
+
+    def __init__(self, ndim):
+        super().__init__(ndim)
+
+    def _apply(self, input):
+        return input
+
+    def _adjoint_linop(self):
+        return self
+
+    def _normal_linop(self):
+        return self
 
 
 # %% local utils
@@ -161,7 +284,7 @@ def conjugate_gradient(ndim, _A, b, max_iter=1e2, tol=1e-5, lamda=0.0):
         def A(x):
             return _A(x)
 
-    x = zeros_like(b)
+    x = torch.zeros_like(b)
 
     r = b
     p = r
