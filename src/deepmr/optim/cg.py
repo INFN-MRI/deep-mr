@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from .. import linops as _linops
 
-
+@torch.no_grad()
 def cg_solve(
     input,
     AHA,
@@ -32,7 +32,7 @@ def cg_solve(
     niter : int, optional
         Number of iterations. The default is ``10``.
     device : str, optional
-        Device on which the wavelet transform is computed.
+        Computational device.
         The default is ``None`` (infer from input).
     tol : float, optional
         Stopping condition. The default is ``1e-4``.

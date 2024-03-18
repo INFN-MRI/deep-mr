@@ -7,7 +7,7 @@ import torch
 
 import torch.nn as nn
 
-
+@torch.no_grad()
 def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=None):
     """
     Solve inverse problem using Proximal Gradient Method.
@@ -29,7 +29,7 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         Toggle Nesterov acceleration (``True``, i.e., FISTA) or
         not (``False``, ISTA). The default is ``True``.
     device : str, optional
-        Device on which the wavelet transform is computed.
+        Computational device.
         The default is ``None`` (infer from input).
     tol : float, optional
         Stopping condition.

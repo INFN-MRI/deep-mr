@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 
+@torch.no_grad()
 def admm_solve(
     input,
     step,
@@ -39,7 +40,7 @@ def admm_solve(
         Toggle Nesterov acceleration (``True``, i.e., FISTA) or
         not (``False``, ISTA). The default is ``True``.
     device : str, optional
-        Device on which the wavelet transform is computed.
+        Computational device.
         The default is ``None`` (infer from input).
     dc_niter : int, optional
         Number of iterations of inner data consistency step.

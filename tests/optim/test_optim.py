@@ -33,6 +33,24 @@ def test_conjugate_gradient(dtype, device):
 
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    
+
+@pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
+def test_lsmr(dtype, device):
+    # setup problem
+    n = 5
+    lamda = 0.1
+    A, x_torch, y = Ax_y_setup(n, lamda, dtype, device)
+
+    # define function
+    def AHA(x):
+        return A.T @ A @ x
+
+    # actual calculation
+    x = deepmr.optim.lsmr_solve(A.T @ y, AHA, niter=1000, lamda=lamda, ndim=2)
+
+    # check
+    npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
 
 # %% local subroutines
