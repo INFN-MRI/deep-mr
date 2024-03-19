@@ -79,7 +79,7 @@ class WaveletDenoiser(nn.Module):
         wv="db4",
         device=None,
         non_linearity="soft",
-        level=3,
+        level=None,
         *args,
         **kwargs
     ):
@@ -89,7 +89,7 @@ class WaveletDenoiser(nn.Module):
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-
+            
         self.denoiser = _WaveletDenoiser(
             level=level,
             wv=wv,
@@ -116,7 +116,7 @@ class WaveletDenoiser(nn.Module):
             device = self.denoiser.device
 
         # get input shape
-        ndim = self.denoiser.wvdim
+        ndim = self.denoiser.dimension
         ishape = input.shape
 
         # reshape for computation
@@ -141,7 +141,7 @@ class WaveletDenoiser(nn.Module):
 
 
 def wavelet_denoise(
-    input, ndim, ths, wv="db4", device=None, non_linearity="soft", level=3
+    input, ndim, ths, wv="db4", device=None, non_linearity="soft", level=None
 ):
     r"""
     Apply orthogonal Wavelet denoising with the :math:`\ell_1` norm.
@@ -260,7 +260,7 @@ class WaveletDictDenoiser(nn.Module):
         wv=None,
         device=None,
         non_linearity="soft",
-        level=3,
+        level=None,
         max_iter=10,
         *args,
         **kwargs
@@ -300,7 +300,7 @@ class WaveletDictDenoiser(nn.Module):
             device = self.denoiser.device
 
         # get input shape
-        ndim = self.denoiser.wvdim
+        ndim = self.denoiser.dimension
         ishape = input.shape
 
         # reshape for computation
@@ -325,7 +325,7 @@ class WaveletDictDenoiser(nn.Module):
 
 
 def wavelet_dict_denoise(
-    input, ndim, ths, wv=None, device=None, non_linearity="soft", level=3, max_iter=10
+    input, ndim, ths, wv=None, device=None, non_linearity="soft", level=None, max_iter=10
 ):
     r"""
     Apply overcomplete Wavelet denoising with the :math:`\ell_1` norm.
@@ -396,7 +396,7 @@ def wavelet_dict_denoise(
 
 # %% local utils
 class _WaveletDenoiser(nn.Module):
-    def __init__(self, level=3, wv="db8", device="cpu", non_linearity="soft", wvdim=2):
+    def __init__(self, level=None, wv="db4", device="cpu", non_linearity="soft", wvdim=2):
         super().__init__()
         self.level = level
         self.wv = wv
@@ -408,10 +408,15 @@ class _WaveletDenoiser(nn.Module):
         r"""
         Applies the wavelet analysis.
         """
+        if self.level is None:
+            level = pywt.dwtn_max_level(x.shape[-self.dimension:], self.wv)
+            self.level = level
+        else:
+            level = self.level
         if self.dimension == 2:
-            dec = ptwt.wavedec2(x, pywt.Wavelet(self.wv), mode="zero", level=self.level)
+            dec = ptwt.wavedec2(x, pywt.Wavelet(self.wv), mode="zero", level=level)
         elif self.dimension == 3:
-            dec = ptwt.wavedec3(x, pywt.Wavelet(self.wv), mode="zero", level=self.level)
+            dec = ptwt.wavedec3(x, pywt.Wavelet(self.wv), mode="zero", level=level)
         dec = [list(t) if isinstance(t, tuple) else t for t in dec]
         return dec
 
@@ -432,10 +437,12 @@ class _WaveletDenoiser(nn.Module):
         return flat
 
     @staticmethod
-    def psi(x, wavelet="db2", level=2, dimension=2):
+    def psi(x, wavelet="db4", level=None, dimension=2):
         r"""
         Returns a flattened list containing the wavelet coefficients.
         """
+        if level is None:
+            level = pywt.dwtn_max_level(x.shape[-dimension:], wavelet)
         if dimension == 2:
             dec = ptwt.wavedec2(x, pywt.Wavelet(wavelet), mode="zero", level=level)
             dec = [list(t) if isinstance(t, tuple) else t for t in dec]
@@ -698,7 +705,7 @@ class _WaveletDictDenoiser(nn.Module):
 
     def __init__(
         self,
-        level=3,
+        level=None,
         list_wv=["db8", "db4"],
         max_iter=10,
         non_linearity="soft",

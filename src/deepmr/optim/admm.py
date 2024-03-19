@@ -7,18 +7,14 @@ import torch
 
 import torch.nn as nn
 
+from .cg import cg_solve
+
+from .. import linops as _linops
+
 
 @torch.no_grad()
 def admm_solve(
-    input,
-    step,
-    AHA,
-    D,
-    niter=10,
-    accelerate=True,
-    device=None,
-    dc_niter=10,
-    dc_tol=1e-4,
+    input, step, AHA, D, niter=10, device=None, dc_niter=10, dc_tol=1e-4, dc_ndim=None
 ):
     """
     Solve inverse problem using Alternate Direction of Multipliers Method.
@@ -30,15 +26,12 @@ def admm_solve(
         operator A applied to the measured data y (i.e., input = AHy).
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable
+    AHA : Callable | torch.Tensor | np.ndarray
         Normal operator AHA = AH * A.
     D : Callable
         Signal denoiser for plug-n-play restoration.
     niter : int, optional
         Number of iterations. The default is ``10``.
-    accelerate : bool, optional
-        Toggle Nesterov acceleration (``True``, i.e., FISTA) or
-        not (``False``, ISTA). The default is ``True``.
     device : str, optional
         Computational device.
         The default is ``None`` (infer from input).
@@ -48,6 +41,10 @@ def admm_solve(
     dc_tol : float, optional
         Stopping condition for inner data consistency step.
         The default is ``1e-4``.
+    dc_ndim : int, optional
+        Number of spatial dimensions of the problem for inner data consistency step.
+        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
+        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
 
     Returns
     -------
@@ -69,13 +66,17 @@ def admm_solve(
 
     # put on device
     input = input.to(device)
+    if isinstance(AHA, _linops.Linop):
+        AHA = AHA.to(device)
+    elif callable(AHA) is False:
+        AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
     AHy = input.clone()
 
     # initialize algorithm
-    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol)
+    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol, ndim=dc_ndim)
 
     # initialize
     input = 0 * input
@@ -107,7 +108,7 @@ class ADMMStep(nn.Module):
     ----------
     step : float
         ADMM step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable
+    AHA : Callable | torch.Tensor
         Normal operator AHA = AH * A.
     Ahy : torch.Tensor
         Adjoint AH of measurement
@@ -121,15 +122,27 @@ class ADMMStep(nn.Module):
         Number of iterations of inner data consistency step.
     tol : float, optional
         Stopping condition for inner data consistency step.
+    ndim : int, optional
+        Number of spatial dimensions of the problem for inner data consistency step.
+        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
+        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
 
     """
 
-    def __init__(self, step, AHA, AHy, D, trainable=False, niter=10, tol=1e-4):
+    def __init__(
+        self, step, AHA, AHy, D, trainable=False, niter=10, tol=1e-4, ndim=None
+    ):
         super().__init__()
         if trainable:
             self.step = nn.Parameter(step)
         else:
             self.step = step
+
+        # set up problem dims
+        try:
+            self.ndim = AHA.ndim
+        except Exception:
+            self.ndim = ndim
 
         # assign operators
         self.AHA = AHA
@@ -144,7 +157,7 @@ class ADMMStep(nn.Module):
         # prepare auxiliary
         self.xi = torch.zeros(
             [1 + len(self.D)] + list(AHy.shape),
-            dtype=torch.complex64,
+            dtype=AHy.dtype,
             device=AHy.device,
         )
         self.ui = torch.zeros_like(self.xi)
@@ -155,11 +168,13 @@ class ADMMStep(nn.Module):
 
     def forward(self, input):
         # data consistency step: zk = (AHA + gamma * I).solve(AHy)
-        self.xi[0] = self.AHA.solve(
+        self.xi[0] = cg_solve(
             self.AHy + self.step * (input - self.ui[0]),
-            max_iter=self.niter,
+            self.AHA,
+            niter=self.niter,
             tol=self.tol,
             lamda=self.step,
+            ndim=self.ndim,
         )
 
         # denoise using each regularizator

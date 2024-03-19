@@ -84,8 +84,12 @@ class NUFFTOp(base.Linop):
             basis = self.basis_adjoint.conj().T
         else:
             basis = None
+        if self.weight is not None:
+            weight = self.weight**2
+        else:
+            weight = None
         adjOp = NUFFTAdjointOp(
-            basis=basis, weight=self.weight, threadsperblock=self.threadsperblock
+            basis=basis, weight=weight, threadsperblock=self.threadsperblock
         )
         adjOp.ndim = self.ndim
         adjOp.nufft_plan = self.nufft_plan
@@ -168,9 +172,13 @@ class NUFFTAdjointOp(base.Linop):
             basis_adjoint = self.basis.conj().T
         else:
             basis_adjoint = None
+        if self.weight is not None:
+            weight = self.weight**2
+        else:
+            weight = None
         adjOp = NUFFTOp(
             basis_adjoint=basis_adjoint,
-            weight=self.weight,
+            weight=weight,
             threadsperblock=self.threadsperblock,
         )
         adjOp.ndim = self.ndim
@@ -208,7 +216,7 @@ class NUFFTGramOp(base.Linop):
         )
         self.threadsperblock = threadsperblock
 
-    def A(self, x):
+    def forward(self, x):
         """
         Apply Toeplitz convolution (``NUFFT.H * NUFFT``).
 
@@ -226,7 +234,7 @@ class NUFFTGramOp(base.Linop):
 
         """
         return _fft.apply_nufft_selfadj(
-            x, self.toeplitz_kern, threadsperblock=self._threadsperblock
+            x, self.toeplitz_kern, threadsperblock=self.threadsperblock
         )
 
     def _adjoint_linop(self):

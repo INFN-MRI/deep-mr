@@ -82,8 +82,12 @@ class SparseFFTOp(base.Linop):
             basis = self.basis_adjoint.conj().t()
         else:
             basis = None
+        if self.weight is not None:
+            weight = self.weight**2
+        else:
+            weight = None
         adjOp = SparseIFFTOp(
-            basis=basis, weight=self.weight, threadsperblock=self.threadsperblock
+            basis=basis, weight=weight, threadsperblock=self.threadsperblock
         )
         adjOp.ndim = self.ndim
         adjOp.sampling = self.sampling
@@ -163,9 +167,13 @@ class SparseIFFTOp(base.Linop):
             basis_adjoint = self.basis.conj().t()
         else:
             basis_adjoint = None
+        if self.weight is not None:
+            weight = self.weight**2
+        else:
+            weight = None
         adjOp = SparseFFTOp(
             basis_adjoint=basis_adjoint,
-            weight=self.weight,
+            weight=weight,
             threadsperblock=self.threadsperblock,
         )
         adjOp.ndim = self.ndim

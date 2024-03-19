@@ -7,6 +7,9 @@ import torch
 
 import torch.nn as nn
 
+from .. import linops as _linops
+
+
 @torch.no_grad()
 def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=None):
     """
@@ -19,7 +22,7 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         operator A applied to the measured data y (i.e., input = AHy).
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable
+    AHA : Callable | torch.Tensor | np.ndarray
         Normal operator AHA = AH * A.
     D : Callable
         Signal denoiser for plug-n-play restoration.
@@ -55,6 +58,10 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
 
     # put on device
     input = input.to(device)
+    if isinstance(AHA, _linops.Linop):
+        AHA = AHA.to(device)
+    elif callable(AHA) is False:
+        AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
@@ -65,12 +72,8 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         q = _get_acceleration(niter)
     else:
         q = [0.0] * niter
-
+        
     # initialize algorithm
-    if tol is None:
-        compute_residual = True
-    else:
-        compute_residual = False
     PGD = PGDStep(step, AHA, AHy, D)
 
     # initialize
@@ -81,10 +84,8 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         output = PGD(input, q[n])
 
         # if required, compute residual and check if we reached convergence
-        if compute_residual:
-            resid = torch.linalg.norm(output - input).item() / step
-            if resid < tol:
-                break
+        if PGD.check_convergence(output, input, step):
+            break
 
         # update variable
         input = output.clone()
@@ -111,7 +112,7 @@ class PGDStep(nn.Module):
     ----------
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable
+    AHA : Callable | torch.Tensor
         Normal operator AHA = AH * A.
     Ahy : torch.Tensor
         Adjoint AH of measurement
@@ -127,7 +128,7 @@ class PGDStep(nn.Module):
 
     """
 
-    def __init__(self, step, AHA, AHy, D, trainable=False):
+    def __init__(self, step, AHA, AHy, D, trainable=False, tol=None):
         super().__init__()
         if trainable:
             self.step = nn.Parameter(step)
@@ -139,6 +140,7 @@ class PGDStep(nn.Module):
         self.AHy = AHy
         self.D = D
         self.s = AHy.clone()
+        self.tol = tol
 
     def forward(self, input, q=0.0):
         # gradient step : zk = xk-1 - gamma * AH(A(xk-1) - y != FISTA (accelerated)
@@ -155,6 +157,16 @@ class PGDStep(nn.Module):
             output = s  # q1...qn = 1.0 != ISTA (non-accelerated)
 
         return output
+
+    def check_convergence(self, output, input, step):
+        if self.tol is not None:
+            resid = torch.linalg.norm(output - input).item() / step
+            if resid < self.tol:
+                return True
+            else:
+                return False
+        else:
+            return False
 
 
 # %% local utils

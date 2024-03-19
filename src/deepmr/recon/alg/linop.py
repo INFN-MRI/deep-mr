@@ -81,15 +81,27 @@ def EncodingOp(
 
         # Sensititivy
         if ncoils == 1:
-            return F, _linops.NormalLinop(FHF._ndim, A=FHF.A)
+            return F, FHF
         else:
             if cal_data is not None:
                 sensmap, _ = _calib.espirit_cal(cal_data.to(device), nsets=nsets)
             else:
                 sensmap, _ = _calib.espirit_cal(data.to(device), nsets=nsets)
-            C = _linops.CoilOp(2, sensmap)
+
+            # infer from mask shape whether we are using multicontrast or not
+            if len(mask.shape) == 2:
+                multicontrast = False  # (ny, nx) / (nz, ny)
+            else:
+                multicontrast = True  # (ncontrast, ny, nx) / (ncontrast, nz, ny)
+
+            # Coil operator
+            C = _linops.SenseOp(2, sensmap, multicontrast=multicontrast)
+
+            # Full encoding operator
+            E = F * C
             EHE = C.H * FHF * C
-            return F * C, _linops.NormalLinop(EHE._ndim, A=EHE.A)
+
+            return E, EHE
 
     if traj is not None:
         assert shape is not None, "Please provide shape for Non-Cartesian imaging."
@@ -106,7 +118,7 @@ def EncodingOp(
 
         # Sensititivy
         if ncoils == 1:
-            return F, _linops.NormalLinop(FHF._ndim, A=FHF.A)
+            return F, FHF
         else:
             if cal_data is not None:
                 sensmap, _ = _calib.espirit_cal(
@@ -116,6 +128,18 @@ def EncodingOp(
                 sensmap, _ = _calib.espirit_cal(
                     data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
                 )
-            C = _linops.CoilOp(2, sensmap)
+
+            # infer from mask shape whether we are using multicontrast or not
+            if len(traj.shape) < 4:
+                multicontrast = False  # (nviews, nsamples, naxes) / (nsamples, naxes)
+            else:
+                multicontrast = True  # (ncontrast, nviews, nsamples, naxes
+
+            # Coil operator
+            C = _linops.SenseOp(ndim, sensmap, multicontrast=multicontrast)
+
+            # Full encoding operator
+            E = F * C
             EHE = C.H * FHF * C
-            return F * C, _linops.NormalLinop(EHE._ndim, A=EHE.A)
+
+            return E, EHE

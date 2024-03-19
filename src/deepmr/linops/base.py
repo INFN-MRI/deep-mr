@@ -1,6 +1,6 @@
 """Base linear operator."""
 
-__all__ = ["Linop"]
+__all__ = ["Linop", "Identity"]
 
 import numpy as np
 import torch
@@ -75,7 +75,7 @@ class Linop(nn.Module):
         r"""
         Reload the + symbol.
         """
-        return Add(self, other)
+        return Add([self, other])
 
     def __mul__(self, other):
         r"""
@@ -84,7 +84,7 @@ class Linop(nn.Module):
         if np.isscalar(other):
             return Multiply(self, other)
         elif isinstance(other, Linop):
-            return Compose(self, other)
+            return Compose([self, other])
         elif isinstance(other, torch.Tensor):
             if not other.shape:
                 return Multiply(self, other)
@@ -126,6 +126,7 @@ class Linop(nn.Module):
                 self.__dict__[prop] = self.__dict__[prop].to(*args, **kwargs)
             except Exception:
                 pass
+        return self
 
 
 class Add(Linop):
@@ -143,17 +144,21 @@ class Add(Linop):
     """
 
     def __init__(self, linops):
-        self.linops = linops
-        ndim = np.unique([linop.ndim for linop in self.linops])
+        ndim = np.unique([linop.ndim for linop in linops])
         assert (
             len(ndim) == 1
         ), "Error! All linops must have the same spatial dimensionality."
         super().__init__(ndim.item())
+        self.linops = linops
 
     def forward(self, input):
         output = 0
         for linop in self.linops:
             output += linop(input)
+        return output
+
+    def to(self, device):
+        return Add([linop.to(device) for linop in self.linops])
 
     def _adjoint_linop(self):
         return Add([linop.H for linop in self.linops])
@@ -169,18 +174,21 @@ class Compose(Linop):
     """
 
     def __init__(self, linops):
-        self.linops = linops
-        ndim = np.unique([linop.ndim for linop in self.linops])
+        ndim = np.unique([linop.ndim for linop in linops])
         assert (
             len(ndim) == 1
         ), "Error! All linops must have the same spatial dimensionality."
         super().__init__(ndim.item())
+        self.linops = linops
 
     def forward(self, input):
         output = input
         for linop in self.linops[::-1]:
             output = linop(output)
         return output
+
+    def to(self, device):
+        return Compose([linop.to(device) for linop in self.linops])
 
     def _adjoint_linop(self):
         return Compose([linop.H for linop in self.linops[::-1]])
@@ -203,13 +211,16 @@ class Multiply(Linop):
     """
 
     def __init__(self, linop, a):
+        super().__init__(linop.ndim)
         self.a = a
         self.linop = linop
-        super().__init__(linop.ndim)
 
     def forward(self, input):
         ax = input * self.a
         return self.linop(ax)
+
+    def to(self, device):
+        return Multiply(self.linop.to(device), self.a)
 
     def _adjoint_linop(self):
         return Multiply(self.linop, self.a)
@@ -226,7 +237,7 @@ class Identity(Linop):
     def __init__(self, ndim):
         super().__init__(ndim)
 
-    def _apply(self, input):
+    def forward(self, input):
         return input
 
     def _adjoint_linop(self):
@@ -234,32 +245,3 @@ class Identity(Linop):
 
     def _normal_linop(self):
         return self
-
-
-# %% local utils
-@torch.no_grad()
-def power_iter(A, x0, max_iter=2, tol=1e-6):
-    r"""
-    Use power iteration to calculate the spectral norm of a LinearMap.
-
-    From MIRTorch (https://github.com/guanhuaw/MIRTorch/blob/master/mirtorch/alg/spectral.py)
-
-    Args:
-        A: a LinearMap
-        x0: initial guess of singular vector corresponding to max singular value
-        max_iter: maximum number of iterations
-        tol: stopping tolerance
-
-    Returns:
-        The spectral norm (sig1) and the principal right singular vector (x)
-
-    """
-
-    x = x0
-    max_eig = float("inf")
-    for iter in range(max_iter):
-        Ax = A(x)
-        max_eig = torch.norm(Ax)
-        x = x / max_eig
-
-    return max_eig

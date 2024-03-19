@@ -87,7 +87,7 @@ class TGVDenoiser(nn.Module):
             ndim=ndim,
             device=device,
             verbose=verbose,
-            niter=niter,
+            n_it_max=niter,
             crit=crit,
             x2=x2,
             u2=u2,
@@ -110,7 +110,7 @@ class TGVDenoiser(nn.Module):
             device = self.denoiser.device
 
         # get input shape
-        ndim = self.denoiser.wvdim
+        ndim = self.denoiser.ndim
         ishape = input.shape
 
         # reshape for computation

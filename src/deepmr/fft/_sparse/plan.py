@@ -122,3 +122,5 @@ class Sampling:
 
             self.index = tuple(self.index)
             self.device = device
+
+        return self

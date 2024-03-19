@@ -14,7 +14,12 @@ from .._utils import backend
 
 
 def plan_toeplitz(
-    coord, shape, basis=None, dcf=None, width=3, device="cpu", _iscart=False
+    coord,
+    shape,
+    basis=None,
+    dcf=None,
+    width=3,
+    device="cpu",
 ):
     """
     Compute spatio-temporal kernel for fast self-adjoint operation.
@@ -183,3 +188,5 @@ class GramMatrix:
             self.value = backend.pytorch2numba(self.value)
 
             self.device = device
+
+        return self

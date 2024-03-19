@@ -78,12 +78,7 @@ class FFTOp(base.Linop):
             self.device = x.device
 
         # cast
-        x = x.to(self._device)
-        if self.basis is not None:
-            self.basis = self.basis.to(self._device)
-        if self.mask is not None:
-            self.mask = self.mask.to(self._device)
-
+        x = x.to(self.device)
         # get adjoint basis
         if self.basis_adjoint is not None:
             basis_adjoint = self.basis_adjoint
@@ -252,7 +247,7 @@ class FFTGramOp(base.Linop):
 
     def __init__(self, mask=None, basis=None, device=None, **kwargs):
         super().__init__(ndim=2, **kwargs)
-        self._device = device
+        self.device = device
         if device is None:
             device = "cpu"
         if basis is not None:
@@ -309,13 +304,13 @@ class FFTGramOp(base.Linop):
         # convert to tensor
         x = torch.as_tensor(x)
 
-        if self._device is None:
-            self._device = x.device
+        if self.device is None:
+            self.device = x.device
 
         # cast
-        x = x.to(self._device)
+        x = x.to(self.device)
         if self._toeplitz_kern is not None:
-            self._toeplitz_kern = self._toeplitz_kern.to(self._device)
+            self._toeplitz_kern = self._toeplitz_kern.to(self.device)
 
         # fourier transform
         y = _fft.fft(x, axes=(-1, -2), norm="ortho", centered=False)

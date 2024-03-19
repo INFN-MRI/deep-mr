@@ -14,25 +14,17 @@ class SenseOp(base.Linop):
 
     Coil sensitivity profiles are expected to have the following dimensions:
 
-    * 2D MRI: ``(nslices, nsets, ncoils, ny, nx)``
-    * 3D MRI: ``(nsets, ncoils, nz, ny, nx)``
+    * 2D MRI: ``(nsets, nslices, ncoils, ny, nx)``
+    * 3D Cartesian MRI: ``(nsets, nx, ncoils, nz, ny)``
+    * 3D NonCartesian MRI: ``(nsets, ncoils, nz, ny, nx)``
 
     where ``nsets`` represents multiple sets of coil sensitivity estimation
     for soft-SENSE implementations (e.g., ESPIRIT), equal to ``1`` for conventional SENSE
     and ``ncoils`` represents the number of receiver channels in the coil array.
 
-    Similarly, input images are expected to have the following dimensions:
-
-    * 2D MRI: ``(nslices, nsets, ncoils, ..., ny, nx)``
-    * 3D MRI: ``(nsets, ncoils, ..., nz, ny, nx)``
-
-    where the inner axes (i.e., ``...``) represents other dimensions such
-    as time frames (e.g., dynamic acquisitions) or multiple contrasts
-    (e.g., variable flip angle, multi-echo).
-
     """
 
-    def __init__(self, ndim, sensmap, device=None):
+    def __init__(self, ndim, sensmap, device=None, multicontrast=True):
         super().__init__(ndim)
 
         # cast map to tensor
@@ -47,10 +39,13 @@ class SenseOp(base.Linop):
         # offloat to device
         self.sensmap = self.sensmap.to(self.device)
 
-        if self.ndim == 2:
-            self.sensmap = self.sensmap[:, :, :, None, ...]
-        if self.ndim == 3:
-            self.sensmap = self.sensmap[:, :, None, ...]
+        # multicontrast
+        self.multicontrast = multicontrast
+
+        if self.multicontrast and self.ndim == 2:
+            self.sensmap = self.sensmap.unsqueeze(-3)
+        if self.multicontrast and self.ndim == 3:
+            self.sensmap = self.sensmap.unsqueeze(-4)
 
     def forward(self, x):
         """
@@ -59,15 +54,15 @@ class SenseOp(base.Linop):
         Parameters
         ----------
         x : np.ndarray | torch.Tensor
-            Input combined images of shape ``(nslices, 1, 1, ..., ny, nx)``.
-            (2D MRI) or ``(1, 1, ..., nz, ny, nx)`` (3D MRI).
+            Input combined images of shape ``(nslices, ..., ny, nx)``.
+            (2D MRI / 3D Cartesian MRI) or ``(..., nz, ny, nx)`` (3D NonCartesian MRI).
 
         Returns
         -------
         y : np.ndarray | torch.Tensor
-            Output images of shape ``(nslices, nsets, ncoils, ..., ny, nx)``.
-            (2D MRI) or ``(nsets, ncoils, ..., nz, ny, nx)`` (3D MRI) modulated
-            by coil sensitivity profiles.
+            Output images of shape ``(nsets, nslices, ncoils, ..., ny, nx)``.
+            (2D MRI / 3D Cartesian) or ``(nsets, ncoils, ..., nz, ny, nx)`` (3D NonCartesian MRI)
+            modulated by coil sensitivity profiles.
 
         """
         if isinstance(x, np.ndarray):
@@ -79,7 +74,19 @@ class SenseOp(base.Linop):
         x = torch.as_tensor(x)
 
         # transfer to device
-        self.sensmap = self._sensmap.to(x.device)
+        self.sensmap = self.sensmap.to(x.device)
+
+        # unsqueeze
+        if self.multicontrast:
+            if self.ndim == 2:
+                x = x.unsqueeze(-4)
+            elif self.ndim == 3:
+                x = x.unsqueeze(-5)
+        else:
+            if self.ndim == 2:
+                x = x.unsqueeze(-3)
+            elif self.ndim == 3:
+                x = x.unsqueeze(-4)
 
         # project
         y = self.sensmap * x
@@ -91,7 +98,13 @@ class SenseOp(base.Linop):
         return y
 
     def _adjoint_linop(self):
-        return SenseAdjOp(self.ndim, self.sensmap, self.device)
+        if self.multicontrast and self.ndim == 2:
+            sensmap = self.sensmap.squeeze(-3)
+        if self.multicontrast and self.ndim == 3:
+            sensmap = self.sensmap.squeeze(-4)
+        if self.multicontrast is False:
+            sensmap = self.sensmap
+        return SenseAdjOp(self.ndim, sensmap, self.device, self.multicontrast)
 
 
 class SenseAdjOp(base.Linop):
@@ -107,22 +120,13 @@ class SenseAdjOp(base.Linop):
     for soft-SENSE implementations (e.g., ESPIRIT), equal to ``1`` for conventional SENSE
     and ``ncoils`` represents the number of receiver channels in the coil array.
 
-    Similarly, input images are expected to have the following dimensions:
-
-    * 2D MRI: ``(nslices, nsets, ncoils, ..., ny, nx)``
-    * 3D MRI: ``(nsets, ncoils, ..., nz, ny, nx)``
-
-    where the inner axes (i.e., ``...``) represents other dimensions such
-    as time frames (e.g., dynamic acquisitions) or multiple contrasts
-    (e.g., variable flip angle, multi-echo).
-
     """
 
-    def __init__(self, ndim, sensmap, device=None):
+    def __init__(self, ndim, sensmap, device=None, multicontrast=True):
         super().__init__(ndim)
 
         # cast map to tensor
-        self._sensmap = torch.as_tensor(sensmap)
+        self.sensmap = torch.as_tensor(sensmap)
 
         # assign device
         if device is None:
@@ -133,10 +137,13 @@ class SenseAdjOp(base.Linop):
         # offloat to device
         self.sensmap = self.sensmap.to(self.device)
 
-        if self.ndim == 2:
-            self.sensmap = self.sensmap[:, :, :, None, ...]
-        if self.ndim == 3:
-            self.sensmap = self.sensmap[:, :, None, ...]
+        # multicontrast
+        self.multicontrast = multicontrast
+
+        if self.multicontrast and self.ndim == 2:
+            self.sensmap = self.sensmap.unsqueeze(-3)
+        if self.multicontrast and self.ndim == 3:
+            self.sensmap = self.sensmap.unsqueeze(-4)
 
     def forward(self, y):
         """
@@ -145,15 +152,15 @@ class SenseAdjOp(base.Linop):
         Parameters
         ----------
         y : np.ndarray | torch.Tensor
-            Output images of shape ``(nslices, nsets, ncoils, ..., ny, nx)``.
-            (2D MRI) or ``(nsets, ncoils, ..., nz, ny, nx)`` (3D MRI) modulated
-            by coil sensitivity profiles.
+            Output images of shape ``(nsets, nslices, ncoils, ..., ny, nx)``.
+            (2D MRI / 3D Cartesian MRI) or ``(nsets, ncoils, ..., nz, ny, nx)``
+            (3D NonCartesian MRI) modulated by coil sensitivity profiles.
 
         Returns
         -------
         x : np.ndarray | torch.Tensor
-            Output combined images of shape ``(nslices, 1, 1, ..., ny, nx)``.
-            (2D MRI) or ``(1, 1, ..., nz, ny, nx)`` (3D MRI).
+            Output combined images of shape ``(nslices, ..., ny, nx)``.
+            (2D MRI / 3D Cartesian MRI) or ``(..., nz, ny, nx)`` (3D NonCartesian MRI).
 
         """
         if isinstance(y, np.ndarray):
@@ -167,16 +174,20 @@ class SenseAdjOp(base.Linop):
         # transfer to device
         self.sensmap = self.sensmap.to(y.device)
 
-        # combine
+        # apply sensitivity
         tmp = self.sensmap.conj() * y
-        if self._ndim == 2:
-            x = tmp.sum(axis=1, keepdim=True).sum(
-                axis=2, keepdim=True
-            )  # sum over sets and channels
-        if self.ndim == 3:
-            x = tmp.sum(axis=0, keepdim=True).sum(
-                axis=1, keepdim=True
-            )  # sum over sets and channels
+
+        # combine  (over channels and sets)
+        if self.multicontrast:
+            if self.ndim == 2:
+                x = tmp.sum(axis=-4).sum(axis=0)
+            elif self.ndim == 3:
+                x = tmp.sum(axis=-5).sum(axis=0)
+        else:
+            if self.ndim == 2:
+                x = tmp.sum(axis=-3).sum(axis=0)
+            elif self.ndim == 3:
+                x = tmp.sum(axis=-4).sum(axis=0)
 
         # convert back to numpy if required
         if isnumpy:
@@ -185,4 +196,10 @@ class SenseAdjOp(base.Linop):
         return x
 
     def _adjoint_linop(self):
-        return SenseOp(self.ndim, self.sensmap, self.device)
+        if self.multicontrast and self.ndim == 2:
+            sensmap = self.sensmap.squeeze(-3)
+        if self.multicontrast and self.ndim == 3:
+            sensmap = self.sensmap.squeeze(-4)
+        if self.multicontrast is False:
+            sensmap = self.sensmap
+        return SenseOp(self.ndim, sensmap, self.device, self.multicontrast)

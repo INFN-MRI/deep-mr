@@ -184,6 +184,8 @@ class Interpolator:
             self.value = tuple(self.value)
             self.device = device
 
+        return self
+
 
 def _get_kernel_scaling(beta, width):
     # init kernel centered on k-space node

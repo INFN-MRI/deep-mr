@@ -401,6 +401,8 @@ class NUFFTPlan:
             self.interpolator.to(device)
             self.device = device
 
+        return self
+
 
 def _get_oversamp_shape(shape, oversamp, ndim):
     return np.ceil(oversamp * shape).astype(np.int16)

@@ -54,19 +54,19 @@ def espirit_cal(
     -----
     The input k-space ``data`` tensor is assumed to have the following shape:
 
-    * **2Dcart:** ``(nslices, ncoils, ncontrasts, ny, nx)``.
-    * **2Dnoncart:** ``(nslices, ncoils, ncontrasts, nviews, nsamples)``.
-    * **3Dcart:** ``(nx, ncoils, ncontrasts, nz, ny)``.
-    * **3Dnoncart:** ``(ncoils, ncontrasts, nviews, nsamples)``.
+    * **2Dcart:** ``(nslices, ncoils, ..., ny, nx)``.
+    * **2Dnoncart:** ``(nslices, ncoils, ..., nviews, nsamples)``.
+    * **3Dcart:** ``(nx, ncoils, ..., nz, ny)``.
+    * **3Dnoncart:** ``(ncoils, ..., nviews, nsamples)``.
 
     For multi-contrast acquisitions, calibration is obtained by averaging over
     contrast dimensions.
 
     The output sensitivity maps are assumed to have the following shape:
 
-    * **2Dcart:** ``(nslices, nsets, ncoils, ny, nx)``.
-    * **2Dnoncart:** ``(nslices, nsets, ncoils, ny, nx)``.
-    * **3Dcart:** ``(nx, nsets, ncoils, nz, ny)``.
+    * **2Dcart:** ``(nsets, nslices, ncoils, ny, nx)``.
+    * **2Dnoncart:** ``(nsets, nslices, ncoils, ny, nx)``.
+    * **3Dcart:** ``(nsets, nx, ncoils, nz, ny)``.
     * **3Dnoncart:** ``(nsets, ncoils, nz, ny, nx)``.
 
     References
@@ -118,8 +118,9 @@ def espirit_cal(
 
     # reformat
     if ndim == 2:  # Cartesian or 2D Non-Cartesian
-        maps = maps.swapaxes(1, 2)  # (nsets, nslices, ncoils, ny, nx)
-        maps = maps.swapaxes(0, 1)  # (nslices, nsets, ncoils, ny, nx)
+        maps = maps.swapaxes(
+            1, 2
+        )  # (nsets, nslices, ncoils, ny, nx) / (nsets, nx, ncoils, nz, ny)
 
     # cast back to numpy if required
     if isnumpy:
