@@ -8,7 +8,6 @@ import numpy as np
 import torch
 
 from .. import fft as _fft
-from .. import _signal
 
 from .._utils import backend
 
@@ -18,7 +17,7 @@ def plan_toeplitz(
     shape,
     basis=None,
     dcf=None,
-    width=3,
+    width=6,
     device="cpu",
 ):
     """
@@ -42,7 +41,7 @@ def plan_toeplitz(
     width : int | Iterable[int], optional
         Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
-        The default is ``3``.
+        The default is ``4``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``cpu``.
@@ -108,7 +107,7 @@ def plan_toeplitz(
 
     # calculate PSF
     st_kernel = _fft.nufft_adj(
-        dcf * delta, coord, shape, basis, device, width=width, oversamp=oversamp
+        dcf * delta, coord * oversamp, shape * oversamp, basis, device, width=width,
     )
 
     # check for Cartesian axes
@@ -124,8 +123,7 @@ def plan_toeplitz(
     # get oversampled grid shape
     shape = _get_oversamp_shape(shape, oversamp, ndim)
 
-    # pad and FFT
-    st_kernel = _signal.resize(st_kernel, list(st_kernel.shape[:-ndim]) + list(shape))
+    # FFT
     st_kernel = _fft.fft(st_kernel, axes=range(-ndim, 0))
 
     # squeeze

@@ -149,7 +149,7 @@ def nufft(
     basis_adjoint=None,
     device="cpu",
     threadsperblock=128,
-    width=3,
+    width=4,
     oversamp=1.25,
 ):
     """
@@ -225,7 +225,7 @@ def nufft_adj(
     basis=None,
     device="cpu",
     threadsperblock=128,
-    width=3,
+    width=4,
     oversamp=1.25,
 ):
     """

@@ -34,6 +34,7 @@ def recon_lstsq(
     device=None,
     cal_data=None,
     toeplitz=False,
+    use_dcf=False,
 ):
     """
     Classical MR reconstruction.
@@ -85,6 +86,8 @@ def recon_lstsq(
         The default is ``None`` (use center region of ``data``).
     toeplitz : bool, optional
         Use Toeplitz approach for normal equation. The default is ``False``.
+    use_dcf : bool, optional
+        Use dcf to accelerate convergence. The default is ``False``.
 
     Returns
     -------
@@ -107,9 +110,11 @@ def recon_lstsq(
         device = data.device
     data = data.to(device)
 
-    if head.dcf is not None:
-        head.dcf = head.dcf.to(device)
-
+    if use_dcf and head.dcf is not None:
+        dcf = head.dcf.to(device)
+    else:
+        dcf = None
+    
     # toggle off Topelitz for non-iterative
     if niter == 1:
         toeplitz = False
@@ -125,7 +130,7 @@ def recon_lstsq(
         data,
         mask,
         head.traj,
-        head.dcf,
+        dcf,
         head.shape,
         nsets,
         basis,
@@ -139,7 +144,10 @@ def recon_lstsq(
     EHE = EHE.to(device)
 
     # perform zero-filled reconstruction
-    img = E.H(head.dcf**0.5 * data[:, None, ...])
+    if dcf is not None:
+        img = E.H(dcf**0.5 * data[:, None, ...])
+    else:
+        img = E.H(data[:, None, ...])
 
     # if non-iterative, just perform linear recon
     if niter == 1:

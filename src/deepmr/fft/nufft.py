@@ -24,7 +24,7 @@ from . import _interp
 from . import toeplitz as _toeplitz
 
 
-def plan_nufft(coord, shape, width=3, oversamp=1.25, device="cpu"):
+def plan_nufft(coord, shape, width=4, oversamp=1.25, device="cpu"):
     """
     Precompute NUFFT object.
 
@@ -132,7 +132,7 @@ def plan_nufft(coord, shape, width=3, oversamp=1.25, device="cpu"):
     return NUFFTPlan(ndim, oversamp, width, beta, os_shape, shape, interpolator, device)
 
 
-def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=3, device="cpu"):
+def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=4, device="cpu"):
     """
     Compute spatio-temporal kernel for fast self-adjoint operation.
 

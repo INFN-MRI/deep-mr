@@ -36,7 +36,7 @@ class NUFFTOp(base.Linop):
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=3,
+        width=4,
         oversamp=1.25,
     ):
         if coord is not None and shape is not None:
@@ -123,7 +123,7 @@ class NUFFTAdjointOp(base.Linop):
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=3,
+        width=4,
         oversamp=1.25,
         **kwargs
     ):
@@ -207,7 +207,7 @@ class NUFFTGramOp(base.Linop):
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=3,
+        width=6,
         **kwargs
     ):
         super().__init__(ndim=coord.shape[-1], **kwargs)
