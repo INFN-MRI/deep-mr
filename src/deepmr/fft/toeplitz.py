@@ -105,11 +105,6 @@ def plan_toeplitz(
         # initialize temporary arrays
         delta = torch.ones(list(coord.shape[:-1]), dtype=torch.float32, device=device)
 
-    # calculate PSF
-    st_kernel = _fft.nufft_adj(
-        dcf * delta, coord * oversamp, shape * oversamp, basis, device, width=width,
-    )
-
     # check for Cartesian axes
     is_cart = [
         np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax]))
@@ -122,6 +117,16 @@ def plan_toeplitz(
 
     # get oversampled grid shape
     shape = _get_oversamp_shape(shape, oversamp, ndim)
+
+    # calculate PSF
+    st_kernel = _fft.nufft_adj(
+        dcf * delta,
+        coord * oversamp,
+        shape,
+        basis,
+        device,
+        width=width,
+    )
 
     # FFT
     st_kernel = _fft.fft(st_kernel, axes=range(-ndim, 0))

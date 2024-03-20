@@ -72,7 +72,7 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         q = _get_acceleration(niter)
     else:
         q = [0.0] * niter
-        
+
     # initialize algorithm
     PGD = PGDStep(step, AHA, AHy, D)
 

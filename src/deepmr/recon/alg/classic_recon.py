@@ -33,8 +33,8 @@ def recon_lstsq(
     nsets=1,
     device=None,
     cal_data=None,
-    toeplitz=False,
-    use_dcf=False,
+    toeplitz=True,
+    use_dcf=True,
 ):
     """
     Classical MR reconstruction.
@@ -70,7 +70,7 @@ def recon_lstsq(
         See :func:`deepmr.optim`.
         The defaul it ``None`` (use each solver default parameters).
     lamda : float, optional
-        Regularization strength. If 0.0, do not apply regularization. 
+        Regularization strength. If 0.0, do not apply regularization.
         The default is ``0.0``.
     stepsize : float, optional
         Iterations step size. If not provided, estimate from Encoding
@@ -85,9 +85,9 @@ def recon_lstsq(
         Calibration dataset for coil sensitivity estimation.
         The default is ``None`` (use center region of ``data``).
     toeplitz : bool, optional
-        Use Toeplitz approach for normal equation. The default is ``False``.
+        Use Toeplitz approach for normal equation. The default is ``True``.
     use_dcf : bool, optional
-        Use dcf to accelerate convergence. The default is ``False``.
+        Use dcf to accelerate convergence. The default is ``True``.
 
     Returns
     -------
@@ -114,7 +114,7 @@ def recon_lstsq(
         dcf = head.dcf.to(device)
     else:
         dcf = None
-    
+
     # toggle off Topelitz for non-iterative
     if niter == 1:
         toeplitz = False

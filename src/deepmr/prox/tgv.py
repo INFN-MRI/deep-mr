@@ -213,7 +213,7 @@ def tgv_denoise(
 
     # initialize denoiser
     TV = TGVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
-    output = TV(input, ths)
+    output = TV(input)
 
     # cast back to numpy if requried
     if isnumpy:

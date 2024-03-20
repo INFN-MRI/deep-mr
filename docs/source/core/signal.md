@@ -58,13 +58,3 @@
 	deepmr.svd
 ```
 
-## Interpolation
-```{eval-rst}
-.. currentmodule:: deepmr 
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	deepmr.grog_interp
-```
-

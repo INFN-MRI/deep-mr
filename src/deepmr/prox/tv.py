@@ -206,7 +206,7 @@ def tv_denoise(
 
     # initialize denoiser
     TV = TVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
-    output = TV(input, ths)
+    output = TV(input)
 
     # cast back to numpy if requried
     if isnumpy:

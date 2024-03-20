@@ -16,9 +16,24 @@ and the corresponding functional versions for standalone usage.
 	:toctree: generated
 	:nosignatures:
 	
+	deepmr.optim.CGStep
 	deepmr.optim.ADMMStep
 	deepmr.optim.PGDStep
 
+	deepmr.optim.cg_solve
 	deepmr.optim.admm_solve
 	deepmr.optim.pgd_solve
 ```
+
+In addition, we provide utils to estimate matrix-free operator properties, such as maximum eigenvalue.
+
+## Linop linear algebra
+
+```{eval-rst}
+.. autosummary::
+	:toctree: generated
+	:nosignatures:
+	
+	deepmr.optim.power_method
+```
+

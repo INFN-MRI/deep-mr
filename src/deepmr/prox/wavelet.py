@@ -89,7 +89,7 @@ class WaveletDenoiser(nn.Module):
             self.ths = nn.Parameter(ths)
         else:
             self.ths = ths
-            
+
         self.denoiser = _WaveletDenoiser(
             level=level,
             wv=wv,
@@ -325,7 +325,14 @@ class WaveletDictDenoiser(nn.Module):
 
 
 def wavelet_dict_denoise(
-    input, ndim, ths, wv=None, device=None, non_linearity="soft", level=None, max_iter=10
+    input,
+    ndim,
+    ths,
+    wv=None,
+    device=None,
+    non_linearity="soft",
+    level=None,
+    max_iter=10,
 ):
     r"""
     Apply overcomplete Wavelet denoising with the :math:`\ell_1` norm.
@@ -396,7 +403,9 @@ def wavelet_dict_denoise(
 
 # %% local utils
 class _WaveletDenoiser(nn.Module):
-    def __init__(self, level=None, wv="db4", device="cpu", non_linearity="soft", wvdim=2):
+    def __init__(
+        self, level=None, wv="db4", device="cpu", non_linearity="soft", wvdim=2
+    ):
         super().__init__()
         self.level = level
         self.wv = wv
@@ -409,7 +418,7 @@ class _WaveletDenoiser(nn.Module):
         Applies the wavelet analysis.
         """
         if self.level is None:
-            level = pywt.dwtn_max_level(x.shape[-self.dimension:], self.wv)
+            level = pywt.dwtn_max_level(x.shape[-self.dimension :], self.wv)
             self.level = level
         else:
             level = self.level
