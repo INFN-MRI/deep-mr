@@ -10,7 +10,7 @@ import numpy as np
 import numba as nb
 import torch
 
-from .. import backend
+from ..._utils import backend
 
 from .plan import plan_sampling
 from .sparse2dense import apply_zerofill

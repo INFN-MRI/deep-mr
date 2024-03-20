@@ -47,7 +47,7 @@ def test_overlapping():
 
     # folding
     patches = deepmr.tensor2patches(image, [2, 2], [1, 1])
-    npt.assert_allclose(patches.shape, [3, 3, 2, 2])
+    npt.assert_allclose(patches.shape, [4, 4, 2, 2])
 
     # unfolding
     output = deepmr.patches2tensor(patches, [4, 4], [2, 2], [1, 1])

@@ -1,15 +1,13 @@
 """Sub-package containing Linear operators for MR imaging.
 
-Each operator is derived from :func:`deepinv.phyisics.LinearPhysics`.
-As a consequence, they are :func:`torch.nn.Module` that can be used
-inside neural networks
+Each operator is derived from :func:`torch.nn.Module`.
+As a consequence, they can be composed to build neural network architectures.
 
 Currently implemented linear operator include:
     
 * centered n-dimensional FFT and iFFT with masking and low rank subspace projection;
-* n-dimensional sparse uniform FFT/iFFT with embedded low rank subspace projection;
 * n-dimensional NUFFT with embedded low rank subspace projection;
-* coil combination operators.
+* coil combination and projection operators.
 
 """
 

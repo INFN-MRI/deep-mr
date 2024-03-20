@@ -8,7 +8,7 @@ import numpy as np
 import numba as nb
 import torch
 
-from .. import backend
+from ..._utils import backend
 
 
 def apply_zerofill(data_in, mask, basis=None, device=None, threadsperblock=128):
@@ -91,7 +91,7 @@ def apply_zerofill(data_in, mask, basis=None, device=None, threadsperblock=128):
 
     # argument reshape
     data_in = data_in.reshape([batch_size, nframes, npts])
-    data_in = data_in.swapaxes(0, 1)
+    data_in = data_in.swapaxes(0, 1).contiguous()
 
     # collect garbage
     gc.collect()

@@ -4,13 +4,15 @@
 .. automodule:: deepmr.linops
 ```
 
-## Coil
+## Coil Sensitivity
 ```{eval-rst}
 .. autosummary::
 	:toctree: generated
 	:nosignatures:
 	
-	deepmr.linops.CoilOp
+	deepmr.linops.SenseOp
+	deepmr.linops.SenseAdjointOp
+
 ```
 
 
@@ -21,17 +23,8 @@
 	:nosignatures:
 	
 	deepmr.linops.FFTOp
+	deepmr.linops.IFFTOp
 	deepmr.linops.FFTGramOp
-```
-
-## Sparse FFT
-```{eval-rst}
-.. autosummary::
-	:toctree: generated
-	:nosignatures:
-	
-	deepmr.linops.SparseFFTOp
-	deepmr.linops.SparseFFTGramOp
 ```
 
 ## Non-Uniform FFT (NUFFT)
@@ -41,5 +34,6 @@
 	:nosignatures:
 	
 	deepmr.linops.NUFFTOp
+	deepmr.linops.NUFFTAdjointOp
 	deepmr.linops.NUFFTGramOp
 ```

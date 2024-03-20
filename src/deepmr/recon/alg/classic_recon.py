@@ -2,16 +2,14 @@
 
 __all__ = ["recon_lstsq"]
 
-import copy
-
 import numpy as np
 import torch
-
-import deepinv as dinv
 
 from ... import optim as _optim
 from ... import prox as _prox
 from .. import calib as _calib
+from ... import linops as _linops
+
 from . import linop as _linop
 
 from numba.core.errors import NumbaPerformanceWarning
@@ -28,6 +26,7 @@ def recon_lstsq(
     prior=None,
     prior_ths=0.01,
     prior_params=None,
+    solver_params=None,
     lamda=0.0,
     stepsize=1.0,
     basis=None,
@@ -35,6 +34,7 @@ def recon_lstsq(
     device=None,
     cal_data=None,
     toeplitz=True,
+    use_dcf=True,
 ):
     """
     Classical MR reconstruction.
@@ -65,9 +65,13 @@ def recon_lstsq(
         Parameters for Prior initializations.
         See :func:`deepmr.prox`.
         The defaul it ``None`` (use each regularizer default parameters).
+    solver_params : dict, optional
+        Parameters for Solver initializations.
+        See :func:`deepmr.optim`.
+        The defaul it ``None`` (use each solver default parameters).
     lamda : float, optional
-        Tikonhov regularization strength. If 0.0, do not apply
-        Tikonhov regularization. The default is ``0.0``.
+        Regularization strength. If 0.0, do not apply regularization.
+        The default is ``0.0``.
     stepsize : float, optional
         Iterations step size. If not provided, estimate from Encoding
         operator maximum eigenvalue. The default is ``None``.
@@ -81,7 +85,9 @@ def recon_lstsq(
         Calibration dataset for coil sensitivity estimation.
         The default is ``None`` (use center region of ``data``).
     toeplitz : bool, optional
-        Use Toeplitz approach for normal equation. The default is ``False``.
+        Use Toeplitz approach for normal equation. The default is ``True``.
+    use_dcf : bool, optional
+        Use dcf to accelerate convergence. The default is ``True``.
 
     Returns
     -------
@@ -104,10 +110,12 @@ def recon_lstsq(
         device = data.device
     data = data.to(device)
 
-    if head.dcf is not None:
-        head.dcf = head.dcf.to(device)
+    if use_dcf and head.dcf is not None:
+        dcf = head.dcf.to(device)
+    else:
+        dcf = None
 
-    # toggle off topelitz for non-iterative
+    # toggle off Topelitz for non-iterative
     if niter == 1:
         toeplitz = False
 
@@ -122,7 +130,7 @@ def recon_lstsq(
         data,
         mask,
         head.traj,
-        head.dcf,
+        dcf,
         head.shape,
         nsets,
         basis,
@@ -131,8 +139,15 @@ def recon_lstsq(
         toeplitz,
     )
 
+    # transfer
+    E = E.to(device)
+    EHE = EHE.to(device)
+
     # perform zero-filled reconstruction
-    img = E.H(head.dcf**0.5 * data[:, None, ...])
+    if dcf is not None:
+        img = E.H(dcf**0.5 * data[:, None, ...])
+    else:
+        img = E.H(data[:, None, ...])
 
     # if non-iterative, just perform linear recon
     if niter == 1:
@@ -141,15 +156,33 @@ def recon_lstsq(
             output = output.numpy(force=True)
         return output
 
+    # default solver params
+    if solver_params is None:
+        solver_params = {}
+
     # rescale
     img = _calib.intensity_scaling(img, ndim=ndim)
 
     # if no prior is specified, use CG recon
     if prior is None:
-        output = EHE.solve(img, max_iter=niter, lamda=lamda)
+        output = _optim.cg_solve(
+            img, EHE, niter=niter, lamda=lamda, ndim=ndim, **solver_params
+        )
         if isnumpy:
             output = output.numpy(force=True)
         return output
+
+    # modify EHE
+    if lamda != 0.0:
+        _EHE = EHE + lamda * _linops.Identity(ndim)
+    else:
+        _EHE = EHE
+
+    # compute spectral norm
+    xhat = torch.rand(img.shape, dtype=img.dtype, device=img.device)
+    max_eig = _optim.power_method(None, xhat, AHA=_EHE, device=device, niter=30)
+    if max_eig != 0.0:
+        stepsize = stepsize / max_eig
 
     # if a single prior is specified, use PDG
     if isinstance(prior, (list, tuple)) is False:
@@ -157,77 +190,48 @@ def recon_lstsq(
         if prior_params is None:
             prior_params = {}
 
-        # modify EHE
-        if lamda != 0.0:
-            img = img / lamda
-            prior_ths = prior_ths / lamda
-            tmp = copy.deepcopy(EHE)
-            # f = lambda x : tmp.A(x) + lamda * x
-            f = lambda x: tmp.A(x) / lamda + x
-            EHE.A = f
-            EHE.A_adjoint = f
-        else:
-            lamda = 1.0
+        # get prior
+        D = _get_prior(prior, ndim, lamda, device, **prior_params)
 
-        # compute spectral norm
-        max_eig = EHE.maxeig(img, max_iter=1)
-        if max_eig != 0.0:
-            stepsize = stepsize / float(max_eig)
-
-        # solver parameters
-        t = _get_acceleration(niter)
-        params_algo = {
-            "stepsize": stepsize,
-            "g_param": prior_ths,
-            "lambda": lamda,
-            "beta": list(t + 1),
-        }
-
-        # select the data fidelity term
-        data_fidelity = _optim.L2()
-
-        # Get Wavelet Prior
-        prior = _get_prior(prior, ndim, device, **prior_params)
-
-        # instantiate the algorithm class to solve the IP problem.
-        solver = dinv.optim.optim_builder(
-            iteration="PGD",
-            prior=prior,
-            data_fidelity=data_fidelity,
-            early_stop=True,
-            max_iter=niter,
-            params_algo=params_algo,
+        # solve
+        output = _optim.pgd_solve(
+            img, stepsize, _EHE, D, niter=niter, accelerate=True, **solver_params
         )
+    else:
+        npriors = len(prior)
+        if prior_params is None:
+            prior_params = [{} for n in range(npriors)]
+        else:
+            assert (
+                isinstance(prior_params, (list, tuple)) and len(prior_params) == npriors
+            ), "Please provide parameters for each regularizer (or leave completely empty to use default)"
 
-        output = solver(img, EHE) * lamda
-        if isnumpy:
-            output = output.numpy(force=True)
+        # get priors
+        D = []
+        for n in range(npriors):
+            d = _get_prior(prior[n], ndim, lamda, device, **prior_params[n])
+            D.append(d)
 
-        return output
+        # solve
+        output = _optim.admm_solve(img, stepsize, _EHE, D, niter=niter, **solver_params)
+    if isnumpy:
+        output = output.numpy(force=True)
+
+    return output
 
 
 # %% local utils
-def _get_prior(ptype, ndim, device, **params):
+def _get_prior(ptype, ndim, lamda, device, **params):
     if isinstance(ptype, str):
         if ptype == "L1Wave":
-            return _prox.WaveletPrior(ndim, device=device, **params)
+            return _prox.WaveletDenoiser(ndim, ths=lamda, device=device, **params)
         elif ptype == "TV":
-            return _prox.TVPrior(ndim, device=device, **params)
+            return _prox.TVDenoiser(ndim, ths=lamda, device=device, **params)
+        elif ptype == "LLR":
+            return _prox.LLRDenoiser(ndim, ths=lamda, device=device, **params)
         else:
             raise ValueError(
-                f"Prior type = {ptype} not recognized; either specify 'L1Wave', 'TV' or 'deepinv.optim.Prior' object."
+                f"Prior type = {ptype} not recognized; either specify 'L1Wave', 'TV' or 'LLR', or 'nn.Module' object."
             )
     else:
         raise NotImplementedError("Direct prior object not implemented.")
-
-
-def _get_acceleration(niter):
-    t = []
-    t_new = 1
-
-    for n in range(niter):
-        t_old = t_new
-        t_new = (1 + (1 + 4 * t_old**2) ** 0.5) / 2
-        t.append((t_old - 1) / t_new)
-
-    return np.asarray(t)

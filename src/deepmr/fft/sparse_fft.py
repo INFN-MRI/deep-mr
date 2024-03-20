@@ -12,10 +12,10 @@ import gc
 
 import numpy as np
 import torch
-
-from .._signal import sparse as _sparse
+import torch.autograd as autograd
 
 from . import fft as _fft
+from . import _sparse
 
 
 def prepare_sampling(indexes, shape, device="cpu"):
@@ -98,6 +98,47 @@ def plan_toeplitz_fft(coord, shape, basis=None, device="cpu"):
     return _sparse.plan_toeplitz(coord, shape, basis, device)
 
 
+class ApplySparseFFT(autograd.Function):
+    @staticmethod
+    def forward(image, sampling_mask, basis_adjoint, weight, device, threadsperblock):
+        return _apply_sparse_fft(
+            image, sampling_mask, basis_adjoint, weight, device, threadsperblock
+        )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, sampling_mask, basis_adjoint, weight, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.sampling_mask = sampling_mask
+        ctx.basis_adjoint = basis_adjoint
+        ctx.weight = weight
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, kspace):
+        sampling_mask = ctx.sampling_mask
+        basis_adjoint = ctx.basis_adjoint
+        if basis_adjoint is not None:
+            basis = basis_adjoint.conj().t()
+        else:
+            basis = None
+        weight = ctx.weight
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+
+        return (
+            _apply_sparse_ifft(
+                kspace, sampling_mask, basis, weight, device, threadsperblock
+            ),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+
 def apply_sparse_fft(
     image,
     sampling_mask,
@@ -134,6 +175,147 @@ def apply_sparse_fft(
         Output sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
     """
+    return ApplySparseFFT.apply(
+        image, sampling_mask, basis_adjoint, weight, device, threadsperblock
+    )
+
+
+class ApplySparseIFFT(autograd.Function):
+    @staticmethod
+    def forward(kspace, sampling_mask, basis, weight, device, threadsperblock):
+        return _apply_sparse_ifft(
+            kspace, sampling_mask, basis, weight, device, threadsperblock
+        )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, sampling_mask, basis, weight, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.sampling_mask = sampling_mask
+        ctx.basis = basis
+        ctx.weight = weight
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, image):
+        sampling_mask = ctx.sampling_mask
+        basis = ctx.basis
+        if basis is not None:
+            basis_adjoint = basis.conj().t()
+        else:
+            basis_adjoint = None
+        weight = ctx.weight
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+
+        return (
+            _apply_sparse_fft(
+                image, sampling_mask, basis_adjoint, weight, device, threadsperblock
+            ),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+
+def apply_sparse_ifft(
+    kspace, sampling_mask, basis=None, weight=None, device=None, threadsperblock=128
+):
+    """
+    Apply adjoint Non-Uniform Fast Fourier Transform.
+
+    Parameters
+    ----------
+    kspace : torch.Tensor
+        Input sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+    sampling_mask : dict
+        Pre-formatted sampling mask in sparse COO format.
+    basis : torch.Tensor, optional
+        Low rank subspace projection operator
+        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
+    weight : np.ndarray | torch.Tensor, optional
+        Optional weight for output data samples. Useful to force adjointeness.
+        The default is ``None``.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    """
+    return ApplySparseIFFT.apply(
+        kspace, sampling_mask, basis, weight, device, threadsperblock
+    )
+
+
+class ApplySparseFFTSelfadjoint(autograd.Function):
+    @staticmethod
+    def forward(image, toeplitz_kern, device, threadsperblock):
+        return _apply_sparse_fft_selfadj(image, toeplitz_kern, device, threadsperblock)
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        _, toeplitz_kern, device, threadsperblock = inputs
+        ctx.set_materialize_grads(False)
+        ctx.toeplitz_kern = toeplitz_kern
+        ctx.device = device
+        ctx.threadsperblock = threadsperblock
+
+    @staticmethod
+    def backward(ctx, image):
+        toeplitz_kern = ctx.toeplitz_kern
+        device = ctx.device
+        threadsperblock = ctx.threadsperblock
+        return (
+            _apply_sparse_fft_selfadj(image, toeplitz_kern, device, threadsperblock),
+            None,
+            None,
+            None,
+        )
+
+
+def apply_sparse_fft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
+    """
+    Apply self-adjoint Fast Fourier Transform via Toeplitz convolution.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+    toeplitz_kern : GramMatrix
+        Pre-calculated Toeplitz kernel.
+    device : str, optional
+        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
+        The default is ``None ``(same as interpolator).
+    threadsperblock : int
+        CUDA blocks size (for GPU only). The default is ``128``.
+
+    Returns
+    -------
+    image : torch.Tensor
+        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
+        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
+
+    """
+    return ApplySparseFFTSelfadjoint.apply(
+        image, toeplitz_kern, device, threadsperblock
+    )
+
+
+# %% local utils
+def _apply_sparse_fft(
+    image, sampling_mask, basis_adjoint, weight, device, threadsperblock
+):
     # check if it is numpy
     if isinstance(image, np.ndarray):
         isnumpy = True
@@ -203,37 +385,7 @@ def apply_sparse_fft(
     return kspace
 
 
-def apply_sparse_ifft(
-    kspace, sampling_mask, basis=None, weight=None, device=None, threadsperblock=128
-):
-    """
-    Apply adjoint Non-Uniform Fast Fourier Transform.
-
-    Parameters
-    ----------
-    kspace : torch.Tensor
-        Input sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
-    sampling_mask : dict
-        Pre-formatted sampling mask in sparse COO format.
-    basis : torch.Tensor, optional
-        Low rank subspace projection operator
-        of shape ``(ncontrasts, ncoeffs)``; can be ``None``. The default is ``None``.
-    weight : np.ndarray | torch.Tensor, optional
-        Optional weight for output data samples. Useful to force adjointeness.
-        The default is ``None``.
-    device : str, optional
-        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
-        The default is ``None ``(same as interpolator).
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
-
-    Returns
-    -------
-    image : torch.Tensor
-        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-    """
+def _apply_sparse_ifft(kspace, sampling_mask, basis, weight, device, threadsperblock):
     # check if it is numpy
     if isinstance(kspace, np.ndarray):
         isnumpy = True
@@ -300,30 +452,7 @@ def apply_sparse_ifft(
     return image
 
 
-def apply_sparse_fft_selfadj(image, toeplitz_kern, device=None, threadsperblock=128):
-    """
-    Apply self-adjoint Fast Fourier Transform via Toeplitz convolution.
-
-    Parameters
-    ----------
-    image : torch.Tensor
-        Input image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-    toeplitz_kern : GramMatrix
-        Pre-calculated Toeplitz kernel.
-    device : str, optional
-        Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
-        The default is ``None ``(same as interpolator).
-    threadsperblock : int
-        CUDA blocks size (for GPU only). The default is ``128``.
-
-    Returns
-    -------
-    image : torch.Tensor
-        Output image of shape ``(..., ncontrasts, ny, nx)`` (2D)
-        or ``(..., ncontrasts, nz, ny, nx)`` (3D).
-
-    """
+def _apply_sparse_fft_selfadj(image, toeplitz_kern, device, threadsperblock):
     # check if it is numpy
     if isinstance(image, np.ndarray):
         isnumpy = True

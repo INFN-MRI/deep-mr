@@ -8,7 +8,7 @@ import numpy as np
 import numba as nb
 import torch
 
-from .. import backend
+from ..._utils import backend
 
 
 def plan_interpolator(coord, shape, width=2, beta=1.0, device="cpu"):
@@ -183,6 +183,8 @@ class Interpolator:
             self.index = tuple(self.index)
             self.value = tuple(self.value)
             self.device = device
+
+        return self
 
 
 def _get_kernel_scaling(beta, width):

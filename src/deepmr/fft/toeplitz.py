@@ -8,13 +8,17 @@ import numpy as np
 import torch
 
 from .. import fft as _fft
-from .. import _signal
 
-from .._signal import backend
+from .._utils import backend
 
 
 def plan_toeplitz(
-    coord, shape, basis=None, dcf=None, width=3, device="cpu", _iscart=False
+    coord,
+    shape,
+    basis=None,
+    dcf=None,
+    width=6,
+    device="cpu",
 ):
     """
     Compute spatio-temporal kernel for fast self-adjoint operation.
@@ -37,7 +41,7 @@ def plan_toeplitz(
     width : int | Iterable[int], optional
         Interpolation kernel full-width of shape ``(ndim,)``.
         If scalar, isotropic kernel is assumed.
-        The default is ``3``.
+        The default is ``4``.
     device : str, optional
         Computational device (``cpu`` or ``cuda:n``, with ``n=0, 1,...nGPUs``).
         The default is ``cpu``.
@@ -101,11 +105,6 @@ def plan_toeplitz(
         # initialize temporary arrays
         delta = torch.ones(list(coord.shape[:-1]), dtype=torch.float32, device=device)
 
-    # calculate PSF
-    st_kernel = _fft.nufft_adj(
-        dcf * delta, coord, shape, basis, device, width=width, oversamp=oversamp
-    )
-
     # check for Cartesian axes
     is_cart = [
         np.allclose(shape[ax] * coord[..., ax], np.round(shape[ax] * coord[..., ax]))
@@ -119,8 +118,17 @@ def plan_toeplitz(
     # get oversampled grid shape
     shape = _get_oversamp_shape(shape, oversamp, ndim)
 
-    # pad and FFT
-    st_kernel = _signal.resize(st_kernel, list(st_kernel.shape[:-ndim]) + list(shape))
+    # calculate PSF
+    st_kernel = _fft.nufft_adj(
+        dcf * delta,
+        coord * oversamp,
+        shape,
+        basis,
+        device,
+        width=width,
+    )
+
+    # FFT
     st_kernel = _fft.fft(st_kernel, axes=range(-ndim, 0))
 
     # squeeze
@@ -183,3 +191,5 @@ class GramMatrix:
             self.value = backend.pytorch2numba(self.value)
 
             self.device = device
+
+        return self

@@ -1,6 +1,6 @@
-"""Non-Uniform Fast Fourier Transform linear operator."""
+"""Sparse Fast Fourier Transform linear operator."""
 
-__all__ = ["NUFFTOp", "NUFFTAdjointOp", "NUFFTGramOp"]
+__all__ = ["SparseFFTOp", "SparseIFFTOp", "SparseFFTGramOp"]
 
 import torch
 
@@ -9,11 +9,11 @@ from .. import fft as _fft
 from . import base
 
 
-class NUFFTOp(base.Linop):
+class SparseFFTOp(base.Linop):
     """
-    Non-Uniform Fast Fourier Transform operator.
+    Sparse Fast Fourier Transform operator.
 
-    K-space sampling trajectory are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
+    K-space sampling locations are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
 
     Input images are expected to have the following dimensions:
 
@@ -30,21 +30,19 @@ class NUFFTOp(base.Linop):
 
     def __init__(
         self,
-        coord=None,
+        indexes=None,
         shape=None,
         basis_adjoint=None,
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=4,
-        oversamp=1.25,
     ):
-        if coord is not None and shape is not None:
-            super().__init__(ndim=coord.shape[-1])
-            self.nufft_plan = _fft.plan_nufft(coord, shape, width, oversamp, device)
+        if indexes is not None and shape is not None:
+            super().__init__(ndim=indexes.shape[-1])
+            self.sampling = _fft.prepare_sampling(indexes, shape, device)
         else:
             super().__init__(ndim=None)
-            self.nufft_plan = None
+            self.sampling = None
         if weight is not None:
             self.weight = torch.as_tensor(weight**0.5, device=device)
         else:
@@ -57,7 +55,7 @@ class NUFFTOp(base.Linop):
 
     def forward(self, x):
         """
-        Apply Non-Uniform Fast Fourier Transform.
+        Apply Sparse Fast Fourier Transform.
 
         Parameters
         ----------
@@ -68,12 +66,12 @@ class NUFFTOp(base.Linop):
         Returns
         -------
         y : np.ndarray | torch.Tensor
-            Output Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+            Output sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
         """
-        return _fft.apply_nufft(
+        return _fft.apply_sparse_fft(
             x,
-            self.nufft_plan,
+            self.sampling,
             self.basis_adjoint,
             self.weight,
             threadsperblock=self.threadsperblock,
@@ -81,28 +79,28 @@ class NUFFTOp(base.Linop):
 
     def _adjoint_linop(self):
         if self.basis_adjoint is not None:
-            basis = self.basis_adjoint.conj().T
+            basis = self.basis_adjoint.conj().t()
         else:
             basis = None
         if self.weight is not None:
             weight = self.weight**2
         else:
             weight = None
-        adjOp = NUFFTAdjointOp(
+        adjOp = SparseIFFTOp(
             basis=basis, weight=weight, threadsperblock=self.threadsperblock
         )
         adjOp.ndim = self.ndim
-        adjOp.nufft_plan = self.nufft_plan
+        adjOp.sampling = self.sampling
         return adjOp
 
 
-class NUFFTAdjointOp(base.Linop):
+class SparseIFFTOp(base.Linop):
     """
-    Adjoint Non-Uniform Fast Fourier Transform operator.
+    Inverse sparse Fast Fourier Transform operator.
 
-    K-space sampling trajectory are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
+    K-space sampling locations are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
 
-    Input k-psace data are expected to have the following dimensions:
+    Input k-space data are expected to have the following dimensions:
 
     * 2D MRI: ``(nslices, nsets, ncoils, ncontrasts, ny, nx)``
     * 3D MRI: ``(nsets, ncoils, ncontrasts, nz, ny, nx)``
@@ -111,28 +109,25 @@ class NUFFTAdjointOp(base.Linop):
     for soft-SENSE implementations (e.g., ESPIRIT), equal to ``1`` for conventional SENSE
     and ``ncoils`` represents the number of receiver channels in the coil array.
 
-    Similarly, output images data are expected to be shaped ``(nslices, nsets, ncoils, ncontrasts, nviews, nsamples)``.
+    Similarly, output images are expected to be shaped ``(nslices, nsets, ncoils, ncontrasts, nviews, nsamples)``.
 
     """
 
     def __init__(
         self,
-        coord=None,
+        indexes=None,
         shape=None,
         basis=None,
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=4,
-        oversamp=1.25,
-        **kwargs
     ):
-        if coord is not None and shape is not None:
-            super().__init__(ndim=coord.shape[-1])
-            self.nufft_plan = _fft.plan_nufft(coord, shape, width, oversamp, device)
+        if indexes is not None and shape is not None:
+            super().__init__(ndim=indexes.shape[-1])
+            self.sampling = _fft.prepare_sampling(indexes, shape, device)
         else:
             super().__init__(ndim=None)
-            self.nufft_plan = None
+            self.sampling = None
         if weight is not None:
             self.weight = torch.as_tensor(weight**0.5, device=device)
         else:
@@ -145,12 +140,12 @@ class NUFFTAdjointOp(base.Linop):
 
     def forward(self, y):
         """
-        Apply adjoint Non-Uniform Fast Fourier Transform.
+        Apply inverse Sparse Fast Fourier Transform.
 
         Parameters
         ----------
         y : torch.Tensor
-            Input Non-Cartesian kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
+            Input sparse kspace of shape ``(..., ncontrasts, nviews, nsamples)``.
 
         Returns
         -------
@@ -159,9 +154,9 @@ class NUFFTAdjointOp(base.Linop):
             or ``(..., ncontrasts, nz, ny, nx)`` (3D).
 
         """
-        return _fft.apply_nufft_adj(
+        return _fft.apply_sparse_ifft(
             y,
-            self.nufft_plan,
+            self.sampling,
             self.basis,
             self.weight,
             threadsperblock=self.threadsperblock,
@@ -169,28 +164,28 @@ class NUFFTAdjointOp(base.Linop):
 
     def _adjoint_linop(self):
         if self.basis is not None:
-            basis_adjoint = self.basis.conj().T
+            basis_adjoint = self.basis.conj().t()
         else:
             basis_adjoint = None
         if self.weight is not None:
             weight = self.weight**2
         else:
             weight = None
-        adjOp = NUFFTOp(
+        adjOp = SparseFFTOp(
             basis_adjoint=basis_adjoint,
             weight=weight,
             threadsperblock=self.threadsperblock,
         )
         adjOp.ndim = self.ndim
-        adjOp.nufft_plan = self.nufft_plan
+        adjOp.sampling = self.sampling
         return adjOp
 
 
-class NUFFTGramOp(base.Linop):
+class SparseFFTGramOp(base.Linop):
     """
-    Self-adjoint Non-Uniform Fast Fourier Transform operator.
+    Self-adjoint Sparse Fast Fourier Transform operator.
 
-    K-space sampling trajectory are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
+    K-space sampling locations are expected to be shaped ``(ncontrasts, nviews, nsamples, ndims)``.
 
     Input and output data are expected to be shaped ``(nslices, nsets, ncoils, ncontrasts, nviews, nsamples)``,
     where ``nsets`` represents multiple sets of coil sensitivity estimation
@@ -201,24 +196,23 @@ class NUFFTGramOp(base.Linop):
 
     def __init__(
         self,
-        coord,
+        indexes,
         shape,
         basis=None,
         weight=None,
         device="cpu",
         threadsperblock=128,
-        width=6,
         **kwargs
     ):
-        super().__init__(ndim=coord.shape[-1], **kwargs)
-        self.toeplitz_kern = _fft.plan_toeplitz_nufft(
-            coord, shape, basis, weight, width, device
+        super().__init__(ndim=indexes.shape[-1], **kwargs)
+        self.toeplitz_kern = _fft.plan_toeplitz_fft(
+            indexes, shape, basis, weight, device
         )
         self.threadsperblock = threadsperblock
 
     def forward(self, x):
         """
-        Apply Toeplitz convolution (``NUFFT.H * NUFFT``).
+        Apply Toeplitz convolution (``SparseFFT.H * SparseFFT``).
 
         Parameters
         ----------
@@ -233,7 +227,7 @@ class NUFFTGramOp(base.Linop):
             or ``(..., ncontrasts, nz, ny, nx)`` (3D).
 
         """
-        return _fft.apply_nufft_selfadj(
+        return _fft.apply_sparse_fft_selfadj(
             x, self.toeplitz_kern, threadsperblock=self.threadsperblock
         )
 
