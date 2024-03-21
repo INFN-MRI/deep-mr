@@ -13,7 +13,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from deepmr._signal.grog import grogop
+from deepmr.recon.calib.grog import grogop
 
 # define object, trajectory and coils
 img0 = deepmr.shepp_logan(128)
@@ -28,6 +28,6 @@ img = deepmr.fft.nufft_adj(head.dcf * ksp, head.traj, head.shape)
 smap, cal_data = deepmr.recon.espirit_cal(ksp, head.traj, head.dcf, head.shape)
 
 # get cartesian ksp and indexes
-d, indexes, weights = grogop.grappa_interp(
+d, indexes, weights = grogop.grog_interp(
     ksp, cal_data, head.traj, head.shape, lamda=0.05
 )
