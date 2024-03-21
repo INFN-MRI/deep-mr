@@ -47,9 +47,6 @@ def perk_eval(input, train, prior=None, reg=2**-41, chunk_size=1e5, device=None)
     output : np.ndarray | torch.Tensor
         Output parametric maps of shape ``(nparams, ny, nx)``
         (single-slice 2D) or ``(nparams, nz, ny, nx)`` (multi-slice 2D or 3D).
-    m0 : np.ndarray | torch.Tensor
-        Output parametric maps of shape ``(ny, nx)``
-        (single-slice 2D) or ``(nz, ny, nx)`` (multi-slice 2D or 3D).
 
     """
     # check if numpy
@@ -85,6 +82,10 @@ def perk_eval(input, train, prior=None, reg=2**-41, chunk_size=1e5, device=None)
     
     # reshape
     input = input.reshape(input.shape[0], -1)  # (nechoes, nvoxels)
+    
+    # normalize
+    norm = (input * input.conj()).sum(axis=0)**0.5
+    input = input / (norm + 0.000000000001)
                     
     # unwind phase
     ph0 = input[0]
@@ -93,11 +94,7 @@ def perk_eval(input, train, prior=None, reg=2**-41, chunk_size=1e5, device=None)
     
     # get real part only
     input = input.real
-    
-    # normalize
-    norm = torch.quantile(input, 0.95)
-    input = input / norm
-            
+                    
     # append known signals
     if nu is not None:
         nu = nu.reshape(nu.shape[0], -1)    
@@ -134,23 +131,17 @@ def perk_eval(input, train, prior=None, reg=2**-41, chunk_size=1e5, device=None)
     # concatenate chunks
     output = torch.cat(output, axis=-1)
     
-    # add phase to proton density
-    m0 = norm * output[-1] * ph0 
-    output = output[:-1]
-    
     # cast back to original device
     output = output.to(idevice)
-    m0 = m0.to(idevice)
     
     # cast back to numpy
     if isnumpy:
         output = output.numpy(force=True)
-        m0 = m0.numpy(force=True)
             
-    return output.reshape(-1, *ishape).squeeze() , m0.reshape(*ishape)
+    return output.reshape(-1, *ishape).squeeze()
 
 
-def perk_train(train_signals, train_labels, train_priors=None, H=10**3, lamda=2**-1.5, c=2**0.6, device=None, seed=42):
+def perk_train(train_signals, train_labels, train_priors=None, H=10**3, lamda=2**-1.5, c=2**0.6, noise=0.0, device=None, seed=42):
     """
     Perform PERK training.
 
@@ -170,6 +161,8 @@ def perk_train(train_signals, train_labels, train_priors=None, H=10**3, lamda=2*
         Regularization parameter for latent parameters. The default is ``2**-1.5``.
     c : float, optional
         Global kernel length scale parameter. The default is ``2**0.6``.
+    noise : float, optional
+        Noise variance - should be estimated from data. The default is ``0.0``.
     device : str, optional
         Computational device. The default is ``None`` (same as ``data``).
     seed : int, optional
@@ -219,18 +212,15 @@ def perk_train(train_signals, train_labels, train_priors=None, H=10**3, lamda=2*
     train =  RFFKernel(device)
     
     # transpose
-    train_y = train_y.t()
-        
+    train_y = train_y.t()          
+
     # normalize
     norm = (train_y * train_y.conj()).sum(axis=0)**0.5
     train_y = train_y / (norm + 0.000000000001)
     
     # add noise
-    train_y = train_y + 1e-2 * torch.randn(train_y.shape, dtype=torch.complex64, device=train_y.device)
-    
-    # rescale back
-    train_y = norm * train_y 
-        
+    train_y = train_y + noise * torch.randn(train_y.shape, dtype=torch.complex64, device=train_y.device)
+            
     # unwind phase
     ph0 = train_y[0]
     ph0 = ph0 / (abs(ph0) + 0.000000000001) # keep phase only
@@ -241,25 +231,11 @@ def perk_train(train_signals, train_labels, train_priors=None, H=10**3, lamda=2*
         
     # transpose back
     train_y = train_y.t()
-    
-    # generate scaling factors
-    scaling = 2.0 * torch.rand(train_y.shape[0], device=train_y.device, dtype=train_y.dtype) + 2.2e-16 # (natoms,)
-    
-    # permute
-    idx0 = torch.randperm(train_y.shape[0])
-    
-    torch.manual_seed(seed+10)
-    idx1 = torch.randperm(train_y.shape[0])
-    torch.manual_seed(seed)
-
-    # update
-    train_y = train_y[idx0] * scaling[idx1].unsqueeze(1)
-    train_x = torch.cat((train_x[idx0], scaling[idx1].unsqueeze(1)), axis=-1)
         
     # training inputs
     if train_nu is not None:
         train_y = torch.cat((train_y, train_nu), axis=-1) # (ncontrasts+npriors, natoms)
-                                
+                                        
     # get lengthscales
     lengthscale = lamda * train_y.mean(axis=0) # (nechoes+nknown,)
     Q = lengthscale.shape[0]
