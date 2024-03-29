@@ -11,7 +11,7 @@ import torch
 
 import scipy
 
-from .. import backend
+from ...._utils import backend
 
 
 def grog_interp(

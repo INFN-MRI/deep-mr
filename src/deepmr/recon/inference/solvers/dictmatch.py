@@ -15,17 +15,26 @@ def tsmi2map(bloch_dict, time_series):
     Takes as input the time series in image space (or the set of temporal subspace coefficients)
     and returns quantitative maps / proton density.
 
-    Input:
-        bloch_dict (BlochDictionary): dictionary of simulated tsmi  with the following fields:
-            - atoms (ndarray): simulated and normalized tsmi with shape (ncoeff, natoms)
-            - norm (ndarray): norm of the simulated tsmi of shape (natoms,)
-            - lookup_table (ndarray): quantitative parameters generating the tsmi of shape (nparams, natoms)
-            - labels (list): names of the parameters of interest (e.g., T1, T2)
-        time_series (ndarray): Input tsmi of shape (ncoeff, nz, ny, nx).
+    Parameters
+    ----------
+    bloch_dict : BlochDictionary 
+        Dictionary of simulated tsmi  with the following fields:
+            
+        * atoms (ndarray): simulated and normalized tsmi with shape ``(ncoeff, natoms)``.
+        * norm (ndarray): norm of the simulated tsmi of shape ``(natoms,)``.
+        * lookup_table (ndarray): quantitative parameters generating the tsmi of shape ``(nparams, natoms)``.
+        * labels (list): names of the parameters of interest ``(e.g., T1, T2)``.
+        
+    time_series : np.ndarray | torch.Tensor 
+        Input image of shape (ncoeff, nz, ny, nx).
 
-    Output:
-        m0 (ndarray): tissue proton density of shape (nz, ny, nx).
-        qmaps (dict): dictionary with the estimated tissue parametric maps, each of shape (nz, ny, nx).
+    Returns
+    -------
+    m0 : np.ndarray | torch.Tensor
+        Tissue proton density of shape ``(nz, ny, nx)``.
+    qmaps : dict,
+        Dictionary with the estimated tissue parametric maps, each of shape ``(nz, ny, nx)``.
+    
     """
     # get shape
     shape = time_series.shape[1:]
@@ -50,17 +59,25 @@ def map2tsmi(bloch_dict, qmaps, m0=None):
     Takes as input quantitative maps / proton density
     and returns the time series in image space (or the set of temporal subspace coefficients).
 
-    Input:
-        bloch_dict (BlochDictionary): dictionary of simulated tsmi  with the following fields:
-            - atoms (ndarray): simulated and normalized tsmi with shape (ncoeff, natoms)
-            - norm (ndarray): norm of the simulated tsmi of shape (natoms,)
-            - lookup_table (ndarray): quantitative parameters generating the tsmi of shape (nparams, natoms)
-            - labels (list): names of the parameters of interest (e.g., T1, T2)
-        qmaps (dict): dictionary with the estimated tissue parametric maps, each of shape (nz, ny, nx).
-        m0 (ndarray): tissue proton density of shape (nz, ny, nx).
-
-    Output:
-        time_series (ndarray): Output tsmi of shape (ncoeff, nz, ny, nx).
+    Parameters
+    ----------
+    bloch_dict : BlochDictionary 
+        Dictionary of simulated tsmi  with the following fields:
+            
+        * atoms (ndarray): simulated and normalized tsmi with shape ``(ncoeff, natoms)``.
+        * norm (ndarray): norm of the simulated tsmi of shape ``(natoms,)``.
+        * lookup_table (ndarray): quantitative parameters generating the tsmi of shape ``(nparams, natoms)``.
+        * labels (list): names of the parameters of interest ``(e.g., T1, T2)``.
+    
+    qmaps : dict,
+        Dictionary with the estimated tissue parametric maps, each of shape ``(nz, ny, nx)``. 
+    m0 : np.ndarray | torch.Tensor
+        Tissue proton density of shape ``(nz, ny, nx)``.
+    
+    Returns
+    -------
+    time_series : np.ndarray | torch.Tensor 
+        Output tsmi of shape ``(ncoeff, nz, ny, nx)``.
 
     """
     # convert quantitative maps to ndarray
@@ -105,6 +122,26 @@ class BlochDictionary:
         self.atoms = self.atoms / self.norm
         self.lookup_table = np.ascontiguousarray(self.lookup_table.transpose())
         self.labels = list(self.labels)
+        
+    def to(self, device):
+        self.atoms = self.atoms.to(device)
+        self.norm = self.norm.to(device)
+        self.lookup_table = self.lookup_table.to(device)
+        return self
+
+
+def _matching(signals, atoms, labels):
+    """
+    performs pattern matching step.
+    """
+    # preallocate
+    cost = np.zeros(signals.shape[0], dtype=np.complex64)
+    idx = np.zeros(signals.shape[0], dtype=int)
+
+    # do actual matching
+    _dot_search(signals, atoms, cost, idx)
+
+    return labels[:, idx], cost, idx
 
 
 @nb.njit(fastmath=True, cache=True)  # pragma: no cover
@@ -130,20 +167,6 @@ def _norm_search(quantitative_maps, lookup_table, idx):
                 idx[n] = p
 
 
-def _matching(signals, atoms, labels):
-    """
-    performs pattern matching step.
-    """
-    # preallocate
-    cost = np.zeros(signals.shape[0], dtype=np.complex64)
-    idx = np.zeros(signals.shape[0], dtype=int)
-
-    # do actual matching
-    _dot_search(signals, atoms, cost, idx)
-
-    return labels[:, idx], cost, idx
-
-
 @nb.njit(fastmath=True, parallel=True)  # pragma: no cover
 def _dot_search(time_series, dictionary, cost, idx):
     for n in nb.prange(time_series.shape[0]):
@@ -163,3 +186,6 @@ def _dot_product(x, y):
         z += x[n] * y[n]
 
     return z
+
+# %% CUDA
+
