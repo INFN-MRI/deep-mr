@@ -13,19 +13,6 @@ user_guide/overview.md
 ```
 -->
 
-<!---
-```{toctree}
-:hidden:
-:maxdepth: 2
-:caption: Tutorials
-
-tutorials/index.md
-tutorials/01-warmup-mri-recon.ipynb
-tutorials/02-dl-mri-recon.ipynb
-
-```
--->
-
 ```{toctree}
 :hidden:
 :caption: Core Modules
@@ -50,6 +37,16 @@ recon/alg.md
 recon/inference.md
 
 ```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Tutorials
+
+auto_examples/index
+
+```
+
 
 ```{toctree}
 :hidden:
