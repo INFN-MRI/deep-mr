@@ -82,8 +82,8 @@ jobs:
     needs: [test, readme]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
       - name: Install dependencies
+        uses: actions/setup-python@v5
         with:
           cache: 'pip'
         run: |
