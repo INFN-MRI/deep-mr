@@ -29,9 +29,17 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx_gallery.gen_gallery",
 ]
 autosummary_generate = True
 autosummary_imported_members = True
+
+intersphinx_mapping = {
+    "numpy": ("http://docs.scipy.org/doc/numpy/", None),
+    "torch": ("https://docs.pytorch.org/2.0/", None),
+    "python": ("https://docs.python.org/3.4", None),
+}
 
 autodoc_mock_imports = [
     "dacite",
@@ -55,6 +63,27 @@ autodoc_mock_imports = [
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+sphinx_gallery_conf = {
+    "examples_dirs": ["../../tutorials/"],
+    "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
+    "filename_pattern": "/demo_",
+    "run_stale_examples": True,
+    "ignore_pattern": r"__init__\.py",
+    "reference_url": {
+        # The module you locally document uses None
+        "sphinx_gallery": None
+    },
+    # directory where function/class granular galleries are stored
+    "backreferences_dir": "gen_modules/backreferences",
+    # Modules for which function/class level galleries are created. In
+    # this case sphinx_gallery and numpy in a tuple of strings.
+    "doc_module": ("deepmr"),
+    # objects to exclude from implicit backreferences. The default option
+    # is an empty set, i.e. exclude nothing.
+    "exclude_implicit_doc": {},
+    "nested_sections": False,
+}
 
 # -- Options for HTML output -------------------------------------------------
 

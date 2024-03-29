@@ -12,7 +12,7 @@ iterative reconstructions as regularizars (aka, PnP reconstruction).
 DeepMR expose denoisers both as ``torch.nn`` objects (to be chained in DL-based reconstructions)
 and functional forms (e.g., for simple standalone denoising).
 
-Currently available denoisers are Wavelet (``WaveletDenoiser``, ``WaveletDictDenoiser`),
+Currently available denoisers are Wavelet (``WaveletDenoiser``, ``WaveletDictDenoiser``),
 Local Low Rank (``LLRDenoiser``) and Total (Generalized) Variation (``TVDenoiser``, ``TGVDenoiser`).
 
 Both ``WaveletDenoiser`` / ``WaveletDictDenoiser`` and ``TVDenoiser`` / ``TGVDenoiser`` are adapted for complex-value inputs from the corresponding [DeepInverse](https://deepinv.github.io/deepinv/) implementations.
