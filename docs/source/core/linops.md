@@ -12,9 +12,7 @@
 	
 	deepmr.linops.SenseOp
 	deepmr.linops.SenseAdjointOp
-
 ```
-
 
 ## FFT
 ```{eval-rst}

@@ -1,6 +1,6 @@
 """Sensitivity coil linear operator."""
 
-__all__ = ["SenseOp", "SenseAdjOp"]
+__all__ = ["SenseOp", "SenseAdjointOp"]
 
 import numpy as np
 import torch
@@ -104,10 +104,10 @@ class SenseOp(base.Linop):
             sensmap = self.sensmap.squeeze(-4)
         if self.multicontrast is False:
             sensmap = self.sensmap
-        return SenseAdjOp(self.ndim, sensmap, self.device, self.multicontrast)
+        return SenseAdjointOp(self.ndim, sensmap, self.device, self.multicontrast)
 
 
-class SenseAdjOp(base.Linop):
+class SenseAdjointOp(base.Linop):
     """
     Perform coil combination.
 

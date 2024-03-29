@@ -19,10 +19,10 @@ from .sparse_fft import *  # noqa
 __all__ = _fft.__all__
 __all__.extend(
     [
-        plan_toeplitz_fft,
-        apply_sparse_fft_selfadj,
-        plan_toeplitz_nufft,
-        apply_nufft_selfadj,
+        "plan_toeplitz_fft",
+        "apply_sparse_fft_selfadj",
+        "plan_toeplitz_nufft",
+        "apply_nufft_selfadj",
     ]
 )
 __all__.extend(["sparse_fft", "sparse_ifft", "nufft", "nufft_adj"])
