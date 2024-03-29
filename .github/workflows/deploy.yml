@@ -1,0 +1,100 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+    types:  [open, synchronize]
+  workflow_dispatch:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+        exclude:
+          - os: windows-latest
+            python-version: "3.9"
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install black black[jupyter] coverage pytest pytest-cov
+    - name: Lint with Black
+      run: black .
+    - name: Test with pytest
+      run: |
+        pytest --doctest-modules --cov .
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: INFN-PREDATOR/deep-mr
+  
+  readme:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - run: sed -i '/<!-- _README:START -->/,/<!-- _README:END -->/d' README.md
+      - run: echo '<!-- _README:START -->' >> README.md
+      - run: cat _README.md >> README.md
+      - run: echo '<!-- _README:END -->' >> README.md
+      - run: git config --global --add safe.directory /github/workspace
+
+      - name: pull-request
+        uses: repo-sync/pull-request@v2
+        with:
+          destination_branch: "main"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: commit
+        run: |
+          git config --global user.email youremail
+          git config --global user.name yourusername
+          git diff --quiet || (git add -A . && git commit -m "README update Automation")
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  docs:
+    runs-on: ubuntu-latest
+    needs: [test, readme]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Install dependencies
+        run: |
+          pip install -r docs/requirements.txt
+          pip install -e .
+      - name: Sphinx build
+        run: |
+          sphinx-build docs/source _build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3.9.3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          force_orphan: true

@@ -1,7 +1,6 @@
 <p align="left">
 <a href="https://www.codefactor.io/repository/github/infn-predator/deep-mr"><img src="https://www.codefactor.io/repository/github/infn-predator/deep-mr/badge" alt="CodeFactor" /></a>
-<a href="https://github.com/INFN-PREDATOR/deep-mr/actions?query=workflow:%22docs%22"><img src="https://github.com/INFN-PREDATOR/deep-mr/workflows/docs/badge.svg" alt="docs"></a>
-<a href="https://github.com/INFN-PREDATOR/deep-mr/actions?query=workflow:%22test%22"><img src="https://github.com/INFN-PREDATOR/deep-mr/workflows/test/badge.svg" alt="test"></a>
+<a href="https://github.com/INFN-PREDATOR/deep-mr/actions?query=workflow:%22CI/CD%22"><img src="https://github.com/INFN-PREDATOR/deep-mr/workflows/CI%2FCD/badge.svg" alt="CI/CD"></a>
 <a href="https://codecov.io/gh/INFN-PREDATOR/deep-mr" ><img src="https://codecov.io/gh/INFN-PREDATOR/deep-mr/graph/badge.svg?token=OCVA8NGK0E"/></a>
 <a href="https://www.linux.org/" title="Go to Linux homepage"><img src="https://img.shields.io/badge/OS-Linux-blue?logo=linux&logoColor=white" alt="OS - Linux"></a>
 <a href="https://www.microsoft.com/" title="Go to Microsoft homepage"><img src="https://img.shields.io/badge/OS-Windows-blue?logo=windows&logoColor=white" alt="OS - Windows"></a>
