@@ -1,7 +1,8 @@
 name: docs
 
-push:
-    branches: [ "main" ]
+on:
+  push:
+      branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workfflow_dispatch:
