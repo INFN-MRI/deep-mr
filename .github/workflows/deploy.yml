@@ -82,11 +82,15 @@ jobs:
     needs: [test, readme]
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           cache: 'pip'
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
           pip install light-the-torch
           ltt install -e .
