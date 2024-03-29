@@ -9,8 +9,11 @@ on:
 
 
 jobs:
-  build:
+  test:
+    uses: ./.github/workflows/ci.yml@main
+  readme:
     runs-on: ubuntu-latest
+    needs : [test]
     steps:
       - name: Checkout source code
         uses: actions/checkout@v2
