@@ -39,7 +39,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install black coverage pytest pytest-cov
+        pip install black black[jupyter] coverage pytest pytest-cov
     - name: Lint with Black
       run: black .
     - name: Test with pytest
