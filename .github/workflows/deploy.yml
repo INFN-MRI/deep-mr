@@ -35,8 +35,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
-        pip install black black[jupyter] coverage pytest pytest-cov
+        pip install light-the-torch black black[jupyter] coverage pytest pytest-cov
+        ltt install -e .
     - name: Lint with Black
       run: black .
     - name: Test with pytest
@@ -84,9 +84,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
       - name: Install dependencies
+        with:
+          cache: 'pip'
         run: |
           pip install -r docs/requirements.txt
-          pip install -e .
+          pip install light-the-torch
+          ltt install -e .
       - name: Sphinx build
         run: |
           sphinx-build docs/source _build
