@@ -7,7 +7,6 @@ on:
     pull_request:
       types:  [open, synchronize]
 
-
 jobs:
   test:
     uses: ./.github/workflows/ci.yml@main

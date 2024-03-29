@@ -1,6 +1,11 @@
-name: documentation
+name: docs
 
-on: [push, pull_request, workflow_dispatch]
+push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workfflow_dispatch:
+    branches: ["main"]
 
 permissions:
   contents: write
