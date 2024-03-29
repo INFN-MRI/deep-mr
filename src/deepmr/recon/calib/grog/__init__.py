@@ -1,7 +1,5 @@
 """GROG Interpolation routines."""
 
-__all__ = ["interpolate", "gridding"]
-
 from . import grogop as _grogop
 
 from .grogop import *  # noqa
