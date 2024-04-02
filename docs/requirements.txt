@@ -4,4 +4,5 @@ sphinx==6.2.1
 sphinx-autoapi 
 sphinx-book-theme
 sphinx-gallery
-nbsphinx 
+nbsphinx
+pandoc
