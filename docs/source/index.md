@@ -38,15 +38,13 @@ recon/inference.md
 
 ```
 
-```{toctree}
+```{nbgallery}
 :hidden:
-:maxdepth: 2
 :caption: Tutorials
 
-auto_examples/index
+tutorials/index.md
 
 ```
-
 
 ```{toctree}
 :hidden:
