@@ -1,0 +1,766 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Virtual Objects &#8212; deepmr  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'core/vobj';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deepmr.shepp_logan" href="generated/deepmr.shepp_logan.html" />
+    <link rel="prev" title="deepmr.bloch.t1sat" href="generated/deepmr.bloch.t1sat.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo.png?raw=true" class="logo__image only-light" alt="deepmr  documentation - Home"/>
+    <script>document.write(`<img src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo_dark.png?raw=true" class="logo__image only-dark" alt="deepmr  documentation - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    DeepMR
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Modules</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="signal.html">Signal Processing</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.resize.html">deepmr.resize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.resample.html">deepmr.resample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fermi.html">deepmr.fermi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.tensor2patches.html">deepmr.tensor2patches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.patches2tensor.html">deepmr.patches2tensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fwt.html">deepmr.fwt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.iwt.html">deepmr.iwt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rss.html">deepmr.rss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.svd.html">deepmr.svd</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="fft.html">Fourier Transform</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.fft.html">deepmr.fft.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.ifft.html">deepmr.fft.ifft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.sparse_fft.html">deepmr.fft.sparse_fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.sparse_ifft.html">deepmr.fft.sparse_ifft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.plan_toeplitz_fft.html">deepmr.fft.plan_toeplitz_fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.apply_sparse_fft_selfadj.html">deepmr.fft.apply_sparse_fft_selfadj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.nufft.html">deepmr.fft.nufft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.nufft_adj.html">deepmr.fft.nufft_adj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.plan_toeplitz_nufft.html">deepmr.fft.plan_toeplitz_nufft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.apply_nufft_selfadj.html">deepmr.fft.apply_nufft_selfadj</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="bloch.html">Bloch Simulation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.mprage.html">deepmr.bloch.mprage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.memprage.html">deepmr.bloch.memprage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.bssfpmrf.html">deepmr.bloch.bssfpmrf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.ssfpmrf.html">deepmr.bloch.ssfpmrf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.fse.html">deepmr.bloch.fse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.t1t2shuffling.html">deepmr.bloch.t1t2shuffling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.InversionPrep.html">deepmr.bloch.InversionPrep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.T2Prep.html">deepmr.bloch.T2Prep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.ExcPulse.html">deepmr.bloch.ExcPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.bSSFPStep.html">deepmr.bloch.bSSFPStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.SSFPFidStep.html">deepmr.bloch.SSFPFidStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.SSFPEchoStep.html">deepmr.bloch.SSFPEchoStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FSEStep.html">deepmr.bloch.FSEStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.EPGstates.html">deepmr.bloch.EPGstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.RFPulse.html">deepmr.bloch.RFPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.AdiabaticPulse.html">deepmr.bloch.AdiabaticPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Relaxation.html">deepmr.bloch.Relaxation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Shift.html">deepmr.bloch.Shift</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Spoil.html">deepmr.bloch.Spoil</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.DiffusionDamping.html">deepmr.bloch.DiffusionDamping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FlowDephasing.html">deepmr.bloch.FlowDephasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FlowWash.html">deepmr.bloch.FlowWash</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.observe.html">deepmr.bloch.observe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.susceptibility.html">deepmr.bloch.susceptibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.t1sat.html">deepmr.bloch.t1sat</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Virtual Objects</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.shepp_logan.html">deepmr.shepp_logan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.brainweb.html">deepmr.brainweb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.custom_phantom.html">deepmr.custom_phantom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.b0field.html">deepmr.b0field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.b1field.html">deepmr.b1field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.sensmap.html">deepmr.sensmap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rigid_motion.html">deepmr.rigid_motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.cartesian2D.html">deepmr.cartesian2D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.cartesian3D.html">deepmr.cartesian3D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial.html">deepmr.radial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial_stack.html">deepmr.radial_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial_proj.html">deepmr.radial_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette.html">deepmr.rosette</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette_stack.html">deepmr.rosette_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette_proj.html">deepmr.rosette_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral.html">deepmr.spiral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral_stack.html">deepmr.spiral_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral_proj.html">deepmr.spiral_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.piecewise_fa.html">deepmr.piecewise_fa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.sinusoidal_fa.html">deepmr.sinusoidal_fa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.phase_cycling.html">deepmr.phase_cycling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rf_spoiling.html">deepmr.rf_spoiling</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="io.html">File Input/Output</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_image.html">deepmr.io.read_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_image.html">deepmr.io.write_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_rawdata.html">deepmr.io.read_rawdata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_acqheader.html">deepmr.io.read_acqheader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_acqheader.html">deepmr.io.write_acqheader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_matfile.html">deepmr.io.read_matfile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_hdf5.html">deepmr.io.read_hdf5</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_hdf5.html">deepmr.io.write_hdf5</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="linops.html">Linear Operators</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.SenseOp.html">deepmr.linops.SenseOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.SenseAdjointOp.html">deepmr.linops.SenseAdjointOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.FFTOp.html">deepmr.linops.FFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.IFFTOp.html">deepmr.linops.IFFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.FFTGramOp.html">deepmr.linops.FFTGramOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTOp.html">deepmr.linops.NUFFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTAdjointOp.html">deepmr.linops.NUFFTAdjointOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTGramOp.html">deepmr.linops.NUFFTGramOp</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="prox.html">Proximal Operators</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.WaveletDenoiser.html">deepmr.prox.WaveletDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.WaveletDictDenoiser.html">deepmr.prox.WaveletDictDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.TVDenoiser.html">deepmr.prox.TVDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.TGVDenoiser.html">deepmr.prox.TGVDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.LLRDenoiser.html">deepmr.prox.LLRDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.wavelet_dict_denoise.html">deepmr.prox.wavelet_dict_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.wavelet_denoise.html">deepmr.prox.wavelet_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.tv_denoise.html">deepmr.prox.tv_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.tgv_denoise.html">deepmr.prox.tgv_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.llr_denoise.html">deepmr.prox.llr_denoise</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="optim.html">Iterative Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.CGStep.html">deepmr.optim.CGStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.ADMMStep.html">deepmr.optim.ADMMStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.PGDStep.html">deepmr.optim.PGDStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.cg_solve.html">deepmr.optim.cg_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.admm_solve.html">deepmr.optim.admm_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.pgd_solve.html">deepmr.optim.pgd_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.power_method.html">deepmr.optim.power_method</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">MR Reconstruction</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/calib.html">Reconstruction Preprocessing</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.intensity_scaling.html">deepmr.recon.intensity_scaling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.espirit_cal.html">deepmr.recon.espirit_cal</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/alg.html">Image Reconstructors</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.EncodingOp.html">deepmr.recon.EncodingOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.recon_lstsq.html">deepmr.recon.recon_lstsq</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/inference.html">Parametric Mapping</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.mpnrage_fit.html">deepmr.recon.mpnrage_fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.fse_fit.html">deepmr.recon.fse_fit</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Basics</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/demo_basics.html">Basic operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/demo_linops.html">Linear Operators</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Miscellaneous</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc/conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc/contributing.html">Contributing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr/edit/main/core/vobj.md" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr/issues/new?title=Issue%20on%20page%20%2Fcore/vobj.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/core/vobj.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<label class="sidebar-toggle secondary-toggle btn btn-sm" for="__secondary"title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</label>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Virtual Objects</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phantoms">Phantoms</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fields">Fields</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#non-idealities">Non-idealities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sampling">Sampling</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#trains">Trains</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-deepmr._vobj">
+<span id="virtual-objects"></span><h1>Virtual Objects<a class="headerlink" href="#module-deepmr._vobj" title="Permalink to this heading">#</a></h1>
+<p>Sub-package containing virtual objects generation routines.</p>
+<p>DeepMR contains tools to simulate MR experiments for development and testing.
+These tools include numerical phantoms, B0 and B1+ field generators,
+random rigid motion generation routines and sampling trajectories (Cartesian and Non-Cartesian).</p>
+<section id="phantoms">
+<h2>Phantoms<a class="headerlink" href="#phantoms" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.shepp_logan.html#deepmr.shepp_logan" title="deepmr.shepp_logan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.shepp_logan</span></code></a></p></td>
+<td><p>Initialize numerical phantom for MR simulations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.brainweb.html#deepmr.brainweb" title="deepmr.brainweb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.brainweb</span></code></a></p></td>
+<td><p>Initialize a brain-shaped phantom for MR simulations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.custom_phantom.html#deepmr.custom_phantom" title="deepmr.custom_phantom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.custom_phantom</span></code></a></p></td>
+<td><p>Initialize numerical phantom for MR simulations from user-provided segmentation.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="fields">
+<h2>Fields<a class="headerlink" href="#fields" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.b0field.html#deepmr.b0field" title="deepmr.b0field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.b0field</span></code></a></p></td>
+<td><p>Simulate inhomogeneous B0 fields.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.b1field.html#deepmr.b1field" title="deepmr.b1field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.b1field</span></code></a></p></td>
+<td><p>Simulate inhomogeneous B1+ fields.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.sensmap.html#deepmr.sensmap" title="deepmr.sensmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.sensmap</span></code></a></p></td>
+<td><p>Simulate birdcage coils.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="non-idealities">
+<h2>Non-idealities<a class="headerlink" href="#non-idealities" title="Permalink to this heading">#</a></h2>
+<p>Miscellaneous non-idealities generation routines (e.g., motion patterns).</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.rigid_motion.html#deepmr.rigid_motion" title="deepmr.rigid_motion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.rigid_motion</span></code></a></p></td>
+<td><p>Generate rigid motion pattern as a Markov Chain process.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sampling">
+<h2>Sampling<a class="headerlink" href="#sampling" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.cartesian2D.html#deepmr.cartesian2D" title="deepmr.cartesian2D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.cartesian2D</span></code></a></p></td>
+<td><p>Design a 2D (+t) cartesian encoding scheme.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.cartesian3D.html#deepmr.cartesian3D" title="deepmr.cartesian3D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.cartesian3D</span></code></a></p></td>
+<td><p>Design a 3D (+t) cartesian encoding scheme.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.radial.html#deepmr.radial" title="deepmr.radial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.radial</span></code></a></p></td>
+<td><p>Design a radial trajectory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.radial_stack.html#deepmr.radial_stack" title="deepmr.radial_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.radial_stack</span></code></a></p></td>
+<td><p>Design a stack-of-stars trajectory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.radial_proj.html#deepmr.radial_proj" title="deepmr.radial_proj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.radial_proj</span></code></a></p></td>
+<td><p>Design a 3D radial projectiontrajectory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.rosette.html#deepmr.rosette" title="deepmr.rosette"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.rosette</span></code></a></p></td>
+<td><p>Design a rosette trajectory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.rosette_stack.html#deepmr.rosette_stack" title="deepmr.rosette_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.rosette_stack</span></code></a></p></td>
+<td><p>Design a stack-of-rosettes trajectory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.rosette_proj.html#deepmr.rosette_proj" title="deepmr.rosette_proj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.rosette_proj</span></code></a></p></td>
+<td><p>Design a 3D rosette projection trajectory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.spiral.html#deepmr.spiral" title="deepmr.spiral"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.spiral</span></code></a></p></td>
+<td><p>Design a constant- or multi-density spiral.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.spiral_stack.html#deepmr.spiral_stack" title="deepmr.spiral_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.spiral_stack</span></code></a></p></td>
+<td><p>Design a constant- or multi-density stack of spirals.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.spiral_proj.html#deepmr.spiral_proj" title="deepmr.spiral_proj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.spiral_proj</span></code></a></p></td>
+<td><p>Design a constant- or multi-density spiral projection.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="trains">
+<h2>Trains<a class="headerlink" href="#trains" title="Permalink to this heading">#</a></h2>
+<p>Variable parameters (e.g., flip angle, rf phase, echo time) train generators.</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.piecewise_fa.html#deepmr.piecewise_fa" title="deepmr.piecewise_fa"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.piecewise_fa</span></code></a></p></td>
+<td><p>Design a multi-segment linear flip angle train.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.sinusoidal_fa.html#deepmr.sinusoidal_fa" title="deepmr.sinusoidal_fa"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.sinusoidal_fa</span></code></a></p></td>
+<td><p>Design a multi-segment sinusoidal flip angle train.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.phase_cycling.html#deepmr.phase_cycling" title="deepmr.phase_cycling"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.phase_cycling</span></code></a></p></td>
+<td><p>Generate a linear phase cycling scheme.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.rf_spoiling.html#deepmr.rf_spoiling" title="deepmr.rf_spoiling"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.rf_spoiling</span></code></a></p></td>
+<td><p>Generate a quadratic phase cycling scheme for rf spoiling or partial spoiling.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="generated/deepmr.bloch.t1sat.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">deepmr.bloch.t1sat</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="generated/deepmr.shepp_logan.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">deepmr.shepp_logan</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phantoms">Phantoms</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fields">Fields</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#non-idealities">Non-idealities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sampling">Sampling</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#trains">Trains</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Matteo Cencini
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2023, Matteo Cencini.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,834 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Bloch Simulation &#8212; deepmr  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'core/bloch';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deepmr.bloch.mprage" href="generated/deepmr.bloch.mprage.html" />
+    <link rel="prev" title="deepmr.fft.apply_nufft_selfadj" href="generated/deepmr.fft.apply_nufft_selfadj.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo.png?raw=true" class="logo__image only-light" alt="deepmr  documentation - Home"/>
+    <script>document.write(`<img src="https://github.com/INFN-PREDATOR/deep-mr/blob/main/docs/source/figures/deepmr_logo_dark.png?raw=true" class="logo__image only-dark" alt="deepmr  documentation - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    DeepMR
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Modules</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="signal.html">Signal Processing</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.resize.html">deepmr.resize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.resample.html">deepmr.resample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fermi.html">deepmr.fermi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.tensor2patches.html">deepmr.tensor2patches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.patches2tensor.html">deepmr.patches2tensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fwt.html">deepmr.fwt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.iwt.html">deepmr.iwt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rss.html">deepmr.rss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.svd.html">deepmr.svd</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="fft.html">Fourier Transform</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.fft.html">deepmr.fft.fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.ifft.html">deepmr.fft.ifft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.sparse_fft.html">deepmr.fft.sparse_fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.sparse_ifft.html">deepmr.fft.sparse_ifft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.plan_toeplitz_fft.html">deepmr.fft.plan_toeplitz_fft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.apply_sparse_fft_selfadj.html">deepmr.fft.apply_sparse_fft_selfadj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.nufft.html">deepmr.fft.nufft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.nufft_adj.html">deepmr.fft.nufft_adj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.plan_toeplitz_nufft.html">deepmr.fft.plan_toeplitz_nufft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.fft.apply_nufft_selfadj.html">deepmr.fft.apply_nufft_selfadj</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Bloch Simulation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.mprage.html">deepmr.bloch.mprage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.memprage.html">deepmr.bloch.memprage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.bssfpmrf.html">deepmr.bloch.bssfpmrf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.ssfpmrf.html">deepmr.bloch.ssfpmrf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.fse.html">deepmr.bloch.fse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.t1t2shuffling.html">deepmr.bloch.t1t2shuffling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.InversionPrep.html">deepmr.bloch.InversionPrep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.T2Prep.html">deepmr.bloch.T2Prep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.ExcPulse.html">deepmr.bloch.ExcPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.bSSFPStep.html">deepmr.bloch.bSSFPStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.SSFPFidStep.html">deepmr.bloch.SSFPFidStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.SSFPEchoStep.html">deepmr.bloch.SSFPEchoStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FSEStep.html">deepmr.bloch.FSEStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.EPGstates.html">deepmr.bloch.EPGstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.RFPulse.html">deepmr.bloch.RFPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.AdiabaticPulse.html">deepmr.bloch.AdiabaticPulse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Relaxation.html">deepmr.bloch.Relaxation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Shift.html">deepmr.bloch.Shift</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.Spoil.html">deepmr.bloch.Spoil</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.DiffusionDamping.html">deepmr.bloch.DiffusionDamping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FlowDephasing.html">deepmr.bloch.FlowDephasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.FlowWash.html">deepmr.bloch.FlowWash</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.observe.html">deepmr.bloch.observe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.susceptibility.html">deepmr.bloch.susceptibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.bloch.t1sat.html">deepmr.bloch.t1sat</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="vobj.html">Virtual Objects</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.shepp_logan.html">deepmr.shepp_logan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.brainweb.html">deepmr.brainweb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.custom_phantom.html">deepmr.custom_phantom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.b0field.html">deepmr.b0field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.b1field.html">deepmr.b1field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.sensmap.html">deepmr.sensmap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rigid_motion.html">deepmr.rigid_motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.cartesian2D.html">deepmr.cartesian2D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.cartesian3D.html">deepmr.cartesian3D</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial.html">deepmr.radial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial_stack.html">deepmr.radial_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.radial_proj.html">deepmr.radial_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette.html">deepmr.rosette</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette_stack.html">deepmr.rosette_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rosette_proj.html">deepmr.rosette_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral.html">deepmr.spiral</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral_stack.html">deepmr.spiral_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.spiral_proj.html">deepmr.spiral_proj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.piecewise_fa.html">deepmr.piecewise_fa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.sinusoidal_fa.html">deepmr.sinusoidal_fa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.phase_cycling.html">deepmr.phase_cycling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.rf_spoiling.html">deepmr.rf_spoiling</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="io.html">File Input/Output</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_image.html">deepmr.io.read_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_image.html">deepmr.io.write_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_rawdata.html">deepmr.io.read_rawdata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_acqheader.html">deepmr.io.read_acqheader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_acqheader.html">deepmr.io.write_acqheader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_matfile.html">deepmr.io.read_matfile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.read_hdf5.html">deepmr.io.read_hdf5</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.io.write_hdf5.html">deepmr.io.write_hdf5</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="linops.html">Linear Operators</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.SenseOp.html">deepmr.linops.SenseOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.SenseAdjointOp.html">deepmr.linops.SenseAdjointOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.FFTOp.html">deepmr.linops.FFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.IFFTOp.html">deepmr.linops.IFFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.FFTGramOp.html">deepmr.linops.FFTGramOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTOp.html">deepmr.linops.NUFFTOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTAdjointOp.html">deepmr.linops.NUFFTAdjointOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.linops.NUFFTGramOp.html">deepmr.linops.NUFFTGramOp</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="prox.html">Proximal Operators</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.WaveletDenoiser.html">deepmr.prox.WaveletDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.WaveletDictDenoiser.html">deepmr.prox.WaveletDictDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.TVDenoiser.html">deepmr.prox.TVDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.TGVDenoiser.html">deepmr.prox.TGVDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.LLRDenoiser.html">deepmr.prox.LLRDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.wavelet_dict_denoise.html">deepmr.prox.wavelet_dict_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.wavelet_denoise.html">deepmr.prox.wavelet_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.tv_denoise.html">deepmr.prox.tv_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.tgv_denoise.html">deepmr.prox.tgv_denoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.prox.llr_denoise.html">deepmr.prox.llr_denoise</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="optim.html">Iterative Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.CGStep.html">deepmr.optim.CGStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.ADMMStep.html">deepmr.optim.ADMMStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.PGDStep.html">deepmr.optim.PGDStep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.cg_solve.html">deepmr.optim.cg_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.admm_solve.html">deepmr.optim.admm_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.pgd_solve.html">deepmr.optim.pgd_solve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/deepmr.optim.power_method.html">deepmr.optim.power_method</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">MR Reconstruction</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/calib.html">Reconstruction Preprocessing</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.intensity_scaling.html">deepmr.recon.intensity_scaling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.espirit_cal.html">deepmr.recon.espirit_cal</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/alg.html">Image Reconstructors</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.EncodingOp.html">deepmr.recon.EncodingOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.recon_lstsq.html">deepmr.recon.recon_lstsq</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../recon/inference.html">Parametric Mapping</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.mpnrage_fit.html">deepmr.recon.mpnrage_fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../recon/generated/deepmr.recon.fse_fit.html">deepmr.recon.fse_fit</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Basics</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/demo_basics.html">Basic operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/demo_linops.html">Linear Operators</a></li>
+</ul>
+</li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Miscellaneous</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc/conduct.html">Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc/contributing.html">Contributing</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr/edit/main/core/bloch.md" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/INFN-PREDATOR/deep-mr/issues/new?title=Issue%20on%20page%20%2Fcore/bloch.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/core/bloch.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<label class="sidebar-toggle secondary-toggle btn btn-sm" for="__secondary"title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</label>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Bloch Simulation</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numerical-models">Numerical Models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-signal-models">Custom signal models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sequence-blocks">Sequence Blocks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#low-level-operators">Low-level Operators</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-deepmr.bloch">
+<span id="bloch-simulation"></span><h1>Bloch Simulation<a class="headerlink" href="#module-deepmr.bloch" title="Permalink to this heading">#</a></h1>
+<p>Sub-package containing Bloch simulation routines.</p>
+<p>Include MR simulation routines for common sequences based on Extended Phase Graphs [1, 2].
+Currently provided models include MPRAGE, Multiecho MPRAGE (ME-MPRAGE), Fast Spin Echo (FSE)
+and T1-T2 Shuffling and balanced / unbalanced MR Fingerprinting.</p>
+<p class="rubric">References</p>
+<p>[1] Weigel, M. (2015),
+Extended phase graphs: Dephasing, RF pulses, and echoes - pure and simple.
+J. Magn. Reson. Imaging, 41: 266-295. <a class="reference external" href="https://doi.org/10.1002/jmri.24619">https://doi.org/10.1002/jmri.24619</a></p>
+<p>[2] Malik, S.J., Teixeira, R.P.A.G. and Hajnal, J.V. (2018),
+Extended phase graph formalism for systems with magnetization transfer and exchange.
+Magn. Reson. Med., 80: 767-779. <a class="reference external" href="https://doi.org/10.1002/mrm.27040">https://doi.org/10.1002/mrm.27040</a></p>
+<section id="numerical-models">
+<h2>Numerical Models<a class="headerlink" href="#numerical-models" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.mprage.html#deepmr.bloch.mprage" title="deepmr.bloch.mprage"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.mprage</span></code></a></p></td>
+<td><p>Simulate a Magnetization Prepared (MP) Rapid Gradient Echo sequence.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.memprage.html#deepmr.bloch.memprage" title="deepmr.bloch.memprage"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.memprage</span></code></a></p></td>
+<td><p>Simulate a Multi-Echo Magnetization Prepared (MP) Rapid Gradient Echo sequence.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.bssfpmrf.html#deepmr.bloch.bssfpmrf" title="deepmr.bloch.bssfpmrf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.bssfpmrf</span></code></a></p></td>
+<td><p>Simulate an inversion-prepared bSSFP sequence with variable flip angles.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.ssfpmrf.html#deepmr.bloch.ssfpmrf" title="deepmr.bloch.ssfpmrf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.ssfpmrf</span></code></a></p></td>
+<td><p>Simulate an inversion-prepared SSFP sequence with variable flip angles.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.fse.html#deepmr.bloch.fse" title="deepmr.bloch.fse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.fse</span></code></a></p></td>
+<td><p>Simulate a Fast Spin Echo sequence.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.t1t2shuffling.html#deepmr.bloch.t1t2shuffling" title="deepmr.bloch.t1t2shuffling"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.t1t2shuffling</span></code></a></p></td>
+<td><p>Simulate a T1T2Shuffling Spin Echo sequence.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="custom-signal-models">
+<h2>Custom signal models<a class="headerlink" href="#custom-signal-models" title="Permalink to this heading">#</a></h2>
+<p>DeepMR also contains helper classes to define custom signal models. The main class for analytical and numerical models are <code class="docutils literal notranslate"><span class="pre">deepmr.bloch.AnalyticalSimulator</span></code>
+and <code class="docutils literal notranslate"><span class="pre">deepmr.bloch.EPGSimulator</span></code>, respectively.</p>
+<p>Users can define a custom signal model by subclassing it and overloading <code class="docutils literal notranslate"><span class="pre">sequence</span></code> method. Base class already handle spin parameters (e.g., <code class="docutils literal notranslate"><span class="pre">T1</span></code>, <code class="docutils literal notranslate"><span class="pre">T2</span></code>, …)
+as well as simulation properties (e.g., computational <code class="docutils literal notranslate"><span class="pre">device</span></code>, maximum <code class="docutils literal notranslate"><span class="pre">number</span> <span class="pre">of</span> <span class="pre">batches</span></code>…) so the user has only to care about specific sequence arguments (e.g., <code class="docutils literal notranslate"><span class="pre">flip</span> <span class="pre">angle</span></code>, <code class="docutils literal notranslate"><span class="pre">TR</span></code>, … for GRE or <code class="docutils literal notranslate"><span class="pre">flip</span> <span class="pre">angle</span></code>, <code class="docutils literal notranslate"><span class="pre">ETL</span></code>, for FSE). In order to work properly, <code class="docutils literal notranslate"><span class="pre">sequence</span></code> method must be a <code class="docutils literal notranslate"><span class="pre">staticmethod</span></code> and the arguments must follow this order:</p>
+<ol class="arabic simple">
+<li><p>sequence parameters (<code class="docutils literal notranslate"><span class="pre">flip</span> <span class="pre">angle</span></code>, <code class="docutils literal notranslate"><span class="pre">TE</span></code>, <code class="docutils literal notranslate"><span class="pre">TR</span></code>, <code class="docutils literal notranslate"><span class="pre">nrepetitions</span></code>, …)</p></li>
+<li><p>spin parameters (<code class="docutils literal notranslate"><span class="pre">T1</span></code>, <code class="docutils literal notranslate"><span class="pre">T2</span></code>, <code class="docutils literal notranslate"><span class="pre">B1</span></code>, …)</p></li>
+<li><p>(mandatory) buffer for output signal (analytical) or EPG states and output signal (numerical):  <code class="docutils literal notranslate"><span class="pre">signal</span></code> / <code class="docutils literal notranslate"> <span class="pre">states</span></code>, <code class="docutils literal notranslate"><span class="pre">signal</span></code></p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">deepmr</span> <span class="kn">import</span> <span class="n">bloch</span>
+<span class="kn">from</span> <span class="nn">deepmr.bloch</span> <span class="kn">import</span> <span class="n">ops</span>
+
+<span class="k">class</span> <span class="nc">SSFP</span><span class="p">(</span><span class="n">bloch</span><span class="o">.</span><span class="n">EPGSimulator</span><span class="p">):</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">signal</span><span class="p">(</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="p">,</span> <span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">signal</span><span class="p">):</span>
+
+        <span class="c1"># get device and sequence length</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">flip</span><span class="o">.</span><span class="n">device</span>
+        <span class="n">npulses</span> <span class="o">=</span> <span class="n">flip</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># define operators</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">ops</span><span class="o">.</span><span class="n">RFPulse</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">flip</span><span class="p">)</span> <span class="c1"># RF pulse</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="n">ops</span><span class="o">.</span><span class="n">Relaxation</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">TR</span><span class="p">,</span> <span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">)</span> <span class="c1"># relaxation until TR</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">ops</span><span class="o">.</span><span class="n">Shift</span><span class="p">()</span> <span class="c1"># gradient spoil</span>
+
+        <span class="c1"># apply sequence</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">npulses</span><span class="p">):</span>
+            <span class="n">states</span> <span class="o">=</span> <span class="n">T</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+            <span class="n">signal</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">ops</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+            <span class="n">states</span> <span class="o">=</span> <span class="n">E</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+            <span class="n">states</span> <span class="o">=</span> <span class="n">S</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+
+            <span class="c1"># return output</span>
+            <span class="k">return</span> <span class="n">signal</span>
+</pre></div>
+</div>
+<p>The resulting class can be used to perform simulation by instantiating an object (spin properties as input)and using the <code class="docutils literal notranslate"><span class="pre">__call__</span></code> method (sequence properties as input):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ssfp</span> <span class="o">=</span> <span class="n">SSFP</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">T1</span><span class="o">=</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="o">=</span><span class="n">T2</span><span class="p">)</span> <span class="c1"># build simulator</span>
+<span class="n">signal</span> <span class="o">=</span> <span class="n">ssfp</span><span class="p">(</span><span class="n">flip</span><span class="o">=</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="o">=</span><span class="n">TR</span><span class="p">)</span> <span class="c1"># run simulation</span>
+</pre></div>
+</div>
+<p>For convenience, simulator instantiation and actual simulation can (and should) be wrapped in a wrapper function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simulate_ssfp</span><span class="p">(</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="p">,</span> <span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+    <span class="n">mysim</span> <span class="o">=</span> <span class="n">SSFP</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">T1</span><span class="o">=</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="o">=</span><span class="n">T2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ssfp</span><span class="p">(</span><span class="n">flip</span><span class="o">=</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="o">=</span><span class="n">TR</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The class also enable automatic forward differentiation wrt to input spin parameters via <code class="docutils literal notranslate"><span class="pre">diff</span></code> argument:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">simulate_ssfp</span><span class="p">(</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="p">,</span> <span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">,</span> <span class="n">diff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+	<span class="n">ssfp</span> <span class="o">=</span> <span class="n">SSFP</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">T1</span><span class="o">=</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="o">=</span><span class="n">T2</span><span class="p">,</span> <span class="n">diff</span><span class="o">=</span><span class="n">diff</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">ssfp</span><span class="p">(</span><span class="n">flip</span><span class="o">=</span><span class="n">flip</span><span class="p">,</span> <span class="n">TR</span><span class="o">=</span><span class="n">TR</span><span class="p">)</span>
+
+<span class="c1"># this will return signal only (evolution towards steady state of unbalanced SSFP sequence)</span>
+<span class="n">signal</span> <span class="o">=</span> <span class="n">simulate_ssfp</span><span class="p">(</span><span class="n">flip</span><span class="o">=</span><span class="mf">10.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">TR</span><span class="o">=</span><span class="mf">4.5</span><span class="p">,</span> <span class="n">T1</span><span class="o">=</span><span class="mf">500.0</span><span class="p">,</span> <span class="n">T2</span><span class="o">=</span><span class="mf">50.0</span><span class="p">)</span>
+
+<span class="c1"># this will also return derivatives</span>
+<span class="n">signal</span><span class="p">,</span> <span class="n">dsignal</span> <span class="o">=</span> <span class="n">simulate_ssfp</span><span class="p">(</span><span class="n">flip</span><span class="o">=</span><span class="mf">10.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">TR</span><span class="o">=</span><span class="mf">8.5</span><span class="p">,</span> <span class="n">T1</span><span class="o">=</span><span class="mf">500.0</span><span class="p">,</span> <span class="n">T2</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span> <span class="n">diff</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;T1&quot;</span><span class="p">,</span> <span class="s2">&quot;T2&quot;</span><span class="p">))</span>
+
+<span class="c1"># dsignal[0] = dsignal / dT1 (derivative of signal wrt T1)</span>
+<span class="c1"># dsignal[1] = dsignal / dT2 (derivative of signal wrt T2)</span>
+</pre></div>
+</div>
+<p>This is useful e.g. for nonlinear fitting and for calculating objective functions (CRLB) for sequence optimization.</p>
+<p>To facilitate the development of signal models, we include basic sequence building blocks (e.g., Inversion Preparation, SSFP Propagator) and low-level Extended Phase Graphs operators:</p>
+</section>
+<section id="sequence-blocks">
+<h2>Sequence Blocks<a class="headerlink" href="#sequence-blocks" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.InversionPrep.html#deepmr.bloch.InversionPrep" title="deepmr.bloch.InversionPrep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.InversionPrep</span></code></a></p></td>
+<td><p>Adiabatic inversion operator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.T2Prep.html#deepmr.bloch.T2Prep" title="deepmr.bloch.T2Prep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.T2Prep</span></code></a></p></td>
+<td><p>T2 prep operator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.ExcPulse.html#deepmr.bloch.ExcPulse" title="deepmr.bloch.ExcPulse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.ExcPulse</span></code></a></p></td>
+<td><p>RF operator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.bSSFPStep.html#deepmr.bloch.bSSFPStep" title="deepmr.bloch.bSSFPStep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.bSSFPStep</span></code></a></p></td>
+<td><p>(Balanced) SSFP propagator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.SSFPFidStep.html#deepmr.bloch.SSFPFidStep" title="deepmr.bloch.SSFPFidStep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.SSFPFidStep</span></code></a></p></td>
+<td><p>(Unbalanced) SSFP propagator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.SSFPEchoStep.html#deepmr.bloch.SSFPEchoStep" title="deepmr.bloch.SSFPEchoStep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.SSFPEchoStep</span></code></a></p></td>
+<td><p>(Reverse) SSFP propagator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.FSEStep.html#deepmr.bloch.FSEStep" title="deepmr.bloch.FSEStep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.FSEStep</span></code></a></p></td>
+<td><p>(Unbalanced) SSFP propagator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="low-level-operators">
+<h2>Low-level Operators<a class="headerlink" href="#low-level-operators" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.EPGstates.html#deepmr.bloch.EPGstates" title="deepmr.bloch.EPGstates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.EPGstates</span></code></a></p></td>
+<td><p>EPG states matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.RFPulse.html#deepmr.bloch.RFPulse" title="deepmr.bloch.RFPulse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.RFPulse</span></code></a></p></td>
+<td><p>Operator representing a RF pulse.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.AdiabaticPulse.html#deepmr.bloch.AdiabaticPulse" title="deepmr.bloch.AdiabaticPulse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.AdiabaticPulse</span></code></a></p></td>
+<td><p>Operator representing an adiabatic RF pulse.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.Relaxation.html#deepmr.bloch.Relaxation" title="deepmr.bloch.Relaxation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.Relaxation</span></code></a></p></td>
+<td><p>The &quot;decay operator&quot; applying relaxation and &quot;regrowth&quot; of the magnetization components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.Shift.html#deepmr.bloch.Shift" title="deepmr.bloch.Shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.Shift</span></code></a></p></td>
+<td><p>Perform shift operator corrsesponding to a 2npi dephasing of the magnetization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.Spoil.html#deepmr.bloch.Spoil" title="deepmr.bloch.Spoil"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.Spoil</span></code></a></p></td>
+<td><p>Non-physical spoiling operator that zeros all transverse states.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.DiffusionDamping.html#deepmr.bloch.DiffusionDamping" title="deepmr.bloch.DiffusionDamping"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.DiffusionDamping</span></code></a></p></td>
+<td><p>Simulate diffusion effects by state dependent damping of the coefficients.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.FlowDephasing.html#deepmr.bloch.FlowDephasing" title="deepmr.bloch.FlowDephasing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.FlowDephasing</span></code></a></p></td>
+<td><p>Simulate state dependent phase accrual of the EPG coefficients due to flow.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.FlowWash.html#deepmr.bloch.FlowWash" title="deepmr.bloch.FlowWash"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.FlowWash</span></code></a></p></td>
+<td><p>Simulate EPG states replacement due to flow.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.observe.html#deepmr.bloch.observe" title="deepmr.bloch.observe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.observe</span></code></a></p></td>
+<td><p>Store observable magnetization.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/deepmr.bloch.susceptibility.html#deepmr.bloch.susceptibility" title="deepmr.bloch.susceptibility"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.susceptibility</span></code></a></p></td>
+<td><p>Apply static susceptibility effects (bulk decay and dephasing).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/deepmr.bloch.t1sat.html#deepmr.bloch.t1sat" title="deepmr.bloch.t1sat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deepmr.bloch.t1sat</span></code></a></p></td>
+<td><p>Apply t1 saturation effect.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="generated/deepmr.fft.apply_nufft_selfadj.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">deepmr.fft.apply_nufft_selfadj</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="generated/deepmr.bloch.mprage.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">deepmr.bloch.mprage</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numerical-models">Numerical Models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-signal-models">Custom signal models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sequence-blocks">Sequence Blocks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#low-level-operators">Low-level Operators</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Matteo Cencini
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2023, Matteo Cencini.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
