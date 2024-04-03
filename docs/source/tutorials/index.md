@@ -1,6 +1,6 @@
 # Basics 
 
 ```{nbgallery}
-../../../tutorials/basics/demo_basics.ipynb
-../../../tutorials/basics/demo_linops.ipynb
+../../../tutorials/demo_basics.ipynb
+../../../tutorials/demo_linops.ipynb
 ```
