@@ -5,4 +5,5 @@ sphinx-autoapi
 sphinx-book-theme
 sphinx-gallery
 nbsphinx
-pandoc
+pypandoc_binary
+light-the-torch
