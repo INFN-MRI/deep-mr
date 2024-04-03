@@ -109,7 +109,7 @@ def _find_cart_acs(kspace):
         kspace = torch.as_tensor(kspace, device=device, dtype=torch.complex64)
 
     kspace = kspace.swapaxes(0, 1)  # (ncoils, nz, ny, nx)
-    kspace = _fft.fft(kspace, axes=(1))
+    kspace = _fft.fft(kspace, axes=(1,))
 
     return kspace
 

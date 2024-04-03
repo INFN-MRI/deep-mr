@@ -100,7 +100,7 @@ def apply_interpolation(
     )
 
     # do actual interpolation
-    if device == "cpu":
+    if device == "cpu" or device == torch.device("cpu"):
         do_interpolation[ndim - 1](data_out, data_in, value, index, basis_adjoint)
     else:
         do_interpolation_cuda[ndim - 1](

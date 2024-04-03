@@ -69,7 +69,7 @@ def apply_toeplitz(
         ).contiguous()  # (nvoxels, nbatches, ncontrasts)
 
         # actual interpolation
-        if toeplitz_kernel.device == "cpu":
+        if toeplitz_kernel.device == "cpu" or toeplitz_kernel.device == torch.device("cpu"):
             do_selfadjoint_interpolation(data_out, data_in, toeplitz_kernel.value)
         else:
             do_selfadjoint_interpolation_cuda(

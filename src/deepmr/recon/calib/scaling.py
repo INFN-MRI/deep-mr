@@ -21,7 +21,7 @@ def intensity_scaling(input, ndim):
         Input signal of shape ``(..., ny, nx)`` (2D) or
         ``(..., nz, ny, nx)`` (3D).
     ndim : int, optional
-        PNumber of spatial dimensions.
+        Number of spatial dimensions.
 
     Returns
     -------

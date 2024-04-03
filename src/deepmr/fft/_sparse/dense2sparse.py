@@ -96,7 +96,7 @@ def apply_sampling(data_in, mask, basis_adjoint=None, device=None, threadsperblo
     )
 
     # do actual sampling
-    if device == "cpu":
+    if device == "cpu" or device == torch.device("cpu"):
         do_sampling[ndim - 1](data_out, data_in, index, basis_adjoint)
     else:
         do_sampling_cuda[ndim - 1](

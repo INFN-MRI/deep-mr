@@ -102,7 +102,7 @@ def apply_zerofill(data_in, mask, basis=None, device=None, threadsperblock=128):
     )
 
     # do actual zerofill
-    if device == "cpu":
+    if device == "cpu" or device == torch.device("cpu"):
         do_zerofill[ndim - 1](data_out, data_in, index, basis)
     else:
         do_zerofill_cuda[ndim - 1](data_out, data_in, index, basis, threadsperblock)

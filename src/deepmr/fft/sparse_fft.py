@@ -38,8 +38,7 @@ def prepare_sampling(indexes, shape, device="cpu"):
     interpolator : dict
         Structure containing sparse interpolator matrix:
 
-            * index (``torch.Tensor[int]``): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
-            * value (``torch.Tensor[float32]``): values of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord, width).
+            * index (``torch.Tensor[int]``): indexes of the non-zero entries of interpolator sparse matrix of shape (ndim, ncoord).
             * dshape (``Iterable[int]``): oversample grid shape of shape (ndim,). Order of axes is (z, y, x).
             * ishape (``Iterable[int]``): interpolator shape (ncontrasts, nview, nsamples)
             * ndim (``int``): number of spatial dimensions.
@@ -76,9 +75,8 @@ def plan_toeplitz_fft(coord, shape, basis=None, device="cpu"):
     Parameters
     ----------
     coord : torch.Tensor
-        K-space coordinates of shape ``(ncontrasts, nviews, nsamples, ndims)``.
-        Coordinates must be normalized between ``(-0.5 * shape[i], 0.5 * shape[i])``,
-        with ``i = (z, y, x)``.
+        Sampled k-space locations of shape ``(ncontrasts, nviews, nsamples, ndims)``.
+        Indexes must be between ``(0, shape[i])``, with ``i = (z, y, x)``.
     shape : int | Iterable[int]
         Oversampled grid size of shape ``(ndim,)``.
         If scalar, isotropic matrix is assumed.

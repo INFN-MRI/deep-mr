@@ -9,13 +9,12 @@ import numba as nb
 
 import torch
 
-import scipy
 
 from ...._utils import backend
 
 
 def grog_interp(
-    input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, threadsperblock=128
+    input, calib, coord, shape, lamda=0.01, nsteps=11, device=None, threadsperblock=128,
 ):
     """
     GRAPPA Operator Gridding (GROP) interpolation of Non-Cartesian datasets.
@@ -92,8 +91,8 @@ def grog_interp(
     ndim = coord.shape[-1]
 
     # get grappa operator
-    kern = _calc_grappaop(calib, ndim, lamda)
-
+    kern = _calc_grappaop(calib, ndim, lamda, device)
+        
     # get coord shape
     cshape = coord.shape
 
@@ -110,13 +109,14 @@ def grog_interp(
     )  # (nslices, nsamples, ncoils) or (nsamples, ncoils)
 
     # perform product
-    deltas = (np.arange(nsteps) - (nsteps - 1) // 2) / (nsteps - 1)
+    deltas = (torch.arange(nsteps) - (nsteps - 1) // 2) / (nsteps - 1)
 
     # get Gx, Gy, Gz
-    Gx = _weight_grid(kern.Gx, deltas)  # (nslices, nsteps, nc, nc)
-    Gy = _weight_grid(kern.Gy, deltas)  # (nslices, nsteps, nc, nc)
+    Gx = _weight_grid(kern.Gx, deltas)  # 2D: (nsteps, nslices, nc, nc); 3D: (nsteps, nc, nc)
+    Gy = _weight_grid(kern.Gy, deltas)  # 2D: (nsteps, nslices, nc, nc); 3D: (nsteps, nc, nc)
+    
     if ndim == 3:
-        Gz = _weight_grid(kern.Gz, deltas)  # (nslices, nsteps, nc, nc)
+        Gz = _weight_grid(kern.Gz, deltas)  # (nsteps, nc, nc), 3D only
     else:
         Gz = None
 
@@ -124,26 +124,26 @@ def grog_interp(
     if ndim == 2:
         Gx = Gx[None, ...]
         Gy = Gy[:, None, ...]
-        Gx = np.repeat(Gx, nsteps, axis=0)
-        Gy = np.repeat(Gy, nsteps, axis=1)
-        Gx = Gx.reshape(-1, *Gx.shape[-3:])
-        Gy = Gy.reshape(-1, *Gy.shape[-3:])
-        G = Gx @ Gy
+        Gx = np.repeat(Gx, nsteps, axis=0) # (nsteps, nsteps, nslices, nc, nc)
+        Gy = np.repeat(Gy, nsteps, axis=1) # (nsteps, nsteps, nslices, nc, nc)
+        Gx = Gx.reshape(-1, *Gx.shape[-3:]) # (nsteps**2, nslices, nc, nc)
+        Gy = Gy.reshape(-1, *Gy.shape[-3:]) # (nsteps**2, nslices, nc, nc)
+        G = Gx @ Gy # (nsteps**2, nslices, nc, nc)
     elif ndim == 3:
         Gx = Gx[None, None, ...]
         Gy = Gy[None, :, None, ...]
         Gz = Gz[:, None, None, ...]
-        Gx = np.repeat(Gx, nsteps, axis=0)
-        Gx = np.repeat(Gx, nsteps, axis=1)
-        Gy = np.repeat(Gy, nsteps, axis=0)
-        Gy = np.repeat(Gy, nsteps, axis=2)
-        Gz = np.repeat(Gz, nsteps, axis=1)
-        Gz = np.repeat(Gz, nsteps, axis=2)
-        Gx = Gx.reshape(-1, *Gx.shape[-2:])
-        Gy = Gy.reshape(-1, *Gy.shape[-2:])
-        Gz = Gz.reshape(-1, *Gz.shape[-2:])
-        G = Gx @ Gy @ Gz
-
+        Gx = np.repeat(Gx, nsteps, axis=0) # (nsteps, nsteps, nsteps, nc, nc)
+        Gx = np.repeat(Gx, nsteps, axis=1) # (nsteps, nsteps, nsteps, nc, nc)
+        Gy = np.repeat(Gy, nsteps, axis=0) # (nsteps, nsteps, nsteps, nc, nc)
+        Gy = np.repeat(Gy, nsteps, axis=2) # (nsteps, nsteps, nsteps, nc, nc)
+        Gz = np.repeat(Gz, nsteps, axis=1) # (nsteps, nsteps, nsteps, nc, nc)
+        Gz = np.repeat(Gz, nsteps, axis=2) # (nsteps, nsteps, nsteps, nc, nc)
+        Gx = Gx.reshape(-1, *Gx.shape[-2:]) # (nsteps**3, nc, nc)
+        Gy = Gy.reshape(-1, *Gy.shape[-2:]) # (nsteps**3, nc, nc)
+        Gz = Gz.reshape(-1, *Gz.shape[-2:]) # (nsteps**3, nc, nc)
+        G = Gx @ Gy @ Gz # (nsteps**3, nc, nc)
+        
     # build indexes
     indexes = torch.round(coord)
     lut = indexes - coord
@@ -156,7 +156,7 @@ def grog_interp(
         input = input.swapaxes(0, 1)  # (nsamples, nslices, ncoils)
 
     # perform interpolation
-    if device == "cpu":
+    if device == "cpu" or device == torch.device("cpu"):
         output = do_interpolation(input, G, lut)
     else:
         output = do_interpolation_cuda(input, G, lut, threadsperblock)
@@ -179,26 +179,34 @@ def grog_interp(
     weights = counts[idx]
 
     # count
-    # max_value = torch.max(weights)
-    # counts = torch.bincount(weights, minlength=max_value+1)
-    # weights = counts[weights]
-
     weights = weights.reshape(*indexes.shape[:-1])
     weights = weights.to(torch.float32)
     weights = 1 / weights
 
-    # finalize data
+    # finalize
     if ndim == 2:
         output = output.swapaxes(0, 1)  # (nslices, nsamples, ncoils)
     output = output.reshape(*dshape)
     output = output.swapaxes(-3, -1)
     output = output[..., 0]
     output = output.reshape(ishape)
-
+    
+    # remove out-of-boundaries
+    shape = list(shape[-ndim:])[::-1] # (x, y, z)
+    for n in range(ndim):
+        outside = indexes[..., n] < 0
+        output[..., outside] = 0.0
+        indexes[..., n][outside] = 0
+        outside = indexes[..., n] >= shape[n]
+        indexes[..., n][outside] = shape[n]-1
+        output[..., outside] = 0.0
+    
+    # cast back to original device
     output = output.to(idevice)
     indexes = indexes.to(idevice)
     weights = weights.to(idevice)
-
+    
+    # if required, cast back to numpy
     if isnumpy:
         output = output.numpy(force=True)
         indexes = indexes.to(idevice)
@@ -208,9 +216,9 @@ def grog_interp(
 
 
 # %% subroutines
-def _calc_grappaop(calib, ndim, lamda):
+def _calc_grappaop(calib, ndim, lamda, device):
     # as Tensor
-    calib = torch.as_tensor(calib)
+    calib = torch.as_tensor(calib, device=device)
 
     # expand
     if len(calib.shape) == 3:  # single slice (nc, ny, nx)
@@ -223,11 +231,11 @@ def _calc_grappaop(calib, ndim, lamda):
         gz, gy, gx = _grappa_op_3d(calib, lamda)
 
     # prepare output
-    GrappaOp = SimpleNamespace()
-    GrappaOp.Gx, GrappaOp.Gy = (gx.numpy(force=True), gy.numpy(force=True))
+    GrappaOp = SimpleNamespace(Gx=gx, Gy=gy)
+    # GrappaOp.Gx, GrappaOp.Gy = (gx.numpy(force=True), gy.numpy(force=True))
 
     if ndim == 3:
-        GrappaOp.Gz = gz.numpy(force=True)
+        GrappaOp.Gz = gz #.numpy(force=True)
     else:
         GrappaOp.Gz = None
 
@@ -305,25 +313,43 @@ def _bdot(a, b):
 
 
 def _weight_grid(A, weight):
-    return np.stack([_matrix_power(A, w) for w in weight], axis=0)
+    # decompose
+    L, V = torch.linalg.eig(A)
+    
+    # raise to power along expanded first dim
+    if len(L.shape) == 2: # 3D case, (nc, nc)
+        L = L[None, ...]**weight[:, None, None]
+    else: # 2D case, (nslices, nc, nc)
+        L = L[None, ...]**weight[:, None, None, None]
+    
+    # unsqueeze batch dimension for V
+    V = V[None, ...]
+        
+    # put together and return
+    return V @ torch.diag_embed(L) @ torch.linalg.inv(V)
+
+# def _weight_grid(A, weight):
+#     return np.stack([_matrix_power(A, w) for w in weight], axis=0)
 
 
-def _matrix_power(A, t):
-    if len(A.shape) == 2:
-        return scipy.linalg.fractional_matrix_power(A, t)
-    else:
-        return np.stack([scipy.linalg.fractional_matrix_power(a, t) for a in A])
+# def _matrix_power(A, t):
+#     if len(A.shape) == 2:
+#         return scipy.linalg.fractional_matrix_power(A, t)
+#     else:
+#         return np.stack([scipy.linalg.fractional_matrix_power(a, t) for a in A])
 
 
 def do_interpolation(noncart, G, lut):
     cart = torch.zeros(noncart.shape, dtype=noncart.dtype, device=noncart.device)
     cart = backend.pytorch2numba(cart)
+    G = backend.pytorch2numba(G)
     noncart = backend.pytorch2numba(noncart)
     lut = backend.pytorch2numba(lut)
 
     _interp(cart, noncart, G, lut)
 
     noncart = backend.numba2pytorch(noncart)
+    G = backend.numba2pytorch(G)
     cart = backend.numba2pytorch(cart)
     lut = backend.numba2pytorch(lut)
 
@@ -371,6 +397,7 @@ if torch.cuda.is_available():
 
         cart = torch.zeros(noncart.shape, dtype=noncart.dtype, device=noncart.device)
         cart = backend.pytorch2numba(cart)
+        G = backend.pytorch2numba(G)
         noncart = backend.pytorch2numba(noncart)
         lut = backend.pytorch2numba(lut)
 
@@ -378,6 +405,7 @@ if torch.cuda.is_available():
         _interp_cuda[blockspergrid, threadsperblock](cart, noncart, G, lut)
 
         noncart = backend.numba2pytorch(noncart)
+        G = backend.numba2pytorch(G)
         cart = backend.numba2pytorch(cart)
         lut = backend.numba2pytorch(lut)
 
