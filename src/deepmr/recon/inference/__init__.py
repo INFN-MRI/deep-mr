@@ -6,7 +6,7 @@ from . import solvers as _solvers
 
 from .fse import *  # noqa
 from .mpnrage import *  # noqa
-from .solvers import * # noqa
+from .solvers import *  # noqa
 
 __all__ = []
 __all__.extend(_fse.__all__)

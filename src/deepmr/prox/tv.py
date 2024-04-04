@@ -52,6 +52,9 @@ class TVDenoiser(nn.Module):
         Primary variable for warm restart. The default is ``None``.
     u2 : torch.Tensor, optional
         Dual variable for warm restart. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     Notes
     -----
@@ -72,6 +75,7 @@ class TVDenoiser(nn.Module):
         crit=1e-5,
         x2=None,
         u2=None,
+        offset=None,
     ):
         super().__init__()
 
@@ -90,6 +94,11 @@ class TVDenoiser(nn.Module):
             u2=u2,
         )
         self.denoiser.device = device
+        
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -108,6 +117,10 @@ class TVDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.ndim
         ishape = input.shape
+        
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
 
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
@@ -116,7 +129,7 @@ class TVDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 

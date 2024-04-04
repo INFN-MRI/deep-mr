@@ -54,6 +54,9 @@ class TGVDenoiser(nn.Module):
         Dual variable for warm restart. The default is ``None``.
     r2 : torch.Tensor, optional
         Auxiliary variable for warm restart. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     Notes
     -----
@@ -75,6 +78,7 @@ class TGVDenoiser(nn.Module):
         x2=None,
         u2=None,
         r2=None,
+        offset=None,
     ):
         super().__init__()
 
@@ -94,6 +98,11 @@ class TGVDenoiser(nn.Module):
             r2=r2,
         )
         self.denoiser.device = device
+        
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -112,15 +121,19 @@ class TGVDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.ndim
         ishape = input.shape
+        
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
 
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
             input = torch.stack((input.real, input.imag), axis=1)
             input = input.reshape(-1, *ishape[-ndim:])
-
+            
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 

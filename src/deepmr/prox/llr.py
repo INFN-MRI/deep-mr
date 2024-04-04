@@ -40,6 +40,9 @@ class LLRDenoiser(nn.Module):
     device : str, optional
         Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     """
 
@@ -53,6 +56,7 @@ class LLRDenoiser(nn.Module):
         rand_shift=True,
         axis=None,
         device=None,
+        offset=None,
     ):
         super().__init__()
 
@@ -73,8 +77,14 @@ class LLRDenoiser(nn.Module):
         else:
             self.axis = axis
         self.device = device
+        
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
-    def forward(self, x):
+    def forward(self, input):
+        x = input
         # default device
         idevice = x.device
         if self.device is None:
@@ -82,6 +92,10 @@ class LLRDenoiser(nn.Module):
         else:
             device = self.device
         x = x.to(device)
+        
+        # apply offset
+        if self.offset is not None:
+            x = x.to(device) + self.offset.to(device)
 
         # circshift randomly
         if self.rand_shift is True:

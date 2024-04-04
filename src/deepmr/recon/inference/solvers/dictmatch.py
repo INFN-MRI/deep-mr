@@ -17,15 +17,15 @@ def tsmi2map(bloch_dict, time_series):
 
     Parameters
     ----------
-    bloch_dict : BlochDictionary 
+    bloch_dict : BlochDictionary
         Dictionary of simulated tsmi  with the following fields:
-            
+
         * atoms (ndarray): simulated and normalized tsmi with shape ``(ncoeff, natoms)``.
         * norm (ndarray): norm of the simulated tsmi of shape ``(natoms,)``.
         * lookup_table (ndarray): quantitative parameters generating the tsmi of shape ``(nparams, natoms)``.
         * labels (list): names of the parameters of interest ``(e.g., T1, T2)``.
-        
-    time_series : np.ndarray | torch.Tensor 
+
+    time_series : np.ndarray | torch.Tensor
         Input image of shape (ncoeff, nz, ny, nx).
 
     Returns
@@ -34,7 +34,7 @@ def tsmi2map(bloch_dict, time_series):
         Tissue proton density of shape ``(nz, ny, nx)``.
     qmaps : dict,
         Dictionary with the estimated tissue parametric maps, each of shape ``(nz, ny, nx)``.
-    
+
     """
     # get shape
     shape = time_series.shape[1:]
@@ -61,22 +61,22 @@ def map2tsmi(bloch_dict, qmaps, m0=None):
 
     Parameters
     ----------
-    bloch_dict : BlochDictionary 
+    bloch_dict : BlochDictionary
         Dictionary of simulated tsmi  with the following fields:
-            
+
         * atoms (ndarray): simulated and normalized tsmi with shape ``(ncoeff, natoms)``.
         * norm (ndarray): norm of the simulated tsmi of shape ``(natoms,)``.
         * lookup_table (ndarray): quantitative parameters generating the tsmi of shape ``(nparams, natoms)``.
         * labels (list): names of the parameters of interest ``(e.g., T1, T2)``.
-    
+
     qmaps : dict,
-        Dictionary with the estimated tissue parametric maps, each of shape ``(nz, ny, nx)``. 
+        Dictionary with the estimated tissue parametric maps, each of shape ``(nz, ny, nx)``.
     m0 : np.ndarray | torch.Tensor
         Tissue proton density of shape ``(nz, ny, nx)``.
-    
+
     Returns
     -------
-    time_series : np.ndarray | torch.Tensor 
+    time_series : np.ndarray | torch.Tensor
         Output tsmi of shape ``(ncoeff, nz, ny, nx)``.
 
     """
@@ -122,7 +122,7 @@ class BlochDictionary:
         self.atoms = self.atoms / self.norm
         self.lookup_table = np.ascontiguousarray(self.lookup_table.transpose())
         self.labels = list(self.labels)
-        
+
     def to(self, device):
         self.atoms = self.atoms.to(device)
         self.norm = self.norm.to(device)
@@ -187,5 +187,5 @@ def _dot_product(x, y):
 
     return z
 
-# %% CUDA
 
+# %% CUDA

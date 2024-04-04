@@ -68,6 +68,9 @@ class WaveletDenoiser(nn.Module):
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     """
 
@@ -80,6 +83,7 @@ class WaveletDenoiser(nn.Module):
         device=None,
         non_linearity="soft",
         level=None,
+        offset=None,
         *args,
         **kwargs
     ):
@@ -100,6 +104,11 @@ class WaveletDenoiser(nn.Module):
             **kwargs
         )
         self.denoiser.device = device
+        
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -118,6 +127,10 @@ class WaveletDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.dimension
         ishape = input.shape
+        
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
 
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
@@ -126,7 +139,7 @@ class WaveletDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
@@ -249,6 +262,9 @@ class WaveletDictDenoiser(nn.Module):
     max_iter : int, optional
         Number of iterations of the optimization algorithm.
         The default is ``10``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     """
 
@@ -262,6 +278,7 @@ class WaveletDictDenoiser(nn.Module):
         non_linearity="soft",
         level=None,
         max_iter=10,
+        offset=None,
         *args,
         **kwargs
     ):
@@ -284,6 +301,11 @@ class WaveletDictDenoiser(nn.Module):
         )
 
         self.denoiser.device = device
+        
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -302,6 +324,10 @@ class WaveletDictDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.dimension
         ishape = input.shape
+        
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
 
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
@@ -310,7 +336,7 @@ class WaveletDictDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
