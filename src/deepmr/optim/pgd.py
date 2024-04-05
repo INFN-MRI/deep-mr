@@ -11,7 +11,19 @@ from .. import linops as _linops
 
 
 @torch.no_grad()
-def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=None):
+def pgd_solve(
+    input,
+    step,
+    AHA,
+    D,
+    P=None,
+    niter=10,
+    accelerate=True,
+    device=None,
+    tol=None,
+    save_history=False,
+    verbose=False,
+):
     """
     Solve inverse problem using Proximal Gradient Method.
 
@@ -26,6 +38,9 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         Normal operator AHA = AH * A.
     D : Callable
         Signal denoiser for plug-n-play restoration.
+    P : Callable, optional
+        Polynomial preconditioner.
+        The default is ``None``.
     niter : int, optional
         Number of iterations. The default is ``10``.
     accelerate : bool, optional
@@ -36,7 +51,11 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         The default is ``None`` (infer from input).
     tol : float, optional
         Stopping condition.
-        The default is ``None`` (run until niter).
+        The default is ``None`` (run until ``niter``).
+    save_history : bool, optional
+        Record cost function. The default is ``False``.
+    verbose : bool, optional
+        Display information. The default is ``False``.
 
     Returns
     -------
@@ -60,8 +79,16 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
     input = input.to(device)
     if isinstance(AHA, _linops.Linop):
         AHA = AHA.to(device)
+        ndim = AHA.ndim
     elif callable(AHA) is False:
         AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
+        ndim = 2
+    else:
+        ndim = 2
+
+    # default precondition
+    if P is None:
+        P = _linops.Identity(ndim)
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
@@ -74,7 +101,7 @@ def pgd_solve(input, step, AHA, D, niter=10, accelerate=True, device=None, tol=N
         q = [0.0] * niter
 
     # initialize algorithm
-    PGD = PGDStep(step, AHA, AHy, D)
+    PGD = PGDStep(step, AHA, AHy, D, P)
 
     # initialize
     input = 0 * input
@@ -119,6 +146,9 @@ class PGDStep(nn.Module):
         operator A applied to the measured data y.
     D : Callable
         Signal denoiser for plug-n-play restoration.
+    P : Callable, optional
+        Polynomial preconditioner for data consistency.
+        The default is ``None`` (standard CG for data consistency).
     trainable : bool, optional
         If ``True``, gradient update step is trainable, otherwise it is not.
         The default is ``False``.
@@ -128,7 +158,7 @@ class PGDStep(nn.Module):
 
     """
 
-    def __init__(self, step, AHA, AHy, D, trainable=False, tol=None):
+    def __init__(self, step, AHA, AHy, D, P, trainable=False, tol=None):
         super().__init__()
         if trainable:
             self.step = nn.Parameter(step)
@@ -138,13 +168,14 @@ class PGDStep(nn.Module):
         # assign
         self.AHA = AHA
         self.AHy = AHy
+        self.P = P
         self.D = D
         self.s = AHy.clone()
         self.tol = tol
 
     def forward(self, input, q=0.0):
         # gradient step : zk = xk-1 - gamma * AH(A(xk-1) - y != FISTA (accelerated)
-        z = input - self.step * (self.AHA(input) - self.AHy)
+        z = input - self.P(self.step * (self.AHA(input) - self.AHy))
 
         # denoise: sk = D(zk)
         s = self.D(z)

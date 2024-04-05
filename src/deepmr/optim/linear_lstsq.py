@@ -2,6 +2,9 @@
 
 __all__ = []
 
+import warnings
+import time
+
 import numpy as np
 import torch
 
@@ -9,8 +12,9 @@ from ... import linops as _linops
 from ... import optim as _optim
 from ... import prox as _prox
 
+from . import precond as _precond
+
 from numba.core.errors import NumbaPerformanceWarning
-import warnings
 
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
@@ -23,14 +27,16 @@ def linear_lstsq(
     prior=None,
     lamda=0.0,
     stepsize=1.0,
+    use_precond=False,
+    precond_degree=4,
     tol=1e-4,
-    dc_niter=5,
+    AHA_niter=5,
     power_niter=10,
     AHA_offset=None,
-    dc_offset=None,
+    AHy_offset=None,
     device=None,
     save_history=False,
-    verbose=False,
+    verbose=0,
 ):
     """
     Linear Least Squares solver for sparse linear operators.
@@ -59,14 +65,21 @@ def linear_lstsq(
     stepsize : float, optional
         Iterations step size. If not provided, estimate from Normal
         operator maximum eigenvalue. The default is ``None``.
-
+    use_precond : bool, optional
+        Use polynomial preconditioning to accelerate convergence.
+        The default is ``False``.
+    precond_degree : int, optional
+        Degree of polynomial preconditioner. Ignored if ``use_precond`` is ``False``
+        and for CG / ADMM solvers (no / multi-regularizations), where the degree
+        is given by ``niter-1`` and ``AHA_niter-1``, respectively.
+        The default is ``4``.
     Other Parameters
     ----------------
     tol : float, optional
         Stopping condition for CG (either as standalone solver or as
         inner data consistency term for ADMM) or PGD.
         The default is ``1e-4``.
-    dc_niter : int, optional
+    AHA_niter : int, optional
         Number of iterations of CG data consistency step for ADMM. Final
         number of steps will be ``niter``, i.e., number of outer loops in ADMM
         is ``niter // dc_niter``. Ignored for CG (no regularizers) and PGD (single regularizer).
@@ -79,15 +92,15 @@ def linear_lstsq(
         Offset to be applied to AHA during computation for regularization.
         If no prior is specified, this is ignored (for CG it is ``Identity``).
         The default is ``Identity``.
-    dc_offset : np.ndarray | torch.Tensor, optional
+    AHy_offset : np.ndarray | torch.Tensor, optional
         Offset to be applied to AHy during computation.
         The default is ``None``.
     device : str, optional
         Computational device. The default is ``None`` (same as ``data``).
     save_history : bool, optional
         Record cost function. The default is ``False``.
-    verbose : bool, optional
-        Display information. The default is ``False``.
+    verbose : int, optional
+        Display information (> 1 more, = 1 less, 0 = quiet). The default is ``0``.
 
     Returns
     -------
@@ -95,6 +108,9 @@ def linear_lstsq(
         Reconstructed signal.
 
     """
+    if verbose:
+        tstart = time.time()
+
     # cast to numpy if required
     if isinstance(input, np.ndarray):
         isnumpy = True
@@ -104,9 +120,11 @@ def linear_lstsq(
 
     # default
     if AHA is None:
+        if verbose > 1:
+            print("Normal Operator not provided; using AHA = A.H * A")
         AHA = A.H * A
 
-    # parse number of dimensions
+    # parse number of dimension
     ndim = A.ndim
 
     # keep original device
@@ -121,66 +139,175 @@ def linear_lstsq(
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
+    if verbose > 1:
+        print("Computing initial solution AHy = A.H(y)...", end="\t")
+        t0 = time.time()
     AHy = A(input.clone())
+    if verbose > 1:
+        t1 = time.time()
+        print(f"done! Elapsed time: {round(t1-t0, 2)} s")
 
-    # apply offset to AHy
-    if dc_offset is not None and lamda != 0.0:
-        dc_offset = torch.as_tensor(dc_offset, dtype=AHy.dtype, device=AHy.device)
-        AHy = AHy + lamda * dc_offset
+    if verbose > 1:
+        print(f"Data shape is {AHy.shape}; Spatial dimension: {AHy.shape[-ndim:]}")
 
-    # if non-iterative, just perform linear recon
+    # if non-iterative, just perform adjoint recon
     if niter == 1:
         output = AHy
         if isnumpy:
             output = output.numpy(force=True)
-        return output
+        if verbose:
+            tend = time.time()
+            print(
+                f"Max # iteration = 1; exiting - total elapsed time: {round(tstart-tend, 2)} s"
+            )
+        return output, None
+
+    # apply offset to AHy
+    if AHy_offset is not None and lamda != 0.0:
+        if verbose > 1:
+            print("Applying offset to AHy for L2 regularization")
+        AHy_offset = torch.as_tensor(AHy_offset, dtype=AHy.dtype, device=AHy.device)
+        AHy = AHy + lamda * AHy_offset
 
     # rescale for easier handling of Lipschitz constant
-    AHy = _intensity_scaling(AHy, ndim=ndim)
+    AHy, scale = _intensity_scaling(AHy, ndim=ndim)
+    if verbose > 1:
+        print(f"Rescaling data by the 95% percentile of magnitude = {scale}")
 
     # if no prior is specified, use CG recon
     if prior is None:
-        output = _optim.cg_solve(
-            AHy,
-            AHA,
-            niter=niter,
-            lamda=lamda,
-            ndim=ndim,
-            tol=tol,
-        )
+        if use_precond:
+            if verbose > 1:
+                print("Prior not specified - solving using Polynomial inversion")
+            # computing polynomial preconditioner
+            P = _precond.create_polynomial_preconditioner("l_inf", niter, AHA)
+            # solving
+            output, history = P * (AHA(AHy) - (AHy + lamda * AHy)), None
+        else:
+            if verbose > 1:
+                print("Prior not specified - solving using Conjugate Gradient")
+            output, history = _optim.cg_solve(
+                AHy,
+                AHA,
+                niter=niter,
+                lamda=lamda,
+                ndim=ndim,
+                tol=tol,
+                save_history=save_history,
+                verbose=verbose,
+            )
         if isnumpy:
             output = output.numpy(force=True)
-        return output
-
-    # modify EHE
-    if lamda != 0.0:
-        if AHA_offset is None:
-            AHA_offset = _linops.Identity(ndim)
-        _AHA = AHA + lamda * AHA_offset
-    else:
-        _AHA = AHA
+        if verbose:
+            tend = time.time()
+            print(f"Exiting - total elapsed time: {round(tstart-tend, 2)} s")
+        return output, history
 
     # compute spectral norm
     xhat = torch.rand(AHy.shape, dtype=AHy.dtype, device=AHy.device)
-    max_eig = _optim.power_method(
-        None, xhat, AHA=_AHA, device=device, niter=power_niter
-    )
-    if max_eig != 0.0:
-        stepsize = stepsize / max_eig
 
     # if a single prior is specified, use PDG
     if isinstance(prior, (list, tuple)) is False:
+        if verbose > 1:
+            print("Single prior - solving using FISTA")
+        # modify AHA
+        if lamda != 0.0:
+            if AHA_offset is None:
+                AHA_offset = _linops.Identity(ndim)
+            _AHA = AHA + lamda * AHA_offset
+        else:
+            _AHA = AHA
+        # compute norm
+        if verbose > 1:
+            print("Computing maximum eigenvalue of AHA...", end="\t")
+            t0 = time.time()
+        max_eig = _optim.power_method(
+            None, xhat, AHA=_AHA, device=device, niter=power_niter
+        )
+        if verbose > 1:
+            t1 = time.time()
+            print(f"done! Elapsed time: {round(t1-t0, 2)} s")
+            print(f"Maximum eigenvalue: {max_eig}")
+        if max_eig != 0.0:
+            stepsize = stepsize / max_eig
+        if verbose > 1:
+            print(f"FISTA stepsize: {stepsize}")
+        # set prior threshold
+        prior.ths = stepsize
+        # computing polynomial preconditioner
+        if use_precond:
+            P = _precond.create_polynomial_preconditioner("l_2", precond_degree, AHA)
+        else:
+            P = None
         # solve
-        output = _optim.pgd_solve(
-            AHy, stepsize, _AHA, prior, niter=niter, accelerate=True
+        output, history = _optim.pgd_solve(
+            AHy,
+            stepsize,
+            _AHA,
+            prior,
+            niter=niter,
+            accelerate=True,
+            tol=tol,
+            save_history=save_history,
+            verbose=verbose,
         )
     else:
+        if verbose > 1:
+            print("Multiple priors - solving using ADMM")
+        # compute norm
+        if verbose > 1:
+            print("Computing maximum eigenvalue of AHA...", end="\t")
+            t0 = time.time()
+        max_eig = _optim.power_method(
+            None, xhat, AHA=AHA, device=device, niter=power_niter
+        )
+        if verbose > 1:
+            t1 = time.time()
+            print(f"done! Elapsed time: {round(t1-t0, 2)} s")
+            print(f"Maximum eigenvalue: {max_eig}")
+        if max_eig != 0.0:
+            lamda = 10.0 * lamda * max_eig
+        if verbose > 1:
+            print(f"ADMM regularization strength: {lamda}")
+        # modify AHA
+        if lamda != 0.0:
+            if AHA_offset is None:
+                AHA_offset = _linops.Identity(ndim)
+            _AHA = AHA + lamda * AHA_offset
+        else:
+            _AHA = AHA
+        # set prior threshold
+        for p in prior:
+            p.ths = lamda / stepsize
+        # computing polynomial preconditioner
+        if use_precond:
+            P = _precond.create_polynomial_preconditioner("l_inf", AHA_niter - 1, AHA)
+        else:
+            P = None
         # solve
-        output = _optim.admm_solve(AHy, stepsize, _AHA, prior, niter=niter)
+        output, history = _optim.admm_solve(
+            AHy,
+            stepsize,
+            _AHA,
+            prior,
+            P,
+            niter=niter,
+            dc_nite=AHA_niter,
+            dc_tol=tol,
+            dc_ndim=ndim,
+            save_history=save_history,
+            verbose=verbose,
+        )
+
+    # output
     if isnumpy:
         output = output.numpy(force=True)
 
-    return output
+    if verbose:
+        tend = time.time()
+        print(f"Exiting - total elapsed time: {round(tstart-tend, 2)} s")
+
+    return output, history
 
 
 # %% local utils
@@ -211,4 +338,4 @@ def _intensity_scaling(input, ndim):
     data = torch.nan_to_num(data, posinf=0.0, neginf=0.0, nan=0.0)
     scale = torch.quantile(abs(data.ravel()), 0.95)
 
-    return input / scale
+    return input / scale, scale

@@ -14,7 +14,18 @@ from .. import linops as _linops
 
 @torch.no_grad()
 def admm_solve(
-    input, step, AHA, D, niter=10, device=None, dc_niter=10, dc_tol=1e-4, dc_ndim=None
+    input,
+    step,
+    AHA,
+    D,
+    P=None,
+    niter=10,
+    device=None,
+    dc_niter=10,
+    dc_tol=1e-4,
+    dc_ndim=None,
+    save_history=False,
+    verbose=False,
 ):
     """
     Solve inverse problem using Alternate Direction of Multipliers Method.
@@ -30,6 +41,9 @@ def admm_solve(
         Normal operator AHA = AH * A.
     D : Callable
         Signal denoiser for plug-n-play restoration.
+    P : Callable, optional
+        Polynomial preconditioner for data consistency.
+        The default is ``None`` (standard CG for data consistency).
     niter : int, optional
         Number of iterations. The default is ``10``.
     device : str, optional
@@ -45,6 +59,10 @@ def admm_solve(
         Number of spatial dimensions of the problem for inner data consistency step.
         It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
         operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
+    save_history : bool, optional
+        Record cost function. The default is ``False``.
+    verbose : bool, optional
+        Display information. The default is ``False``.
 
     Returns
     -------
@@ -76,7 +94,7 @@ def admm_solve(
     AHy = input.clone()
 
     # initialize algorithm
-    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol, ndim=dc_ndim)
+    ADMM = ADMMStep(step, AHA, AHy, D, P, niter=dc_niter, tol=dc_tol, ndim=dc_ndim)
 
     # initialize
     input = 0 * input
@@ -115,6 +133,9 @@ class ADMMStep(nn.Module):
         operator A applied to the measured data y.
     D : Iterable(Callable)
         Signal denoiser(s) for plug-n-play restoration.
+    P : Callable, optional
+        Polynomial preconditioner for data consistency.
+        The default is ``None`` (standard CG for data consistency).
     trainable : bool, optional
         If ``True``, gradient update step is trainable, otherwise it is not.
         The default is ``False``.
@@ -130,7 +151,7 @@ class ADMMStep(nn.Module):
     """
 
     def __init__(
-        self, step, AHA, AHy, D, trainable=False, niter=10, tol=1e-4, ndim=None
+        self, step, AHA, AHy, D, P, trainable=False, niter=10, tol=1e-4, ndim=None
     ):
         super().__init__()
         if trainable:
@@ -147,6 +168,7 @@ class ADMMStep(nn.Module):
         # assign operators
         self.AHA = AHA
         self.AHy = AHy
+        self.P = P
 
         # assign denoisers
         if hasattr(D, "__iter__"):
@@ -168,14 +190,18 @@ class ADMMStep(nn.Module):
 
     def forward(self, input):
         # data consistency step: zk = (AHA + gamma * I).solve(AHy)
-        self.xi[0] = cg_solve(
-            self.AHy + self.step * (input - self.ui[0]),
-            self.AHA,
-            niter=self.niter,
-            tol=self.tol,
-            lamda=self.step,
-            ndim=self.ndim,
-        )
+        if self.P is None:
+            self.xi[0] = cg_solve(
+                self.AHy + self.step * (input - self.ui[0]),
+                self.AHA,
+                niter=self.niter,
+                tol=self.tol,
+                lamda=self.step,
+                ndim=self.ndim,
+            )
+        else:
+            v = self.step * (input - self.ui[0])
+            self.xi[0] = v - self.P * (self.AHA(v) - (v + self.AHy))
 
         # denoise using each regularizator
         for n in range(len(self.D)):

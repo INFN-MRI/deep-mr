@@ -19,6 +19,8 @@ def cg_solve(
     tol=1e-4,
     lamda=0.0,
     ndim=None,
+    save_history=False,
+    verbose=False,
 ):
     """
     Solve inverse problem using Conjugate Gradient method.
@@ -43,7 +45,10 @@ def cg_solve(
         Number of spatial dimensions of the problem.
         It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
         operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
-
+    save_history : bool, optional
+        Record cost function. The default is ``False``.
+    verbose : bool, optional
+        Display information. The default is ``False``.
 
     Returns
     -------
