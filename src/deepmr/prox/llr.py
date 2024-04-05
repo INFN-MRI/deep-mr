@@ -77,7 +77,7 @@ class LLRDenoiser(nn.Module):
         else:
             self.axis = axis
         self.device = device
-        
+
         if offset is not None:
             self.offset = torch.as_tensor(offset)
         else:
@@ -92,7 +92,7 @@ class LLRDenoiser(nn.Module):
         else:
             device = self.device
         x = x.to(device)
-        
+
         # apply offset
         if self.offset is not None:
             x = x.to(device) + self.offset.to(device)

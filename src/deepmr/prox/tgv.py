@@ -103,7 +103,7 @@ class TGVDenoiser(nn.Module):
             r2=r2,
         )
         self.denoiser.device = device
-        
+
         if offset is not None:
             self.offset = torch.as_tensor(offset)
         else:
@@ -126,7 +126,7 @@ class TGVDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.ndim
         ishape = input.shape
-        
+
         # apply offset
         if self.offset is not None:
             input = input.to(device) + self.offset.to(device)
@@ -136,7 +136,7 @@ class TGVDenoiser(nn.Module):
         if iscomplex:
             input = torch.stack((input.real, input.imag), axis=1)
             input = input.reshape(-1, *ishape[-ndim:])
-            
+
         # apply denoising
         output = self.denoiser(input.to(device), self.ths).to(
             idevice
@@ -410,37 +410,38 @@ class _TGVDenoiser(nn.Module):
         """
         # move selected axis upfront
         x = x.swapaxes(self.axis, -1)
-        
+
         # perform finite difference
         u = torch.zeros(list(x.shape) + [1], device=x.device, dtype=x.dtype)
         u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
         u[..., :-1, 0] = u[..., :-1, 0] + x[..., 1:]
-        
+
         # place axis back into original position
         x = x.swapaxes(self.axis, -1)
         u = u[..., 0].swapaxes(self.axis, -1)[..., None]
 
         return u
-    
+
     def nabla1_adjoint(self, x):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
         # move selected axis upfront
         x = x[..., 0].swapaxes(self.axis, -1)[..., None]
-        
+
         # perform finite difference
-        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
         u[..., :-1] = u[..., :-1] - x[..., :-1, 0]
         u[..., 1:] = u[..., 1:] + x[..., :-1, 0]
-        
+
         # place axis back into original position
         x = x[..., 0].swapaxes(self.axis, -1)[..., None]
         u = u.swapaxes(self.axis, -1)
 
         return u
-    
+
     @staticmethod
     def nabla2(x):
         r"""
@@ -458,7 +459,8 @@ class _TGVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator
         u[..., :, :-1] = u[..., :, :-1] - x[..., :-1, :, 0]
         u[..., :, 1:] = u[..., :, 1:] + x[..., :-1, :, 0]
@@ -502,16 +504,16 @@ class _TGVDenoiser(nn.Module):
         """
         # move selected axis upfront
         I = I[..., 0].swapaxes(self.axis, -1)[..., None]
-        
+
         # perform finite difference
         G = torch.zeros(list(I.shape[:-1]) + [1], device=I.device, dtype=I.dtype)
-        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0] # xdx
+        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0]  # xdx
         G[..., 0] = G[..., 0] + I[..., 0]
-        
+
         # place axis back into original position
         I = I[..., 0].swapaxes(self.axis, -1)[..., None]
         G = G[..., 0].swapaxes(self.axis, -1)[..., None]
-            
+
         return G
 
     def epsilon1_adjoint(self, G):
@@ -520,26 +522,26 @@ class _TGVDenoiser(nn.Module):
         """
         # move selected axis upfront
         G = G[..., 0].swapaxes(self.axis, -1)[..., None]
-        
+
         # perform finite difference
         I = torch.zeros(list(G.shape[:-1]) + [1], device=G.device, dtype=G.dtype)
-        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0] # xdx
+        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0]  # xdx
         I[..., 0] = I[..., 0] + G[..., 0]
-        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1] # xdy
-        
+        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1]  # xdy
+
         # place axis back into original position
         I = I[..., 0].swapaxes(self.axis, -1)[..., None]
         G = G[..., 0].swapaxes(self.axis, -1)[..., None]
-        
+
         return I
-    
+
     @staticmethod
     def epsilon2(I):
         r"""
         Applies the jacobian of a vector field.
         """
         G = torch.zeros(list(I.shape[:-1]) + [4], device=I.device, dtype=I.dtype)
-        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0] # xdx
+        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0]  # xdx
         G[..., 0] = G[..., 0] + I[..., 0]
         G[..., 1:, 1] = G[..., 1:, 1] - I[..., :-1, 0]  # xdy
         G[..., 1:, 1] = G[..., 1:, 1] + I[..., 1:, 0]
@@ -547,7 +549,7 @@ class _TGVDenoiser(nn.Module):
         G[..., 2] = G[..., 2] + I[..., 1]
         G[..., :-1, :, 3] = G[..., :-1, :, 3] - I[..., :-1, :, 1]  # ydy
         G[..., :-1, :, 3] = G[..., :-1, :, 3] + I[..., 1:, :, 1]
-            
+
         return G
 
     @staticmethod
@@ -556,17 +558,17 @@ class _TGVDenoiser(nn.Module):
         Applies the adjoint of the jacobian of a vector field.
         """
         I = torch.zeros(list(G.shape[:-1]) + [2], device=G.device, dtype=G.dtype)
-        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0] # xdx
+        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0]  # xdx
         I[..., 0] = I[..., 0] + G[..., 0]
-        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1] # xdy
+        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1]  # xdy
         I[..., 1:, 0] = I[..., 1:, 0] + G[..., 1:, 1]
-        I[..., :-1, 1] = I[..., :-1, 1] - G[..., 1:, 2] # ydx
+        I[..., :-1, 1] = I[..., :-1, 1] - G[..., 1:, 2]  # ydx
         I[..., 1] = I[..., 1] + G[..., 2]
-        I[..., :-1, :, 1] = I[..., :-1, :, 1] - G[..., :-1, :, 3] # ydy
+        I[..., :-1, :, 1] = I[..., :-1, :, 1] - G[..., :-1, :, 3]  # ydy
         I[..., 1:, :, 1] = I[..., 1:, :, 1] + G[..., :-1, :, 3]
-        
+
         return I
-    
+
     @staticmethod
     def epsilon3(I):
         r"""
@@ -591,9 +593,9 @@ class _TGVDenoiser(nn.Module):
         G[..., 5] = G[..., 5] + I[..., 1:, :, :, 7]
         G[..., :-1, :, 1, 8] = G[..., :-1, :, 1, 8] - I[..., :-1, :, 1, 8]  # zdz
         G[..., 6] = G[..., 6] + I[..., 1:, :, 1, 8]
-    
+
         return G
-    
+
     @staticmethod
     def epsilon3_adjoint(G):
         r"""
@@ -618,5 +620,5 @@ class _TGVDenoiser(nn.Module):
         I[..., :, 1:, 2] = I[..., :, 1:, 2] + G[..., :, 1:, 7]
         I[..., :-1, :-1, 2] = I[..., :-1, :-1, 2] - G[..., 1:, 1:, 8]  # zdz
         I[..., 1:, 1:, 2] = I[..., 1:, 1:, 2] + G[..., 1:, 1:, 8]
-    
+
         return I

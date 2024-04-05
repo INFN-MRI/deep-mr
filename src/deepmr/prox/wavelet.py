@@ -104,7 +104,7 @@ class WaveletDenoiser(nn.Module):
             **kwargs
         )
         self.denoiser.device = device
-        
+
         if offset is not None:
             self.offset = torch.as_tensor(offset)
         else:
@@ -127,7 +127,7 @@ class WaveletDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.dimension
         ishape = input.shape
-        
+
         # apply offset
         if self.offset is not None:
             input = input.to(device) + self.offset.to(device)
@@ -301,7 +301,7 @@ class WaveletDictDenoiser(nn.Module):
         )
 
         self.denoiser.device = device
-        
+
         if offset is not None:
             self.offset = torch.as_tensor(offset)
         else:
@@ -324,7 +324,7 @@ class WaveletDictDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.dimension
         ishape = input.shape
-        
+
         # apply offset
         if self.offset is not None:
             input = input.to(device) + self.offset.to(device)

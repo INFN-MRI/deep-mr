@@ -1,4 +1,3 @@
-
 __all__ = ["espirit_cal"]
 
 import numpy as np
@@ -13,9 +12,8 @@ from ... import prox as _prox
 
 from . import acs as _acs
 
-def nlinv(
-    data, mask=None, coord=None, shape=None, nsets=1
-):
+
+def nlinv(data, mask=None, coord=None, shape=None, nsets=1):
     """
     Derives the NLINV/ENLIVE [1] operator.
 
@@ -96,14 +94,14 @@ def nlinv(
         cshape = list(np.asarray(shape, dtype=int) // 2)
     else:
         cshape = [64] * ndim
-    
+
     # get calibration region
     cal_data = _acs.find_acs(data, cshape, coord)
     cmask = _signal.resize(mask, ndim * [r])
-    
+
     # calculate maps
     maps = _enlive(cal_data.clone(), cmask, cshape, coord, toeplitz)
-    
+
     # select maps
     if nsets == 1:
         maps = maps[[0]]
@@ -132,10 +130,9 @@ def nlinv(
 
 # %% local utils
 def _enlive(data, mask, shape, coord, toeplitz):
-    
     # build encoding operator
     F, FHF = _get_linop(data, mask, coord, shape, device, toeplitz)
-    
+
     # scale data
     img = _fft.ifft(data, axes=range(-ndim, 0))
     for n in range(len(img.shape) - ndim):
@@ -144,12 +141,11 @@ def _enlive(data, mask, shape, coord, toeplitz):
     # get scaling
     img = torch.nan_to_num(img, posinf=0.0, neginf=0.0, nan=0.0)
     scale = torch.quantile(abs(img.ravel()), 0.95)
-    
+
     # scale data
     data /= scale
 
-    
-    
+
 def _get_linop(data, mask, coord, shape, device, toeplitz):
     # get device
     if device is None:
@@ -157,7 +153,7 @@ def _get_linop(data, mask, coord, shape, device, toeplitz):
 
     if mask is not None and coord is not None:
         raise ValueError("Please provide either mask or traj, not both.")
-        
+
     if mask is not None:  # Cartesian
         # Fourier
         F = _linops.FFTOp(mask, device=device)
@@ -167,8 +163,8 @@ def _get_linop(data, mask, coord, shape, device, toeplitz):
             FHF = _linops.FFTGramOp(mask, device=device)
         else:
             FHF = F.H * F
-            
-    if coord is not None: # Non Cartesian
+
+    if coord is not None:  # Non Cartesian
         assert shape is not None, "Please provide shape for Non-Cartesian imaging."
         ndim = coord.shape[-1]
 
@@ -180,49 +176,40 @@ def _get_linop(data, mask, coord, shape, device, toeplitz):
             FHF = _linops.NUFFTGramOp(coord, shape[-ndim:], device=device)
         else:
             FHF = F.H * F
-            
+
     return F, FHF
 
 
 def _irgn_fista(data, ndim, F, FHF, niter, D, step):
-    
-    # input shape is 
-    # 2D Cart / NonCart: (nslices, nc, ny, nx) 
-    # 3D Cart: (nx, nc, nz, ny) 
+    # input shape is
+    # 2D Cart / NonCart: (nslices, nc, ny, nx)
+    # 3D Cart: (nx, nc, nz, ny)
     # 3D NonCart : (nc, nz, ny, nx)
     # in general (..., nc, *mtx), with len(mtx) = ndim
-    
+
     # shape of dx is (..., 1+nc, *mtx), with dx[..., 0, ...] = M0, dx[..., 1:, ...] = smap[0], smap[1], ... smap[nc-1]
     if ndim == 2:
         while len(data.shape) < 4:
             data = data[None, ...]
         data = data.swapaxes(0, 1)
-        
+
     # build initial guess
     nc, nz, ny, nx = data.shape
-    x0 = torch.zeros((nc+1, nz, ny, nx), dtype=data.dtype, device=data.device)
+    x0 = torch.zeros((nc + 1, nz, ny, nx), dtype=data.dtype, device=data.device)
     x0[0, ...] = 1.0
-    
+
     # initialize operator
     C = _linops.SenseOp(3, x0[1:])
     E = F * C
     EHE = C.H * FHF * C
-    
+
     # initialize step
     dx = torch.cat(((E.H * data)[None, ...], F.H * data), axis=0)
-    
+
     for n in range(niter):
-        
         # compute update
         dx = _optim.pgd_solve(dx, step, EHE, D)
-        
+
         # update variable
-        
+
         # update operator
-        
-        
-    
-    
-    
-    
-    

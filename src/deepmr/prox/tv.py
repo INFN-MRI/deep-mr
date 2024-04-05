@@ -99,7 +99,7 @@ class TVDenoiser(nn.Module):
             u2=u2,
         )
         self.denoiser.device = device
-        
+
         if offset is not None:
             self.offset = torch.as_tensor(offset)
         else:
@@ -122,7 +122,7 @@ class TVDenoiser(nn.Module):
         # get input shape
         ndim = self.denoiser.ndim
         ishape = input.shape
-        
+
         # apply offset
         if self.offset is not None:
             input = input.to(device) + self.offset.to(device)
@@ -254,7 +254,7 @@ class _TVDenoiser(nn.Module):
         self.device = device
         self.ndim = ndim
         self.axis = axis
-        
+
         if ndim == 1:
             self.nabla = self.nabla1
             self.nabla_adjoint = self.nabla1_adjoint
@@ -328,44 +328,45 @@ class _TVDenoiser(nn.Module):
                 break
 
         return self.x2
-    
+
     def nabla1(self, x):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
         # move selected axis upfront
         x = x.swapaxes(self.axis, -1)
-        
+
         # perform finite difference
         u = torch.zeros(list(x.shape) + [1], device=x.device, dtype=x.dtype)
         u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
         u[..., :-1, 0] = u[..., :-1, 0] + x[..., 1:]
-        
+
         # place axis back into original position
         x = x.swapaxes(self.axis, -1)
         u = u[..., 0].swapaxes(self.axis, -1)[..., None]
 
         return u
-    
+
     def nabla1_adjoint(self, x):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
         # move selected axis upfront
         x = x[..., 0].swapaxes(self.axis, -1)[..., None]
-        
+
         # perform finite difference
-        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
         u[..., :-1] = u[..., :-1] - x[..., :-1, 0]
         u[..., 1:] = u[..., 1:] + x[..., :-1, 0]
-        
+
         # place axis back into original position
         x = x[..., 0].swapaxes(self.axis, -1)[..., None]
         u = u.swapaxes(self.axis, -1)
 
         return u
-    
+
     @staticmethod
     def nabla2(x):
         r"""
@@ -383,7 +384,8 @@ class _TVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator
         u[..., :, :-1] = u[..., :, :-1] - x[..., :-1, :, 0]
         u[..., :, 1:] = u[..., :, 1:] + x[..., :-1, :, 0]
