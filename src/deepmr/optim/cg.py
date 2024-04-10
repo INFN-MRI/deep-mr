@@ -2,6 +2,8 @@
 
 __all__ = ["cg_solve", "CGStep"]
 
+import time
+
 import numpy as np
 import torch
 
@@ -62,7 +64,11 @@ def cg_solve(
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-
+        
+    # assert inputs are correct
+    if verbose:
+        assert save_history is True, "We need to record history to print information."
+        
     # keep original device
     idevice = input.device
     if device is None:
@@ -95,13 +101,41 @@ def cg_solve(
 
     # initialize
     input = 0 * input
-
+    history = []
+    
+    # start timer
+    if verbose:
+        t0 = time.time()
+        nprint = np.linspace(0, niter, 5)
+        nprint = nprint.astype(int).tolist()
+        print("====================== Conjugate Gradient ==========================")
+        print("| nsteps | data consistency | regularization | total cost | t-t0 [s]")
+        print("====================================================================")
+        
     # run algorithm
     for n in range(niter):
         output = CG(input)
+        
+        # if required, compute residual and check if we reached convergence
         if CG.check_convergence():
             break
+        
+        # update variable
         input = output.clone()
+        
+        # if required, save history
+        if save_history:
+            r = output - AHy
+            dc = 0.5 * torch.linalg.norm(r).item() ** 2
+            reg = lamda * torch.linalg.norm(output).item() ** 2
+            history.append(dc+reg)
+            if verbose and n in nprint:
+                t = time.time()
+                print(" {}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, dc, reg, dc+reg, t-t0))
+                
+    if verbose:
+        t1 = time.time()
+        print(f"Exiting Conjugate Gradient: total elapsed time: {round(t1-t0, 2)} [s]")
 
     # back to original device
     output = output.to(device)
@@ -110,7 +144,7 @@ def cg_solve(
     if isnumpy:
         output = output.numpy(force=True)
 
-    return output
+    return output, history
 
 
 class CGStep(nn.Module):

@@ -5,7 +5,7 @@ __all__ = ["create_polynomial_preconditioner"]
 import numpy as np
 import torch
 
-import simpy
+import sympy
 
 from .._external.chebyshev import polynomial as chebpoly
 from .. import linops as _linops
@@ -109,22 +109,22 @@ def l_inf_opt(degree, l=0.0, L=1.0, verbose=False):
 
     T = chebpoly.get_nth_chebyshev_polynomial(degree + 1)
 
-    y = simpy.symbols("y")
+    y = sympy.symbols("y")
     P = T((L + l - 2 * y) / (L - l))
     P = P / P.subs(y, 0)
-    P = simpy.simplify((1 - P) / y)
+    P = sympy.simplify((1 - P) / y)
 
     if verbose:
         print("> Resulting polynomial: %s" % repr(P))
 
     if degree > 0:
-        points = simpy.stationary_points(P, y, simpy.Interval(l, L))
+        points = sympy.stationary_points(P, y, sympy.Interval(l, L))
         vals = np.array(
             [P.subs(y, point) for point in points] + [P.subs(y, l)] + [P.subs(y, L)]
         )
         assert np.abs(vals).min() > 1e-8, "Polynomial not injective."
 
-    c = simpy.Poly(P).all_coeffs()[::-1] if degree > 0 else (simpy.Float(P),)
+    c = sympy.Poly(P).all_coeffs()[::-1] if degree > 0 else (sympy.Float(P),)
 
     return torch.as_tensor(np.array(c, dtype=np.float32))
 
@@ -135,7 +135,7 @@ def l_2_opt(degree, l=0.0, L=1.0, weight=1, verbose=False):
     Calculate polynomial p(x) that minimizes the following:
 
     ..math:
-      \int_l^l w(x) (1 - x p(x))^2 dx
+      int_l^l w(x) (1 - x p(x))^2 dx
 
     To incorporate priors, w(x) can be used to weight regions of the
     interval (l, L) of the expression above.
@@ -169,22 +169,22 @@ def l_2_opt(degree, l=0.0, L=1.0, weight=1, verbose=False):
         print("> Degree:   %d" % degree)
         print("> Spectrum: [%0.2f, %0.2f]" % (l, L))
 
-    c = simpy.symbols("c0:%d" % (degree + 1))
-    x = simpy.symbols("x")
+    c = sympy.symbols("c0:%d" % (degree + 1))
+    x = sympy.symbols("x")
 
     p = sum([(c[k] * x**k) for k in range(degree + 1)])
     f = weight * (1 - x * p) ** 2
-    J = simpy.integrate(f, (x, l, L))
+    J = sympy.integrate(f, (x, l, L))
 
     mat = [[0] * (degree + 1) for _ in range(degree + 1)]
     vec = [0] * (degree + 1)
 
     for edx in range(degree + 1):
-        eqn = simpy.diff(J, c[edx])
+        eqn = sympy.diff(J, c[edx])
         tmp = eqn.copy()
         # Coefficient index
         for cdx in range(degree + 1):
-            mat[edx][cdx] = float(simpy.Poly(eqn, c[cdx]).coeffs()[0])
+            mat[edx][cdx] = float(sympy.Poly(eqn, c[cdx]).coeffs()[0])
             tmp = tmp.subs(c[cdx], 0)
         vec[edx] = float(-tmp)
 
@@ -197,7 +197,7 @@ def l_2_opt(degree, l=0.0, L=1.0, weight=1, verbose=False):
         print("> Resulting polynomial: %s" % repr(poly))
 
     if degree > 0:
-        points = simpy.stationary_points(poly, x, simpy.Interval(l, L))
+        points = sympy.stationary_points(poly, x, sympy.Interval(l, L))
         vals = np.array(
             [poly.subs(x, point) for point in points]
             + [poly.subs(x, l)]

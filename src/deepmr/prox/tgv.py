@@ -150,7 +150,9 @@ class TGVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-
+    
+    def g(self, input):
+        return self.ths * (((self.epsilon(self.nabla(input))) ** 2).sum(axis=-1) ** 0.5).sum()
 
 def tgv_denoise(
     input,
@@ -329,8 +331,8 @@ class _TGVDenoiser(nn.Module):
             self.restart = False
 
         if ths is not None:
-            lambda1 = ths * 0.1
-            lambda2 = ths * 0.15
+            lambda1 = ths * 0.0 # 0.1
+            lambda2 = ths * 1.0 # 0.15
 
         cy = (y**2).sum() / 2
         primalcostlowerbound = 0

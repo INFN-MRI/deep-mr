@@ -151,6 +151,10 @@ class WaveletDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
+    
+    def g(self, input):
+        Win = self.denoiser.flatten_coeffs(self.denoiser.dwt(input))
+        return self.ths * abs(Win).sum().item()
 
 
 def wavelet_denoise(
@@ -348,8 +352,13 @@ class WaveletDictDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-
-
+    
+    def g(self, input):
+        Win = [wv.flatten_coeffs(wv.dwt(input)) for wv in self.denoiser.list_prox]
+        Win = torch.hstack(Win)
+        return self.ths * abs(Win).sum().item()
+    
+    
 def wavelet_dict_denoise(
     input,
     ndim,
@@ -620,7 +629,7 @@ class _WaveletDenoiser(nn.Module):
         for level in range(1, self.level + 1):
             ths_cur = self.reshape_ths(ths, level)
             for c, key in enumerate(["aad", "ada", "daa", "add", "dad", "dda", "ddd"]):
-                coeffs[level][key] = self.prox_l1(coeffs[level][key], ths_cur[c])
+                coeffs[level][key] = self.thresold_func(coeffs[level][key], ths_cur[c])
         return coeffs
 
     def threshold_ND(self, coeffs, ths):
