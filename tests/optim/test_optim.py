@@ -133,13 +133,34 @@ def test_lstsq(dtype, device):
     
     def AHA(x):
         return A.T @ A @ x
+    
+    # prepare denoiser
+    D = Denoiser()
 
     # CG
     x_cg, _ = deepmr.optim.lstsq(y, AH, AHA, niter=1000, lamda=lamda, ndim=1)
-
+    
     # check
     npt.assert_allclose(x_cg.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    
+    # PGD
+    # x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda, ndim=1)
+    
+    # # check
+    # npt.assert_allclose(x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    
+    # PP-PGD
+    x_pppgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=250, lamda=lamda, ndim=1, use_precond=True, precond_degree=4)
 
+    # check
+    npt.assert_allclose(x_pppgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    
+    # ADMM
+    x_admm, _ = deepmr.optim.lstsq(y, AH, AHA, prior=[D], niter=1000, lamda=lamda, ndim=1)
+    
+    # check
+    npt.assert_allclose(x_admm.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    
 
 # %% local subroutines
 def Ax_setup(n, dtype, device):
@@ -159,3 +180,11 @@ def Ax_y_setup(n, lamda, dtype, device):
     )
 
     return A, x_torch, y
+
+class Denoiser(torch.nn.Module):
+    def __init__(self, ths=1.0):
+        super().__init__()
+        self.ths = ths
+        
+    def forward(self, x):
+        return x / (1.0 + self.ths)

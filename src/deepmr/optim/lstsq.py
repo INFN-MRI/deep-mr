@@ -163,8 +163,8 @@ def lstsq(
 
     # rescale for easier handling of Lipschitz constant
     # AHy, scale = _intensity_scaling(AHy, ndim=ndim)
-    if verbose > 1:
-        print(f"Rescaling data by the 95% percentile of magnitude = {scale}")
+    # if verbose > 1:
+    #     print(f"Rescaling data by the 95% percentile of magnitude = {scale}")
 
     # if no prior is specified, use CG recon
     if prior is None:
@@ -183,7 +183,7 @@ def lstsq(
         
     # if multiple regularizers are specified, use ADMM
     else:
-        output, history = _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, AHA_niter)
+        output, history = _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter)
     
     # output
     if isnumpy:
@@ -256,7 +256,7 @@ def _CG_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_hi
                 
     return output, history
 
-def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, use_precond, precond_degree):
+def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree):
     if verbose > 1:
         print("Single prior - solving using FISTA")
         
@@ -271,7 +271,11 @@ def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize,
     if lamda != 0.0:
         if AHA_offset is None:
             AHA_offset = _linops.Identity(ndim)
-        _AHA = AHA + lamda * AHA_offset
+        if isinstance(AHA, _linops.Linop):
+            _AHA = AHA + lamda * AHA_offset
+        else:
+            def _AHA(x):
+                return AHA(x) + lamda * AHA_offset(x)
     else:
         _AHA = AHA
         
@@ -334,7 +338,11 @@ def _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, 
     if lamda != 0.0:
         if AHA_offset is None:
             AHA_offset = _linops.Identity(ndim)
-        _AHA = AHA + lamda * AHA_offset
+        if isinstance(AHA, _linops.Linop):
+            _AHA = AHA + lamda * AHA_offset
+        else:
+            def _AHA(x):
+                return AHA(x) + lamda * AHA_offset(x)
     else:
         _AHA = AHA
         
