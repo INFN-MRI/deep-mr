@@ -68,6 +68,9 @@ class WaveletDenoiser(nn.Module):
         The default is ``"soft"``.
     level: int, optional
         Level of the wavelet transform. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     """
 
@@ -80,6 +83,7 @@ class WaveletDenoiser(nn.Module):
         device=None,
         non_linearity="soft",
         level=None,
+        offset=None,
         *args,
         **kwargs
     ):
@@ -101,6 +105,11 @@ class WaveletDenoiser(nn.Module):
         )
         self.denoiser.device = device
 
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -119,6 +128,10 @@ class WaveletDenoiser(nn.Module):
         ndim = self.denoiser.dimension
         ishape = input.shape
 
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
+
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
@@ -126,7 +139,7 @@ class WaveletDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
@@ -138,6 +151,10 @@ class WaveletDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
+    
+    def g(self, input):
+        Win = self.denoiser.flatten_coeffs(self.denoiser.dwt(input))
+        return self.ths * abs(Win).sum().item()
 
 
 def wavelet_denoise(
@@ -249,6 +266,9 @@ class WaveletDictDenoiser(nn.Module):
     max_iter : int, optional
         Number of iterations of the optimization algorithm.
         The default is ``10``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     """
 
@@ -262,6 +282,7 @@ class WaveletDictDenoiser(nn.Module):
         non_linearity="soft",
         level=None,
         max_iter=10,
+        offset=None,
         *args,
         **kwargs
     ):
@@ -285,6 +306,11 @@ class WaveletDictDenoiser(nn.Module):
 
         self.denoiser.device = device
 
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
+
     def forward(self, input):
         # get complex
         if torch.is_complex(input):
@@ -303,6 +329,10 @@ class WaveletDictDenoiser(nn.Module):
         ndim = self.denoiser.dimension
         ishape = input.shape
 
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
+
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
@@ -310,7 +340,7 @@ class WaveletDictDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
@@ -322,8 +352,13 @@ class WaveletDictDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-
-
+    
+    def g(self, input):
+        Win = [wv.flatten_coeffs(wv.dwt(input)) for wv in self.denoiser.list_prox]
+        Win = torch.hstack(Win)
+        return self.ths * abs(Win).sum().item()
+    
+    
 def wavelet_dict_denoise(
     input,
     ndim,
@@ -594,7 +629,7 @@ class _WaveletDenoiser(nn.Module):
         for level in range(1, self.level + 1):
             ths_cur = self.reshape_ths(ths, level)
             for c, key in enumerate(["aad", "ada", "daa", "add", "dad", "dda", "ddd"]):
-                coeffs[level][key] = self.prox_l1(coeffs[level][key], ths_cur[c])
+                coeffs[level][key] = self.thresold_func(coeffs[level][key], ths_cur[c])
         return coeffs
 
     def threshold_ND(self, coeffs, ths):

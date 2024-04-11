@@ -33,9 +33,12 @@ class TGVDenoiser(nn.Module):
     Attributes
     ----------
     ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
+        Number of spatial dimensions, can be ``1``, ``2`` or ``3``.
     ths : float, optional
         Denoise threshold. The default is ``0.1``.
+    axis : int, optional
+        Axis over which to perform finite difference. Used only if ``ndim == 1``,
+        ignored otherwise. The default is ``0``.
     trainable : bool, optional
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
@@ -54,6 +57,9 @@ class TGVDenoiser(nn.Module):
         Dual variable for warm restart. The default is ``None``.
     r2 : torch.Tensor, optional
         Auxiliary variable for warm restart. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     Notes
     -----
@@ -67,6 +73,7 @@ class TGVDenoiser(nn.Module):
         self,
         ndim,
         ths=0.1,
+        axis=0,
         trainable=False,
         device=None,
         verbose=False,
@@ -75,6 +82,7 @@ class TGVDenoiser(nn.Module):
         x2=None,
         u2=None,
         r2=None,
+        offset=None,
     ):
         super().__init__()
 
@@ -85,6 +93,7 @@ class TGVDenoiser(nn.Module):
 
         self.denoiser = _TGVDenoiser(
             ndim=ndim,
+            axis=axis,
             device=device,
             verbose=verbose,
             n_it_max=niter,
@@ -94,6 +103,11 @@ class TGVDenoiser(nn.Module):
             r2=r2,
         )
         self.denoiser.device = device
+
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -113,6 +127,10 @@ class TGVDenoiser(nn.Module):
         ndim = self.denoiser.ndim
         ishape = input.shape
 
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
+
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
@@ -120,7 +138,7 @@ class TGVDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
@@ -132,12 +150,15 @@ class TGVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-
+    
+    def g(self, input):
+        return self.ths * (((self.epsilon(self.nabla(input))) ** 2).sum(axis=-1) ** 0.5).sum()
 
 def tgv_denoise(
     input,
     ndim,
     ths=0.1,
+    axis=0,
     device=None,
     verbose=False,
     niter=100,
@@ -172,13 +193,12 @@ def tgv_denoise(
     input : np.ndarray | torch.Tensor
         Input image of shape (..., n_ndim, ..., n_0).
     ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
+        Number of spatial dimensions, can be ``1``, ``2`` or ``3``.
     ths : float, optional
         Denoise threshold. Default is ``0.1``.
-    ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
-    ths : float, optional
-        Denoise threshold. The default is ``0.1``.
+    axis : int, optional
+        Axis over which to perform finite difference. Used only if ``ndim == 1``,
+        ignored otherwise. The default is ``0``.
     trainable : bool, optional
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
@@ -212,8 +232,8 @@ def tgv_denoise(
         isnumpy = False
 
     # initialize denoiser
-    TV = TGVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
-    output = TV(input)
+    TGV = TGVDenoiser(ndim, ths, axis, False, device, verbose, niter, crit, x2, u2)
+    output = TGV(input)
 
     # cast back to numpy if requried
     if isnumpy:
@@ -227,7 +247,8 @@ class _TGVDenoiser(nn.Module):
     def __init__(
         self,
         ndim,
-        device,
+        axis=0,
+        device=None,
         verbose=False,
         n_it_max=1000,
         crit=1e-5,
@@ -238,8 +259,14 @@ class _TGVDenoiser(nn.Module):
         super().__init__()
         self.device = device
         self.ndim = ndim
+        self.axis = axis
 
-        if ndim == 2:
+        if ndim == 1:
+            self.nabla = self.nabla1
+            self.nabla_adjoint = self.nabla1_adjoint
+            self.epsilon = self.epsilon1
+            self.epsilon_adjoint = self.epsilon1_adjoint
+        elif ndim == 2:
             self.nabla = self.nabla2
             self.nabla_adjoint = self.nabla2_adjoint
             self.epsilon = self.epsilon2
@@ -304,8 +331,8 @@ class _TGVDenoiser(nn.Module):
             self.restart = False
 
         if ths is not None:
-            lambda1 = ths * 0.1
-            lambda2 = ths * 0.15
+            lambda1 = ths * 0.0 # 0.1
+            lambda2 = ths * 1.0 # 0.15
 
         cy = (y**2).sum() / 2
         primalcostlowerbound = 0
@@ -379,17 +406,54 @@ class _TGVDenoiser(nn.Module):
 
         return self.x2
 
+    def nabla1(self, x):
+        r"""
+        Applies the finite differences operator associated with tensors of the same shape as x.
+        """
+        # move selected axis upfront
+        x = x.swapaxes(self.axis, -1)
+
+        # perform finite difference
+        u = torch.zeros(list(x.shape) + [1], device=x.device, dtype=x.dtype)
+        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
+        u[..., :-1, 0] = u[..., :-1, 0] + x[..., 1:]
+
+        # place axis back into original position
+        x = x.swapaxes(self.axis, -1)
+        u = u[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        return u
+
+    def nabla1_adjoint(self, x):
+        r"""
+        Applies the finite differences operator associated with tensors of the same shape as x.
+        """
+        # move selected axis upfront
+        x = x[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        # perform finite difference
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
+        )  # note that we just reversed left and right sides of each line to obtain the transposed operator        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
+        u[..., :-1] = u[..., :-1] - x[..., :-1, 0]
+        u[..., 1:] = u[..., 1:] + x[..., :-1, 0]
+
+        # place axis back into original position
+        x = x[..., 0].swapaxes(self.axis, -1)[..., None]
+        u = u.swapaxes(self.axis, -1)
+
+        return u
+
     @staticmethod
     def nabla2(x):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
-        b, c, h, w = x.shape
-        u = torch.zeros((b, c, h, w, 2), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] - x[:, :, :-1]
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] + x[:, :, 1:]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] - x[..., :-1]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] + x[..., 1:]
+        u = torch.zeros(list(x.shape) + [2], device=x.device, dtype=x.dtype)
+        u[..., :-1, :, 0] = u[..., :-1, :, 0] - x[..., :, :-1]
+        u[..., :-1, :, 0] = u[..., :-1, :, 0] + x[..., :, 1:]
+        u[..., :, :-1, 1] = u[..., :, :-1, 1] - x[..., :-1, :]
+        u[..., :, :-1, 1] = u[..., :, :-1, 1] + x[..., 1:, :]
         return u
 
     @staticmethod
@@ -397,14 +461,13 @@ class _TGVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        b, c, h, w = x.shape[:-1]
-        u = torch.zeros((b, c, h, w), device=x.device).type(
-            x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator
-        u[:, :, :-1] = u[:, :, :-1] - x[:, :, :-1, :, 0]
-        u[:, :, 1:] = u[:, :, 1:] + x[:, :, :-1, :, 0]
-        u[..., :-1] = u[..., :-1] - x[..., :-1, 1]
-        u[..., 1:] = u[..., 1:] + x[..., :-1, 1]
+        u[..., :, :-1] = u[..., :, :-1] - x[..., :-1, :, 0]
+        u[..., :, 1:] = u[..., :, 1:] + x[..., :-1, :, 0]
+        u[..., :-1, :] = u[..., :-1, :] - x[..., :, :-1, 1]
+        u[..., 1:, :] = u[..., 1:, :] + x[..., :, :-1, 1]
         return u
 
     @staticmethod
@@ -412,14 +475,13 @@ class _TGVDenoiser(nn.Module):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
-        b, c, d, h, w = x.shape
-        u = torch.zeros((b, c, d, h, w, 3), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] - x[:, :, :-1]
-        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] + x[:, :, 1:]
-        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] - x[:, :, :, :-1]
-        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] + x[:, :, :, 1:]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] + x[:, :, :, :, 1:]
+        u = torch.zeros(list(x.shape) + [3], device=x.device, dtype=x.dtype)
+        u[..., :-1, :, :, 0] = u[..., :-1, :, :, 0] - x[..., :, :, :-1]
+        u[..., :-1, :, :, 0] = u[..., :-1, :, :, 0] + x[..., :, :, 1:]
+        u[..., :, :-1, :, 1] = u[..., :, :-1, :, 1] - x[..., :, :-1, :]
+        u[..., :, :-1, :, 1] = u[..., :, :-1, :, 1] + x[..., :, 1:, :]
+        u[..., :, :, :-1, 2] = u[..., :, :, :-1, 2] - x[..., :-1, :, :]
+        u[..., :, :, :-1, 2] = u[..., :, :, :-1, 2] + x[..., 1:, :, :]
 
         return u
 
@@ -428,32 +490,68 @@ class _TGVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        b, c, d, h, w = x.shape
-        u = torch.zeros((b, c, d, h, w), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] - x[:, :, :-1]
-        u[:, :, 1:, :, 0] = u[:, :, 1:, :, 0] + x[:, :, :-1]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] - x[:, :, :, :-1]
-        u[:, :, :, 1:, 1] = u[:, :, :, 1:, 1] + x[:, :, :, :-1]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
-        u[:, :, :, :, 1:, 2] = u[:, :, :, :, 1:, 2] + x[:, :, :, :, :-1]
+        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype)
+        u[..., :, :, :-1] = u[..., :, :, :-1] - x[..., :-1, :, :, 0]
+        u[..., :, :, 1:] = u[..., :, :, 1:] + x[..., :-1, :, :, 0]
+        u[..., :, :-1, :] = u[..., :, :-1, :] - x[..., :, :-1, :, 1]
+        u[..., :, 1:, :] = u[..., :, 1:, :] + x[..., :, :-1, :, 1]
+        u[..., :-1, :, :] = u[..., :-1, :, :] - x[..., :, :, :-1, 2]
+        u[..., 1:, :, :] = u[..., 1:, :, :] + x[..., :, :, :-1, 2]
 
         return u
 
-    @staticmethod
-    def epsilon2(I):  # Simplified
+    def epsilon1(self, I):
         r"""
         Applies the jacobian of a vector field.
         """
-        b, c, h, w, _ = I.shape
-        G = torch.zeros((b, c, h, w, 4), device=I.device).type(I.dtype)
-        G[:, :, 1:, :, 0] = G[:, :, 1:, :, 0] - I[:, :, :-1, :, 0]  # xdy
+        # move selected axis upfront
+        I = I[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        # perform finite difference
+        G = torch.zeros(list(I.shape[:-1]) + [1], device=I.device, dtype=I.dtype)
+        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0]  # xdx
         G[..., 0] = G[..., 0] + I[..., 0]
-        G[..., 1:, 1] = G[..., 1:, 1] - I[..., :-1, 0]  # xdx
+
+        # place axis back into original position
+        I = I[..., 0].swapaxes(self.axis, -1)[..., None]
+        G = G[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        return G
+
+    def epsilon1_adjoint(self, G):
+        r"""
+        Applies the adjoint of the jacobian of a vector field.
+        """
+        # move selected axis upfront
+        G = G[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        # perform finite difference
+        I = torch.zeros(list(G.shape[:-1]) + [1], device=G.device, dtype=G.dtype)
+        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0]  # xdx
+        I[..., 0] = I[..., 0] + G[..., 0]
+        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1]  # xdy
+
+        # place axis back into original position
+        I = I[..., 0].swapaxes(self.axis, -1)[..., None]
+        G = G[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        return I
+
+    @staticmethod
+    def epsilon2(I):
+        r"""
+        Applies the jacobian of a vector field.
+        """
+        G = torch.zeros(list(I.shape[:-1]) + [4], device=I.device, dtype=I.dtype)
+        G[..., 1:, :, 0] = G[..., 1:, :, 0] - I[..., :-1, :, 0]  # xdx
+        G[..., 0] = G[..., 0] + I[..., 0]
+        G[..., 1:, 1] = G[..., 1:, 1] - I[..., :-1, 0]  # xdy
         G[..., 1:, 1] = G[..., 1:, 1] + I[..., 1:, 0]
-        G[..., 1:, 2] = G[..., 1:, 2] - I[..., :-1, 1]  # xdx
+        G[..., 1:, 2] = G[..., 1:, 2] - I[..., :-1, 1]  # ydx
         G[..., 2] = G[..., 2] + I[..., 1]
-        G[:, :, :-1, :, 3] = G[:, :, :-1, :, 3] - I[:, :, :-1, :, 1]  # xdy
-        G[:, :, :-1, :, 3] = G[:, :, :-1, :, 3] + I[:, :, 1:, :, 1]
+        G[..., :-1, :, 3] = G[..., :-1, :, 3] - I[..., :-1, :, 1]  # ydy
+        G[..., :-1, :, 3] = G[..., :-1, :, 3] + I[..., 1:, :, 1]
+
         return G
 
     @staticmethod
@@ -461,58 +559,68 @@ class _TGVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the jacobian of a vector field.
         """
-        b, c, h, w, _ = G.shape
-        I = torch.zeros((b, c, h, w, 2), device=G.device).type(G.dtype)
-        I[:, :, :-1, :, 0] = I[:, :, :-1, :, 0] - G[:, :, 1:, :, 0]
+        I = torch.zeros(list(G.shape[:-1]) + [2], device=G.device, dtype=G.dtype)
+        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 0]  # xdx
         I[..., 0] = I[..., 0] + G[..., 0]
-        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1]
+        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, 1]  # xdy
         I[..., 1:, 0] = I[..., 1:, 0] + G[..., 1:, 1]
-        I[..., :-1, 1] = I[..., :-1, 1] - G[..., 1:, 2]
+        I[..., :-1, 1] = I[..., :-1, 1] - G[..., 1:, 2]  # ydx
         I[..., 1] = I[..., 1] + G[..., 2]
-        I[:, :, :-1, :, 1] = I[:, :, :-1, :, 1] - G[:, :, :-1, :, 3]
-        I[:, :, 1:, :, 1] = I[:, :, 1:, :, 1] + G[:, :, :-1, :, 3]
+        I[..., :-1, :, 1] = I[..., :-1, :, 1] - G[..., :-1, :, 3]  # ydy
+        I[..., 1:, :, 1] = I[..., 1:, :, 1] + G[..., :-1, :, 3]
+
         return I
 
     @staticmethod
-    def epsilon3(I):  # Adapted for 3D matrices
+    def epsilon3(I):
         r"""
         Applies the jacobian of a vector field.
         """
-        b, c, d, h, w = I.shape
-        G = torch.zeros((b, c, d, h, w, 6), device=I.device).type(I.dtype)
-        G[:, :, :, 1:, :, 0] = G[:, :, :, 1:, :, 0] - I[:, :, :, :-1, :, 0]  # xdy
+        G = torch.zeros(list(I.shape[:-1]) + [9], device=I.device, dtype=I.dtype)
+        G[..., 1:, :, :, 0] = G[..., 1:, :, :, 0] - I[..., :-1, :, :, 0]  # xdx
         G[..., 0] = G[..., 0] + I[..., 0]
-        G[..., 1:, :, 1] = G[..., 1:, :, 1] - I[..., :, :-1, 0]  # xdx
-        G[..., 1:, :, 1] = G[..., 1:, :, 1] + I[..., :, 1:, 0]
-        G[..., 1:, :, 2] = G[..., 1:, :, 2] - I[..., :, :-1, 1]  # xdz
-        G[..., 2] = G[..., 2] + I[..., :, 1, 0]
-        G[:, :, :, :-1, :, 3] = G[:, :, :, :-1, :, 3] - I[:, :, :, :-1, :, 1]  # xdy
-        G[:, :, :, :-1, :, 3] = G[:, :, :, :-1, :, 3] + I[:, :, :, 1:, :, 1]
-        G[..., 3] = G[..., 3] + I[..., 0]
-        G[..., 1:, :, 4] = G[..., 1:, :, 4] - I[..., 1:, :, :-1, 2]  # xdz
-        G[..., 4] = G[..., 4] + I[..., 1, :, :, 0]
-        G[:, :, :, :, :-1, 5] = G[:, :, :, :, :-1, 5] - I[:, :, :, :, :-1, 2]  # xdy
-        G[:, :, :, 1:, :, 5] = G[:, :, :, 1:, :, 5] + I[:, :, :, :, :-1, 2]
+        G[..., 1:, :, 1, 1] = G[..., 1:, :, 1, 1] - I[..., :-1, :, :, 1]  # xdy
+        G[..., 1:, :, 1, 1] = G[..., 1:, :, 1, 1] + I[..., 1:, :, :, 1]
+        G[..., 1:, 1, :, 2] = G[..., 1:, 1, :, 2] - I[..., :-1, :, :, 2]  # xdz
+        G[..., 2] = G[..., 2] + I[..., 1, :, :, 2]
+        G[..., :-1, :, :, 3] = G[..., :-1, :, :, 3] - I[..., :-1, :, :, 3]  # ydx
+        G[..., :-1, :, :, 3] = G[..., :-1, :, :, 3] + I[..., 1:, :, :, 3]
+        G[..., 1:, :, 1, 4] = G[..., 1:, :, 1, 4] - I[..., :-1, :, :, 4]  # ydy
+        G[..., 1:, :, 1, 4] = G[..., 1:, :, 1, 4] + I[..., 1:, :, :, 4]
+        G[..., 1:, 1, :, 5] = G[..., 1:, 1, :, 5] - I[..., :-1, :, :, 5]  # ydz
+        G[..., 3] = G[..., 3] + I[..., 1, :, :, 5]
+        G[..., :-1, 1, :, 6] = G[..., :-1, 1, :, 6] - I[..., :-1, :, :, 6]  # zdx
+        G[..., 4] = G[..., 4] + I[..., 1, :, :, 6]
+        G[..., 1:, :, :, 7] = G[..., 1:, :, :, 7] - I[..., :-1, :, :, 7]  # zdy
+        G[..., 5] = G[..., 5] + I[..., 1:, :, :, 7]
+        G[..., :-1, :, 1, 8] = G[..., :-1, :, 1, 8] - I[..., :-1, :, 1, 8]  # zdz
+        G[..., 6] = G[..., 6] + I[..., 1:, :, 1, 8]
+
         return G
 
     @staticmethod
-    def epsilon3_adjoint(G):  # Adapted for 3D matrices
+    def epsilon3_adjoint(G):
         r"""
         Applies the adjoint of the jacobian of a vector field.
         """
-        b, c, d, h, w, _ = G.shape
-        I = torch.zeros((b, c, d, h, w, 3), device=G.device).type(G.dtype)
-        I[:, :, :, :-1, :, 0] = I[:, :, :, :-1, :, 0] - G[:, :, :, 1:, :, 0]
+        I = torch.zeros(list(G.shape[:-1]) + [3], device=G.device, dtype=G.dtype)
+        I[..., :-1, :, :, 0] = I[..., :-1, :, :, 0] - G[..., 1:, :, :, 0]  # xdx
         I[..., 0] = I[..., 0] + G[..., 0]
-        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 1]
+        I[..., :-1, :, 0] = I[..., :-1, :, 0] - G[..., 1:, :, 1]  # xdy
         I[..., 1:, :, 0] = I[..., 1:, :, 0] + G[..., 1:, :, 1]
-        I[..., :-1, :, 1] = I[..., :-1, :, 1] - G[..., 1:, :, 2]
-        I[..., 0] = I[..., 0] + G[..., 2]
-        I[:, :, :, :-1, :, 1] = I[:, :, :, :-1, :, 1] - G[:, :, :, :-1, :, 3]
-        I[:, :, :, 1:, :, 1] = I[:, :, :, 1:, :, 1] + G[:, :, :, :-1, :, 3]
-        I[..., 1] = I[..., 1] + G[..., 3]
-        I[..., :-1, :, 2] = I[..., :-1, :, 2] - G[..., 1:, :, 4]
-        I[..., 0] = I[..., 0] + G[..., 4]
-        I[:, :, :, :, :-1, 2] = I[:, :, :, :, :-1, 2] - G[:, :, :, :, :-1, 5]
-        I[:, :, :, 1:, :, 2] = I[:, :, :, 1:, :, 2] + G[:, :, :, :, :-1, 5]
+        I[..., :-1, 0] = I[..., :-1, 0] - G[..., 1:, :, 2]  # xdz
+        I[..., 2] = I[..., 2] + G[..., 2]
+        I[..., :-1, :, :, 1] = I[..., :-1, :, :, 1] - G[..., 1:, :, :, 3]  # ydx
+        I[..., 1:, :, :, 1] = I[..., 1:, :, :, 1] + G[..., :-1, :, :, 3]
+        I[..., :-1, :, 1] = I[..., :-1, :, 1] - G[..., 1:, :, 4]  # ydy
+        I[..., 1:, :, 1] = I[..., 1:, :, 1] + G[..., :-1, :, 4]
+        I[..., :-1, 1] = I[..., :-1, 1] - G[..., 1:, :, 5]  # ydz
+        I[..., 2] = I[..., 2] + G[..., :-1, :, 5]
+        I[..., :, :-1, :, 2] = I[..., :, :-1, :, 2] - G[..., :, :-1, :, 6]  # zdx
+        I[..., :, 1:, :, 2] = I[..., :, 1:, :, 2] + G[..., :, :-1, :, 6]
+        I[..., :, :-1, 2] = I[..., :, :-1, 2] - G[..., :, 1:, 7]  # zdy
+        I[..., :, 1:, 2] = I[..., :, 1:, 2] + G[..., :, 1:, 7]
+        I[..., :-1, :-1, 2] = I[..., :-1, :-1, 2] - G[..., 1:, 1:, 8]  # zdz
+        I[..., 1:, 1:, 2] = I[..., 1:, 1:, 2] + G[..., 1:, 1:, 8]
+
         return I

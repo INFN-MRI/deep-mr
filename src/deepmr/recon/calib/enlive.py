@@ -1,5 +1,3 @@
-"""Pytorch ESPIRIT implementation. Adapted for convenience from https://github.com/mikgroup/espirit-python/tree/master"""
-
 __all__ = ["espirit_cal"]
 
 import numpy as np
@@ -8,14 +6,16 @@ import torch
 from ... import fft as _fft
 from ... import _signal
 
+from ... import linops as _linops
+from ... import optim as _optim
+from ... import prox as _prox
+
 from . import acs as _acs
 
 
-def espirit_cal(
-    data, coord=None, dcf=None, shape=None, k=6, r=24, t=0.02, c=0.0, nsets=1
-):
+def nlinv(data, mask=None, coord=None, shape=None, nsets=1):
     """
-    Derives the ESPIRiT [1] operator.
+    Derives the NLINV/ENLIVE [1] operator.
 
     Parameters
     ----------
@@ -24,23 +24,10 @@ def espirit_cal(
     coord : np.ndarray | torch.Tensor, optional
         K-space trajectory of ``shape = (ncontrasts, nviews, nsamples, ndim)``.
         The default is ``None`` (Cartesian acquisition).
-    dcf : np.ndarray | torch.Tensor, optional
-        K-space density compensation of ``shape = (ncontrasts, nviews, nsamples)``.
-        The default is ``None`` (no compensation).
     shape : Iterable[int] | optional
         Shape of the k-space after gridding. If not provided, estimate from
         input data (assumed on a Cartesian grid already).
         The default is ``None`` (Cartesian acquisition).
-    k : int, optional
-        k-space kernel size. The default is ``6``.
-    r : int, optional
-        Calibration region size. The default is ``24``.
-    t : float, optional
-        Rank of the auto-calibration matrix (A).
-        The default is ``0.02``.
-    c : float, optional
-        Crop threshold that determines eigenvalues "=1".
-        The defaults is ``0.95``.
     nsets : int, optional
         Number of set of maps to be returned.
         The default is ``1`` (conventional SENSE recon).
@@ -108,10 +95,12 @@ def espirit_cal(
     else:
         cshape = [64] * ndim
 
-    cal_data = _acs.find_acs(data, cshape, coord, dcf)
+    # get calibration region
+    cal_data = _acs.find_acs(data, cshape, coord)
+    cmask = _signal.resize(mask, ndim * [r])
 
     # calculate maps
-    maps = _espirit(cal_data.clone(), k, r, t, c)
+    maps = _enlive(cal_data.clone(), cmask, cshape, coord, toeplitz)
 
     # select maps
     if nsets == 1:
@@ -140,84 +129,87 @@ def espirit_cal(
 
 
 # %% local utils
-def _espirit(X, k, r, t, c):
-    # transpose
-    X = X.permute(3, 2, 1, 0)
+def _enlive(data, mask, shape, coord, toeplitz):
+    # build encoding operator
+    F, FHF = _get_linop(data, mask, coord, shape, device, toeplitz)
 
-    # get shape
-    sx, sy, sz, nc = X.shape
+    # scale data
+    img = _fft.ifft(data, axes=range(-ndim, 0))
+    for n in range(len(img.shape) - ndim):
+        img = torch.linalg.norm(img, axis=0)
 
-    sxt = (sx // 2 - r // 2, sx // 2 + r // 2) if (sx > 1) else (0, 1)
-    syt = (sy // 2 - r // 2, sy // 2 + r // 2) if (sy > 1) else (0, 1)
-    szt = (sz // 2 - r // 2, sz // 2 + r // 2) if (sz > 1) else (0, 1)
+    # get scaling
+    img = torch.nan_to_num(img, posinf=0.0, neginf=0.0, nan=0.0)
+    scale = torch.quantile(abs(img.ravel()), 0.95)
 
-    # Extract calibration region.
-    C = X[sxt[0] : sxt[1], syt[0] : syt[1], szt[0] : szt[1], :].to(
-        dtype=torch.complex64
-    )
+    # scale data
+    data /= scale
 
-    # Construct Hankel matrix.
-    p = (sx > 1) + (sy > 1) + (sz > 1)
-    A = torch.zeros(
-        [(r - k + 1) ** p, k**p * nc], dtype=torch.complex64, device=X.device
-    )
 
-    idx = 0
-    for xdx in range(max(1, C.shape[0] - k + 1)):
-        for ydx in range(max(1, C.shape[1] - k + 1)):
-            for zdx in range(max(1, C.shape[2] - k + 1)):
-                block = C[xdx : xdx + k, ydx : ydx + k, zdx : zdx + k, :].to(
-                    dtype=torch.complex64
-                )
-                A[idx, :] = block.flatten()
-                idx += 1
+def _get_linop(data, mask, coord, shape, device, toeplitz):
+    # get device
+    if device is None:
+        device = data.device
 
-    # Take the Singular Value Decomposition.
-    U, S, VH = torch.linalg.svd(A, full_matrices=True)
-    V = VH.conj().t()
+    if mask is not None and coord is not None:
+        raise ValueError("Please provide either mask or traj, not both.")
 
-    # Select kernels
-    n = torch.sum(S >= t * S[0])
-    V = V[:, :n]
+    if mask is not None:  # Cartesian
+        # Fourier
+        F = _linops.FFTOp(mask, device=device)
 
-    kxt = (sx // 2 - k // 2, sx // 2 + k // 2) if (sx > 1) else (0, 1)
-    kyt = (sy // 2 - k // 2, sy // 2 + k // 2) if (sy > 1) else (0, 1)
-    kzt = (sz // 2 - k // 2, sz // 2 + k // 2) if (sz > 1) else (0, 1)
+        # Normal operator
+        if toeplitz:
+            FHF = _linops.FFTGramOp(mask, device=device)
+        else:
+            FHF = F.H * F
 
-    # Reshape into k-space kernel, flips it and takes the conjugate
-    kernels = torch.zeros((sx, sy, sz, nc, n), dtype=torch.complex64, device=X.device)
-    kerdims = [
-        ((sx > 1) * k + (sx == 1) * 1),
-        ((sy > 1) * k + (sy == 1) * 1),
-        ((sz > 1) * k + (sz == 1) * 1),
-        nc,
-    ]
-    for idx in range(n):
-        kernels[kxt[0] : kxt[1], kyt[0] : kyt[1], kzt[0] : kzt[1], :, idx] = V[
-            :, idx
-        ].reshape(kerdims)
+    if coord is not None:  # Non Cartesian
+        assert shape is not None, "Please provide shape for Non-Cartesian imaging."
+        ndim = coord.shape[-1]
 
-    # Take the iucfft
-    axes = (0, 1, 2)
-    kerimgs = (
-        _fft.fft(kernels.flip(0).flip(1).flip(2).conj(), axes)
-        * (sx * sy * sz) ** 0.5
-        / (k**p) ** 0.5
-    )
+        # Fourier
+        F = _linops.NUFFTOp(coord, shape[-ndim:], device=device)
 
-    # Take the point-wise eigenvalue decomposition and keep eigenvalues greater than c
-    u, s, vh = torch.linalg.svd(
-        kerimgs.view(sx, sy, sz, nc, n).reshape(-1, nc, n), full_matrices=True
-    )
-    mask = s**2 > c
+        # Normal operator
+        if toeplitz:
+            FHF = _linops.NUFFTGramOp(coord, shape[-ndim:], device=device)
+        else:
+            FHF = F.H * F
 
-    # mask u (nvoxels, neigen, neigen)
-    u = mask[:, None, :] * u
+    return F, FHF
 
-    # Reshape back to the original shape and assign to maps
-    maps = u.view(sx, sy, sz, nc, nc)
 
-    # transpose
-    maps = maps.permute(4, 3, 2, 1, 0)
+def _irgn_fista(data, ndim, F, FHF, niter, D, step):
+    # input shape is
+    # 2D Cart / NonCart: (nslices, nc, ny, nx)
+    # 3D Cart: (nx, nc, nz, ny)
+    # 3D NonCart : (nc, nz, ny, nx)
+    # in general (..., nc, *mtx), with len(mtx) = ndim
 
-    return maps
+    # shape of dx is (..., 1+nc, *mtx), with dx[..., 0, ...] = M0, dx[..., 1:, ...] = smap[0], smap[1], ... smap[nc-1]
+    if ndim == 2:
+        while len(data.shape) < 4:
+            data = data[None, ...]
+        data = data.swapaxes(0, 1)
+
+    # build initial guess
+    nc, nz, ny, nx = data.shape
+    x0 = torch.zeros((nc + 1, nz, ny, nx), dtype=data.dtype, device=data.device)
+    x0[0, ...] = 1.0
+
+    # initialize operator
+    C = _linops.SenseOp(3, x0[1:])
+    E = F * C
+    EHE = C.H * FHF * C
+
+    # initialize step
+    dx = torch.cat(((E.H * data)[None, ...], F.H * data), axis=0)
+
+    for n in range(niter):
+        # compute update
+        dx = _optim.pgd_solve(dx, step, EHE, D)
+
+        # update variable
+
+        # update operator

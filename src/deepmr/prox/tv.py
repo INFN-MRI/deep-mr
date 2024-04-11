@@ -33,9 +33,12 @@ class TVDenoiser(nn.Module):
     Attributes
     ---------
     ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
+        Number of spatial dimensions, can be ``1``, ``2`` or ``3``.
     ths : float, optional
         Denoise threshold. The default is ``0.1``.
+    axis : int, optional
+        Axis over which to perform finite difference. Used only if ``ndim == 1``,
+        ignored otherwise. The default is ``0``.
     trainable : bool, optional
         If ``True``, threshold value is trainable, otherwise it is not.
         The default is ``False``.
@@ -52,6 +55,9 @@ class TVDenoiser(nn.Module):
         Primary variable for warm restart. The default is ``None``.
     u2 : torch.Tensor, optional
         Dual variable for warm restart. The default is ``None``.
+    offset : torch.Tensor, optional
+        Offset applied to regularization input, i.e. ``output = W(input + offset)``
+        Must be either a scalar or its shape must support broadcast with ``input``.
 
     Notes
     -----
@@ -65,6 +71,7 @@ class TVDenoiser(nn.Module):
         self,
         ndim,
         ths=0.1,
+        axis=0,
         trainable=False,
         device=None,
         verbose=False,
@@ -72,6 +79,7 @@ class TVDenoiser(nn.Module):
         crit=1e-5,
         x2=None,
         u2=None,
+        offset=None,
     ):
         super().__init__()
 
@@ -82,6 +90,7 @@ class TVDenoiser(nn.Module):
 
         self.denoiser = _TVDenoiser(
             ndim=ndim,
+            axis=axis,
             device=device,
             verbose=verbose,
             n_it_max=niter,
@@ -90,6 +99,11 @@ class TVDenoiser(nn.Module):
             u2=u2,
         )
         self.denoiser.device = device
+
+        if offset is not None:
+            self.offset = torch.as_tensor(offset)
+        else:
+            self.offset = None
 
     def forward(self, input):
         # get complex
@@ -109,6 +123,10 @@ class TVDenoiser(nn.Module):
         ndim = self.denoiser.ndim
         ishape = input.shape
 
+        # apply offset
+        if self.offset is not None:
+            input = input.to(device) + self.offset.to(device)
+
         # reshape for computation
         input = input.reshape(-1, *ishape[-ndim:])
         if iscomplex:
@@ -116,7 +134,7 @@ class TVDenoiser(nn.Module):
             input = input.reshape(-1, *ishape[-ndim:])
 
         # apply denoising
-        output = self.denoiser(input[:, None, ...].to(device), self.ths).to(
+        output = self.denoiser(input.to(device), self.ths).to(
             idevice
         )  # perform the denoising on the real-valued tensor
 
@@ -128,12 +146,17 @@ class TVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
+    
+    def g(self, input):
+        Gin = self.denoiser.nabla(input)
+        return self.ths * abs(Gin).sum().item()
 
 
 def tv_denoise(
     input,
     ndim,
     ths=0.1,
+    axis=0,
     device=None,
     verbose=False,
     niter=100,
@@ -168,9 +191,12 @@ def tv_denoise(
     input : np.ndarray | torch.Tensor
         Input image of shape (..., n_ndim, ..., n_0).
     ndim : int
-        Number of spatial dimensions, can be either ``2`` or ``3``.
+        Number of spatial dimensions, can be ``1,`` ``2`` or ``3``.
     ths : float, optional
         Denoise threshold. The default is``0.1``.
+    axis : int, optional
+        Axis over which to perform finite difference. Used only if ``ndim == 1``,
+        ignored otherwise. The default is ``0``.
     device : str, optional
         Device on which the wavelet transform is computed.
         The default is ``None`` (infer from input).
@@ -205,7 +231,7 @@ def tv_denoise(
         isnumpy = False
 
     # initialize denoiser
-    TV = TVDenoiser(ndim, ths, False, device, verbose, niter, crit, x2, u2)
+    TV = TVDenoiser(ndim, ths, axis, False, device, verbose, niter, crit, x2, u2)
     output = TV(input)
 
     # cast back to numpy if requried
@@ -220,6 +246,7 @@ class _TVDenoiser(nn.Module):
     def __init__(
         self,
         ndim,
+        axis=0,
         device=None,
         verbose=False,
         n_it_max=1000,
@@ -230,8 +257,12 @@ class _TVDenoiser(nn.Module):
         super().__init__()
         self.device = device
         self.ndim = ndim
+        self.axis = axis
 
-        if ndim == 2:
+        if ndim == 1:
+            self.nabla = self.nabla1
+            self.nabla_adjoint = self.nabla1_adjoint
+        elif ndim == 2:
             self.nabla = self.nabla2
             self.nabla_adjoint = self.nabla2_adjoint
         elif ndim == 3:
@@ -302,17 +333,54 @@ class _TVDenoiser(nn.Module):
 
         return self.x2
 
+    def nabla1(self, x):
+        r"""
+        Applies the finite differences operator associated with tensors of the same shape as x.
+        """
+        # move selected axis upfront
+        x = x.swapaxes(self.axis, -1)
+
+        # perform finite difference
+        u = torch.zeros(list(x.shape) + [1], device=x.device, dtype=x.dtype)
+        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
+        u[..., :-1, 0] = u[..., :-1, 0] + x[..., 1:]
+
+        # place axis back into original position
+        x = x.swapaxes(self.axis, -1)
+        u = u[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        return u
+
+    def nabla1_adjoint(self, x):
+        r"""
+        Applies the finite differences operator associated with tensors of the same shape as x.
+        """
+        # move selected axis upfront
+        x = x[..., 0].swapaxes(self.axis, -1)[..., None]
+
+        # perform finite difference
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
+        )  # note that we just reversed left and right sides of each line to obtain the transposed operator        u[..., :-1, 0] = u[..., :-1, 0] - x[..., :-1]
+        u[..., :-1] = u[..., :-1] - x[..., :-1, 0]
+        u[..., 1:] = u[..., 1:] + x[..., :-1, 0]
+
+        # place axis back into original position
+        x = x[..., 0].swapaxes(self.axis, -1)[..., None]
+        u = u.swapaxes(self.axis, -1)
+
+        return u
+
     @staticmethod
     def nabla2(x):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
-        b, c, h, w = x.shape
-        u = torch.zeros((b, c, h, w, 2), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] - x[:, :, :-1]
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] + x[:, :, 1:]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] - x[..., :-1]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] + x[..., 1:]
+        u = torch.zeros(list(x.shape) + [2], device=x.device, dtype=x.dtype)
+        u[..., :-1, :, 0] = u[..., :-1, :, 0] - x[..., :, :-1]
+        u[..., :-1, :, 0] = u[..., :-1, :, 0] + x[..., :, 1:]
+        u[..., :, :-1, 1] = u[..., :, :-1, 1] - x[..., :-1, :]
+        u[..., :, :-1, 1] = u[..., :, :-1, 1] + x[..., 1:, :]
         return u
 
     @staticmethod
@@ -320,14 +388,13 @@ class _TVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        b, c, h, w = x.shape[:-1]
-        u = torch.zeros((b, c, h, w), device=x.device).type(
-            x.dtype
+        u = torch.zeros(
+            x.shape[:-1], device=x.device, dtype=x.dtype
         )  # note that we just reversed left and right sides of each line to obtain the transposed operator
-        u[:, :, :-1] = u[:, :, :-1] - x[:, :, :-1, :, 0]
-        u[:, :, 1:] = u[:, :, 1:] + x[:, :, :-1, :, 0]
-        u[..., :-1] = u[..., :-1] - x[..., :-1, 1]
-        u[..., 1:] = u[..., 1:] + x[..., :-1, 1]
+        u[..., :, :-1] = u[..., :, :-1] - x[..., :-1, :, 0]
+        u[..., :, 1:] = u[..., :, 1:] + x[..., :-1, :, 0]
+        u[..., :-1, :] = u[..., :-1, :] - x[..., :, :-1, 1]
+        u[..., 1:, :] = u[..., 1:, :] + x[..., :, :-1, 1]
         return u
 
     @staticmethod
@@ -335,14 +402,13 @@ class _TVDenoiser(nn.Module):
         r"""
         Applies the finite differences operator associated with tensors of the same shape as x.
         """
-        b, c, d, h, w = x.shape
-        u = torch.zeros((b, c, d, h, w, 3), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] - x[:, :, :-1]
-        u[:, :, :-1, :, :, 0] = u[:, :, :-1, :, :, 0] + x[:, :, 1:]
-        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] - x[:, :, :, :-1]
-        u[:, :, :, :-1, :, 1] = u[:, :, :, :-1, :, 1] + x[:, :, :, 1:]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] + x[:, :, :, :, 1:]
+        u = torch.zeros(list(x.shape) + [3], device=x.device, dtype=x.dtype)
+        u[..., :-1, :, :, 0] = u[..., :-1, :, :, 0] - x[..., :, :, :-1]
+        u[..., :-1, :, :, 0] = u[..., :-1, :, :, 0] + x[..., :, :, 1:]
+        u[..., :, :-1, :, 1] = u[..., :, :-1, :, 1] - x[..., :, :-1, :]
+        u[..., :, :-1, :, 1] = u[..., :, :-1, :, 1] + x[..., :, 1:, :]
+        u[..., :, :, :-1, 2] = u[..., :, :, :-1, 2] - x[..., :-1, :, :]
+        u[..., :, :, :-1, 2] = u[..., :, :, :-1, 2] + x[..., 1:, :, :]
 
         return u
 
@@ -351,13 +417,12 @@ class _TVDenoiser(nn.Module):
         r"""
         Applies the adjoint of the finite difference operator.
         """
-        b, c, d, h, w = x.shape
-        u = torch.zeros((b, c, d, h, w), device=x.device).type(x.dtype)
-        u[:, :, :-1, :, 0] = u[:, :, :-1, :, 0] - x[:, :, :-1]
-        u[:, :, 1:, :, 0] = u[:, :, 1:, :, 0] + x[:, :, :-1]
-        u[:, :, :, :-1, 1] = u[:, :, :, :-1, 1] - x[:, :, :, :-1]
-        u[:, :, :, 1:, 1] = u[:, :, :, 1:, 1] + x[:, :, :, :-1]
-        u[:, :, :, :, :-1, 2] = u[:, :, :, :, :-1, 2] - x[:, :, :, :, :-1]
-        u[:, :, :, :, 1:, 2] = u[:, :, :, :, 1:, 2] + x[:, :, :, :, :-1]
+        u = torch.zeros(x.shape[:-1], device=x.device, dtype=x.dtype)
+        u[..., :, :, :-1] = u[..., :, :, :-1] - x[..., :-1, :, :, 0]
+        u[..., :, :, 1:] = u[..., :, :, 1:] + x[..., :-1, :, :, 0]
+        u[..., :, :-1, :] = u[..., :, :-1, :] - x[..., :, :-1, :, 1]
+        u[..., :, 1:, :] = u[..., :, 1:, :] + x[..., :, :-1, :, 1]
+        u[..., :-1, :, :] = u[..., :-1, :, :] - x[..., :, :, :-1, 2]
+        u[..., 1:, :, :] = u[..., 1:, :, :] + x[..., :, :, :-1, 2]
 
         return u

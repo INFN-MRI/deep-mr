@@ -5,10 +5,14 @@ __all__ = ["recon_lstsq"]
 import numpy as np
 import torch
 
+
+from ... import linops as _linops
 from ... import optim as _optim
 from ... import prox as _prox
+
+
 from .. import calib as _calib
-from ... import linops as _linops
+
 
 from . import linop as _linop
 
@@ -165,7 +169,7 @@ def recon_lstsq(
 
     # if no prior is specified, use CG recon
     if prior is None:
-        output = _optim.cg_solve(
+        output, _ = _optim.cg_solve(
             img, EHE, niter=niter, lamda=lamda, ndim=ndim, **solver_params
         )
         if isnumpy:
@@ -194,7 +198,7 @@ def recon_lstsq(
         D = _get_prior(prior, ndim, lamda, device, **prior_params)
 
         # solve
-        output = _optim.pgd_solve(
+        output, _ = _optim.pgd_solve(
             img, stepsize, _EHE, D, niter=niter, accelerate=True, **solver_params
         )
     else:
@@ -213,7 +217,7 @@ def recon_lstsq(
             D.append(d)
 
         # solve
-        output = _optim.admm_solve(img, stepsize, _EHE, D, niter=niter, **solver_params)
+        output, _ = _optim.admm_solve(img, stepsize, _EHE, D, niter=niter, **solver_params)
     if isnumpy:
         output = output.numpy(force=True)
 
