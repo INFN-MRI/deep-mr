@@ -82,7 +82,9 @@ def apply_toeplitz(
         # reshape back
         data_out = data_out.reshape(*shape)
     else:
-        data_out = toeplitz_kernel.value * data_in
+        kvalue = backend.numba2pytorch(toeplitz_kernel.value)
+        data_out = kvalue * data_in
+        toeplitz_kernel.value = backend.pytorch2numba(kvalue)
 
     # collect garbage
     gc.collect()

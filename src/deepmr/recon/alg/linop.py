@@ -16,6 +16,7 @@ def EncodingOp(
     basis=None,
     device=None,
     cal_data=None,
+    sensmap=None,
     toeplitz=False,
 ):
     """
@@ -83,10 +84,11 @@ def EncodingOp(
         if ncoils == 1:
             return F, FHF
         else:
-            if cal_data is not None:
-                sensmap, _ = _calib.espirit_cal(cal_data.to(device), nsets=nsets)
-            else:
-                sensmap, _ = _calib.espirit_cal(data.to(device), nsets=nsets)
+            if sensmap is None:
+                if cal_data is not None:
+                    sensmap, _ = _calib.espirit_cal(cal_data.to(device), nsets=nsets)
+                else:
+                    sensmap, _ = _calib.espirit_cal(data.to(device), nsets=nsets)
 
             # infer from mask shape whether we are using multicontrast or not
             if len(mask.shape) == 2:
@@ -120,14 +122,15 @@ def EncodingOp(
         if ncoils == 1:
             return F, FHF
         else:
-            if cal_data is not None:
-                sensmap, _ = _calib.espirit_cal(
-                    cal_data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
-                )
-            else:
-                sensmap, _ = _calib.espirit_cal(
-                    data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
-                )
+            if sensmap is None:
+                if cal_data is not None:
+                    sensmap, _ = _calib.espirit_cal(
+                        cal_data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
+                    )
+                else:
+                    sensmap, _ = _calib.espirit_cal(
+                        data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
+                    )
 
             # infer from mask shape whether we are using multicontrast or not
             if len(traj.shape) < 4:

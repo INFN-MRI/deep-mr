@@ -40,7 +40,7 @@ def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=N
     ndim = k.shape[-1]
 
     # get adc
-    adc = _get_adc(matfile)
+    adc, readout_length = _get_adc(matfile)
 
     # get dcf
     dcf = _get_dcf(matfile, k, filepath, dcfpath)
@@ -74,6 +74,11 @@ def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=N
 
     # get basis
     head = _get_basis(head, matfile)
+    
+    # get echo time
+    if "te" in matfile:
+        head.TE = np.asarray(matfile["te"], dtype=np.float32).squeeze()
+        head.user["readout_length"] = readout_length * len(np.unique(head.TE))
 
     return head
 
@@ -164,8 +169,9 @@ def _get_adc(matfile):
             adc = matfile["inds"].squeeze().astype(bool)
         else:
             raise RuntimeError("ADC indexes not found!")
+        readout_length = adc.shape[0]
         adc = np.argwhere(adc)[[0, -1]].squeeze()
-    return adc
+    return adc, readout_length
 
 
 def _get_dcf(matfile, k, filename, dcfname):

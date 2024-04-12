@@ -102,6 +102,7 @@ def apply_gridding(data_in, interpolator, basis=None, device=None, threadsperblo
     data_out = torch.zeros(
         (ncoeff, batch_size, *dshape), dtype=data_in.dtype, device=device
     )
+    # print(basis.shape)
 
     # do actual gridding
     if device == "cpu":
@@ -329,11 +330,11 @@ def _gridding_lowrank2(
     ncoeff, batch_size, _, _ = cart_data.shape
     nframes = noncart_data.shape[0]
     npts = noncart_data.shape[-1]
-
+    
     # unpack interpolator
     yindex, xindex = interp_index
     yvalue, xvalue = interp_value
-
+    
     # get interpolator width
     ywidth = yindex.shape[-1]
     xwidth = xindex.shape[-1]

@@ -120,16 +120,17 @@ def svd(input, ncoeff, axis):
     output = output.reshape(nrows, ncols)
 
     # perform svd
-    u, s, vh = torch.linalg.svd(output, full_matrices=None)
+    u, s, vh = torch.linalg.svd(output, full_matrices=False)
 
     # compress data
-    basis = vh[..., :ncoeff]
+    v = vh.conj().t()
+    basis = v[..., :ncoeff]
     output = output @ basis
 
     # calculate explained variance
     explained_variance = s**2 / (nrows - 1)  # (neigenvalues,)
     explained_variance = explained_variance / explained_variance.sum()
-    explained_variance = torch.cumsum(explained_variance)[ncoeff - 1]
+    explained_variance = torch.cumsum(explained_variance, 0)
 
     # reshape
     output = output.reshape(*ishape[:-1], ncoeff)
@@ -141,4 +142,4 @@ def svd(input, ncoeff, axis):
         output = output.numpy()
         basis = basis.numpy()
 
-    return basis, output, 100 * explained_variance
+    return basis, output, 100 * explained_variance[ncoeff - 1], 100 * explained_variance

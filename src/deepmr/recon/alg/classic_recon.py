@@ -37,6 +37,7 @@ def recon_lstsq(
     nsets=1,
     device=None,
     cal_data=None,
+    sensmap=None,
     toeplitz=True,
     use_dcf=True,
 ):
@@ -140,6 +141,7 @@ def recon_lstsq(
         basis,
         device,
         cal_data,
+        sensmap,
         toeplitz,
     )
 

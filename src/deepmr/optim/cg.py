@@ -179,7 +179,7 @@ class CGStep(nn.Module):
             self.ndim = AHA.ndim
         except Exception:
             self.ndim = ndim
-
+            
         # assign operators
         self.AHA = AHA
         self.AHy = AHy
@@ -194,6 +194,9 @@ class CGStep(nn.Module):
     def dot(self, s1, s2):
         dot = s1.conj() * s2
         dot = dot.reshape(*s1.shape[: -self.ndim], -1).sum(axis=-1)
+        if np.isscalar(dot) is False:
+            for n in range(self.ndim):
+                dot = dot[..., None]
 
         return dot
 
@@ -210,7 +213,7 @@ class CGStep(nn.Module):
 
     def check_convergence(self):
         if self.tol is not None:
-            if self.rsnew.sqrt() < self.tol:
+            if (self.rsnew.sqrt() < self.tol).all():
                 return True
             else:
                 return False
