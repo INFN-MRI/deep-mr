@@ -49,18 +49,23 @@ def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=
     assert degree >= 0
 
     if precond_type == "l_2":
-        c, _ = l_2_opt(degree, l, L, verbose=verbose)
+        c = l_2_opt(degree, l, L, verbose=verbose)
     elif precond_type == "l_inf":
-        c, _ = l_inf_opt(degree, l, L, verbose=verbose)
+        c = l_inf_opt(degree, l, L, verbose=verbose)
     else:
         raise Exception("Unknown norm option.")
-
-    I = _linops.Identity(T.ndim)
+    
+    if isinstance(T, _linops.Linop) is False:
+        _T = _linops.Linop(ndim=1)
+        _T.forward = T
+    else:
+        _T = T
+    I = _linops.Identity(_T.ndim)
 
     def phelper(c):
-        if c.size == 1:
+        if c.size()[0] == 1:
             return c[0] * I
-        return c[0] * I + T * phelper(c[1:])
+        return c[0] * I + _T * phelper(c[1:])
 
     # recursively build
     P = phelper(c)

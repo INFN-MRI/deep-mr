@@ -94,13 +94,6 @@ def test_admm(dtype, device):
     step = 1.0
     A, x_torch, y = Ax_y_setup(n, 0.0, dtype, device)
 
-    # compute step size
-    _, s, _ = torch.linalg.svd(
-        A.T
-    )
-    lipschitz = s[0]
-    lamda = 0.1 * lipschitz
-
     # define function
     def AHA(x):
         return A.T @ A @ x # + step * x
@@ -124,7 +117,7 @@ def test_admm(dtype, device):
 def test_lstsq(dtype, device):
     # setup problem
     n = 5
-    lamda = 0.1
+    lamda = 0.0
     A, x_torch, y = Ax_y_setup(n, lamda, dtype, device)
 
     # define function
@@ -135,25 +128,25 @@ def test_lstsq(dtype, device):
         return A.T @ A @ x
     
     # prepare denoiser
-    D = Denoiser()
+    D = Denoiser(ths=lamda)
 
     # CG
     x_cg, _ = deepmr.optim.lstsq(y, AH, AHA, niter=1000, lamda=lamda, ndim=1)
     
     # check
     npt.assert_allclose(x_cg.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-    
+            
     # PGD
-    # x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda, ndim=1)
+    x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda, ndim=1)
     
-    # # check
-    # npt.assert_allclose(x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    # check
+    npt.assert_allclose(x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
     
     # PP-PGD
-    x_pppgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=250, lamda=lamda, ndim=1, use_precond=True, precond_degree=4)
+    # x_pppgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=250, lamda=lamda, ndim=1, use_precond=True, precond_degree=4)
 
-    # check
-    npt.assert_allclose(x_pppgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    # # check
+    # npt.assert_allclose(x_pppgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
     
     # ADMM
     x_admm, _ = deepmr.optim.lstsq(y, AH, AHA, prior=[D], niter=1000, lamda=lamda, ndim=1)

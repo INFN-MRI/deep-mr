@@ -113,7 +113,7 @@ def lstsq(
         Reconstructed signal.
 
     """
-    if verbose:
+    if verbose > 0:
         tstart = time.time()
 
     # cast to numpy if required
@@ -154,7 +154,7 @@ def lstsq(
         output = AHy
         if isnumpy:
             output = output.numpy(force=True)
-        if verbose:
+        if verbose > 0:
             tend = time.time()
             print(
                 f"Max # iteration = 1; exiting - total elapsed time: {round(tstart-tend, 2)} s"
@@ -172,7 +172,7 @@ def lstsq(
         
         if isnumpy:
             output = output.numpy(force=True)
-        if verbose:
+        if verbose > 0:
             tend = time.time()
             print(f"Exiting - total elapsed time: {round(tstart-tend, 2)} s")          
         return output, history
@@ -299,7 +299,7 @@ def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save
         print(f"FISTA stepsize: {stepsize}")
         
     # set prior threshold
-    prior.ths = stepsize
+    prior.ths = lamda * stepsize
     
     # computing polynomial preconditioner
     if use_precond:
@@ -379,7 +379,7 @@ def _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, 
         _AHA,
         prior,
         niter=niter,
-        dc_nite=AHA_niter,
+        dc_niter=AHA_niter,
         dc_tol=tol,
         dc_ndim=ndim,
         save_history=save_history,

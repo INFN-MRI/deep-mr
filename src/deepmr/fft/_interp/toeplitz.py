@@ -84,7 +84,7 @@ def apply_toeplitz(
     else:
         kvalue = backend.numba2pytorch(toeplitz_kernel.value)
         data_out = kvalue * data_in
-        toeplitz_kernel.value = backend.pytorch2numba(kvalue)
+        # toeplitz_kernel.value = backend.pytorch2numba(kvalue)
 
     # collect garbage
     gc.collect()

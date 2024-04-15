@@ -28,9 +28,9 @@ def numba2pytorch(array, requires_grad=False):
             index = nb.cuda.get_current_device().id
             tensor = torch.as_tensor(array, device="cuda:" + str(index))
         else:
-            tensor = torch.from_numpy(array)  # pylint: disable=no-member
+            tensor = torch.as_tensor(array)  # pylint: disable=no-member
     else:
-        tensor = torch.from_numpy(array)  # pylint: disable=no-member
+        tensor = torch.as_tensor(array)  # pylint: disable=no-member
 
     tensor.requires_grad = requires_grad
     return tensor.contiguous()
