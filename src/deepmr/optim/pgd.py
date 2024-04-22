@@ -85,16 +85,12 @@ def pgd_solve(
     input = input.to(device)
     if isinstance(AHA, _linops.Linop):
         AHA = AHA.to(device)
-        ndim = AHA.ndim
     elif callable(AHA) is False:
         AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
-        ndim = 2
-    else:
-        ndim = 2
 
     # default precondition
     if P is None:
-        P = _linops.Identity(ndim)
+        P = _linops.Identity()
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
@@ -205,7 +201,7 @@ class PGDStep(nn.Module):
 
     def forward(self, input, q=0.0):
         # gradient step : zk = xk-1 - gamma * AH(A(xk-1) - y != FISTA (accelerated)
-        z = input - self.P(self.step * (self.AHA(input) - self.AHy))
+        z = input - self.step * self.P(self.AHA(input) - self.AHy)
 
         # denoise: sk = D(zk)
         s = self.D(z)

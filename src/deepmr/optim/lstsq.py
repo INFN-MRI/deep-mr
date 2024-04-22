@@ -96,10 +96,6 @@ def lstsq(
     AHy_offset : np.ndarray | torch.Tensor, optional
         Offset to be applied to AHy during computation.
         The default is ``None``.
-    ndim : int, optional
-        Number of spatial dimensions of the problem.
-        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
-        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
     device : str, optional
         Computational device. The default is ``None`` (same as ``data``).
     save_history : bool, optional
@@ -129,10 +125,6 @@ def lstsq(
             print("Normal Operator not provided; using AHA = A.H * A")
         AHA = AH * AH.H
 
-    # parse number of dimension
-    if isinstance(AH, _linops.Linop):
-        ndim = AH.ndim
-
     # keep original device
     idevice = input.device
     if device is None:
@@ -147,7 +139,7 @@ def lstsq(
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
-    AHy = _adjoint_recon(ndim, AH, input, verbose)
+    AHy = _adjoint_recon(AH, input, verbose)
 
     # if non-iterative, just perform adjoint recon
     if niter == 1:
@@ -168,7 +160,7 @@ def lstsq(
 
     # if no prior is specified, use CG recon
     if prior is None:
-        output, history = _CG_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose)
+        output, history = _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose)
         
         if isnumpy:
             output = output.numpy(force=True)
@@ -179,11 +171,11 @@ def lstsq(
         
     # if a single prior is specified, use PDG
     if isinstance(prior, (list, tuple)) is False:
-        output, history = _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree)
+        output, history = _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree)
         
     # if multiple regularizers are specified, use ADMM
     else:
-        output, history = _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter)
+        output, history = _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter)
     
     # output
     if isnumpy:
@@ -196,18 +188,18 @@ def lstsq(
 
 
 # %% local utils
-def _intensity_scaling(input, ndim):
-    data = input.clone()
-    for n in range(len(input.shape) - ndim):
-        data = torch.linalg.norm(data, axis=0)
+# def _intensity_scaling(input, ndim):
+#     data = input.clone()
+#     for n in range(len(input.shape) - ndim):
+#         data = torch.linalg.norm(data, axis=0)
 
-    # get scaling
-    data = torch.nan_to_num(data, posinf=0.0, neginf=0.0, nan=0.0)
-    scale = torch.quantile(abs(data.ravel()), 0.95)
+#     # get scaling
+#     data = torch.nan_to_num(data, posinf=0.0, neginf=0.0, nan=0.0)
+#     scale = torch.quantile(abs(data.ravel()), 0.95)
 
-    return input / scale, scale
+#     return input / scale, scale
 
-def _adjoint_recon(ndim, AH, input, verbose):
+def _adjoint_recon(AH, input, verbose):
     if verbose > 1:
         print("Computing initial solution AHy = A.H(y)...", end="\t")
         t0 = time.time()
@@ -217,11 +209,11 @@ def _adjoint_recon(ndim, AH, input, verbose):
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
 
     if verbose > 1:
-        print(f"Data shape is {AHy.shape}; Spatial dimension: {AHy.shape[-ndim:]}")
+        print(f"Data shape is {AHy.shape}")
         
     return AHy
 
-def _CG_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose):
+def _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose):
     
     if verbose > 1:
         print("Prior not specified - solving using Conjugate Gradient")
@@ -248,7 +240,6 @@ def _CG_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_hi
         _AHA,
         niter=niter,
         lamda=lamda,
-        ndim=ndim,
         tol=tol,
         save_history=save_history,
         verbose=verbose,
@@ -256,7 +247,7 @@ def _CG_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_hi
                 
     return output, history
 
-def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree):
+def _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree):
     if verbose > 1:
         print("Single prior - solving using FISTA")
         
@@ -270,7 +261,7 @@ def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save
     # modify AHA
     if lamda != 0.0:
         if AHA_offset is None:
-            AHA_offset = _linops.Identity(ndim)
+            AHA_offset = _linops.Identity()
         if isinstance(AHA, _linops.Linop):
             _AHA = AHA + lamda * AHA_offset
         else:
@@ -323,7 +314,7 @@ def _FISTA_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save
     
     return output, history
 
-def _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter):
+def _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter):
     if verbose > 1:
         print("Multiple priors - solving using ADMM")
                 
@@ -337,7 +328,7 @@ def _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, 
     # modify AHA
     if lamda != 0.0:
         if AHA_offset is None:
-            AHA_offset = _linops.Identity(ndim)
+            AHA_offset = _linops.Identity()
         if isinstance(AHA, _linops.Linop):
             _AHA = AHA + lamda * AHA_offset
         else:
@@ -381,7 +372,6 @@ def _ADMM_recon(ndim, AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, 
         niter=niter,
         dc_niter=AHA_niter,
         dc_tol=tol,
-        dc_ndim=ndim,
         save_history=save_history,
         verbose=verbose,
     )

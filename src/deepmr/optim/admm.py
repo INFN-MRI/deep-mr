@@ -24,7 +24,6 @@ def admm_solve(
     device=None,
     dc_niter=10,
     dc_tol=1e-4,
-    dc_ndim=None,
     tol=None,
     save_history=False,
     verbose=False,
@@ -54,10 +53,6 @@ def admm_solve(
     dc_tol : float, optional
         Stopping condition for inner data consistency step.
         The default is ``1e-4``.
-    dc_ndim : int, optional
-        Number of spatial dimensions of the problem for inner data consistency step.
-        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
-        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
     atol : float, optional
         Stopping condition for ADMM. If not provided, run until ``niter``.
         The default is ``None``.
@@ -100,7 +95,7 @@ def admm_solve(
     AHy = input.clone()
 
     # initialize algorithm
-    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol, atol=tol, ndim=dc_ndim)
+    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol, atol=tol)
 
     # initialize
     input = 0 * input
@@ -169,9 +164,6 @@ class ADMMStep(nn.Module):
         operator A applied to the measured data y.
     D : Iterable(Callable)
         Signal denoiser(s) for plug-n-play restoration.
-    P : Callable, optional
-        Polynomial preconditioner for data consistency.
-        The default is ``None`` (standard CG for data consistency).
     trainable : bool, optional
         If ``True``, gradient update step is trainable, otherwise it is not.
         The default is ``False``.
@@ -182,10 +174,6 @@ class ADMMStep(nn.Module):
     atol : float, optional
         Stopping condition for ADMM. If not provided, run until ``niter``.
         The default is ``None``.
-    ndim : int, optional
-        Number of spatial dimensions of the problem for inner data consistency step.
-        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
-        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
 
     """
 
@@ -197,12 +185,6 @@ class ADMMStep(nn.Module):
             self.step = nn.Parameter(step)
         else:
             self.step = step
-
-        # set up problem dims
-        try:
-            self.ndim = AHA.ndim
-        except Exception:
-            self.ndim = ndim
 
         # assign operators
         self.AHA = AHA
@@ -235,7 +217,6 @@ class ADMMStep(nn.Module):
             niter=self.niter,
             tol=self.tol,
             lamda=self.step,
-            ndim=self.ndim,
         )
 
         # denoise using each regularizator

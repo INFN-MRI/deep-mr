@@ -97,7 +97,7 @@ def cg_solve(
         _AHA = AHA
 
     # initialize algorithm
-    CG = CGStep(_AHA, AHy, ndim, tol)
+    CG = CGStep(_AHA, AHy, tol)
 
     # initialize
     input = 0 * input
@@ -162,23 +162,14 @@ class CGStep(nn.Module):
     Ahy : torch.Tensor
         Adjoint AH of measurement
         operator A applied to the measured data y.
-    ndim : int
-        Number of spatial dimensions of the problem.
-        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
-        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
     tol : float, optional
         Stopping condition.
         The default is ``None`` (run until niter).
 
     """
 
-    def __init__(self, AHA, AHy, ndim=None, tol=None):
+    def __init__(self, AHA, AHy, tol=None):
         super().__init__()
-        # set up problem dims
-        try:
-            self.ndim = AHA.ndim
-        except Exception:
-            self.ndim = ndim
             
         # assign operators
         self.AHA = AHA
@@ -193,10 +184,7 @@ class CGStep(nn.Module):
 
     def dot(self, s1, s2):
         dot = s1.conj() * s2
-        dot = dot.reshape(*s1.shape[: -self.ndim], -1).sum(axis=-1)
-        if np.isscalar(dot) is False:
-            for n in range(self.ndim):
-                dot = dot[..., None]
+        dot = dot.sum()
 
         return dot
 
@@ -213,7 +201,7 @@ class CGStep(nn.Module):
 
     def check_convergence(self):
         if self.tol is not None:
-            if (self.rsnew.sqrt() < self.tol).all():
+            if self.rsnew.sqrt() < self.tol:
                 return True
             else:
                 return False

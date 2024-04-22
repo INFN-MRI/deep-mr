@@ -56,11 +56,11 @@ def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=
         raise Exception("Unknown norm option.")
     
     if isinstance(T, _linops.Linop) is False:
-        _T = _linops.Linop(ndim=1)
+        _T = _linops.Linop()
         _T.forward = T
     else:
         _T = T
-    I = _linops.Identity(_T.ndim)
+    I = _linops.Identity()
 
     def phelper(c):
         if c.size()[0] == 1:

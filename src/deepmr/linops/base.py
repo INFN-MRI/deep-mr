@@ -42,7 +42,7 @@ class Linop(nn.Module):
 
     """
 
-    def __init__(self, ndim):
+    def __init__(self, ndim=None):
         r"""
         Initiate the linear operator.
         """
@@ -144,11 +144,7 @@ class Add(Linop):
     """
 
     def __init__(self, linops):
-        ndim = np.unique([linop.ndim for linop in linops])
-        assert (
-            len(ndim) == 1
-        ), "Error! All linops must have the same spatial dimensionality."
-        super().__init__(ndim.item())
+        super().__init__()
         self.linops = linops
 
     def forward(self, input):
@@ -174,11 +170,7 @@ class Compose(Linop):
     """
 
     def __init__(self, linops):
-        ndim = np.unique([linop.ndim for linop in linops])
-        assert (
-            len(ndim) == 1
-        ), "Error! All linops must have the same spatial dimensionality."
-        super().__init__(ndim.item())
+        super().__init__()
         self.linops = linops
 
     def forward(self, input):
@@ -211,7 +203,7 @@ class Multiply(Linop):
     """
 
     def __init__(self, linop, a):
-        super().__init__(linop.ndim)
+        super().__init__()
         self.a = a
         self.linop = linop
 
@@ -234,8 +226,8 @@ class Identity(Linop):
 
     """
 
-    def __init__(self, ndim):
-        super().__init__(ndim)
+    def __init__(self):
+        super().__init__()
 
     def forward(self, input):
         return input
