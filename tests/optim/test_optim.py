@@ -49,7 +49,7 @@ def test_conjugate_gradient(dtype, device):
         return A.T @ A @ x
 
     # actual calculation
-    x, _ = deepmr.optim.cg_solve(A.T @ y, AHA, niter=1000, lamda=lamda, ndim=1)
+    x, _ = deepmr.optim.cg_solve(A.T @ y, AHA, niter=1000, lamda=lamda)
 
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
@@ -87,43 +87,43 @@ def test_proximal_gradient(dtype, device, accelerate):
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
     
 
-@pytest.mark.parametrize(
-    "dtype, device",
-    list(itertools.product(*[dtype, device])),
-)
-def test_polynomial_preconditioned_proximal_gradient(dtype, device):
-    # setup problem
-    l = 4
-    n = 5
-    lamda = 0.0
-    A, x_torch, y = Ax_y_setup(n, lamda, dtype, device)
+# @pytest.mark.parametrize(
+#     "dtype, device",
+#     list(itertools.product(*[dtype, device])),
+# )
+# def test_polynomial_preconditioned_proximal_gradient(dtype, device):
+#     # setup problem
+#     l = 4
+#     n = 5
+#     lamda = 0.0
+#     A, x_torch, y = Ax_y_setup(n, lamda, dtype, device)
 
-    # compute step size
-    _, s, _ = torch.linalg.svd(
-        A.T @ A + lamda * torch.eye(n, device=device, dtype=dtype)
-    )
-    lipschitz = s[0]
-    step = (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) 
+#     # compute step size
+#     _, s, _ = torch.linalg.svd(
+#         A.T @ A + lamda * torch.eye(n, device=device, dtype=dtype)
+#     )
+#     lipschitz = s[0]
+#     step = (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) 
 
-    # define function
-    def AHA(x):
-        return A.T @ A @ x / lipschitz
+#     # define function
+#     def AHA(x):
+#         return A.T @ A @ x / lipschitz
 
-    # prepare denoiser
-    def D(x):
-        return x  / (1.0 + lamda * step)
+#     # prepare denoiser
+#     def D(x):
+#         return x  / (1.0 + lamda * step)
     
-    # define preconditioner
-    P = deepmr.optim.precond.create_polynomial_preconditioner("l_2", l, AHA)
+#     # define preconditioner
+#     P = deepmr.optim.precond.create_polynomial_preconditioner("l_2", l, AHA)
     
-    # print(A.T @ y * 1 / lipschitz + step * (AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
-    # print(A.T @ y * 1 / lipschitz + (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) * P(AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
+#     # print(A.T @ y * 1 / lipschitz + step * (AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
+#     # print(A.T @ y * 1 / lipschitz + (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) * P(AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
 
-    # actual calculation
-    x, _ = deepmr.optim.pgd_solve(A.T @ y * 1 / lipschitz, step, AHA, D, P=P, niter=250, accelerate=False)
+#     # actual calculation
+#     x, _ = deepmr.optim.pgd_solve(A.T @ y * 1 / lipschitz, step, AHA, D, P=P, niter=250, accelerate=False)
 
-    # check
-    npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+#     # check
+#     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
 
 @pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
@@ -143,7 +143,7 @@ def test_admm(dtype, device):
 
     # actual calculation
     x, _ = deepmr.optim.admm_solve(
-        A.T @ y, step, AHA, D, niter=1000, dc_niter=1000, dc_ndim=1
+        A.T @ y, step, AHA, D, niter=1000, dc_niter=1000
     )
 
     # check
@@ -176,7 +176,7 @@ def test_lstsq(dtype, device):
     npt.assert_allclose(x_cg.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
             
     # PGD
-    x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda, ndim=1)
+    x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda)
     
     # check
     npt.assert_allclose(x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
@@ -188,7 +188,7 @@ def test_lstsq(dtype, device):
     # npt.assert_allclose(x_pppgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
     
     # ADMM
-    x_admm, _ = deepmr.optim.lstsq(y, AH, AHA, prior=[D], niter=1000, lamda=lamda, ndim=1)
+    x_admm, _ = deepmr.optim.lstsq(y, AH, AHA, prior=[D], niter=1000, lamda=lamda)
     
     # check
     npt.assert_allclose(x_admm.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)

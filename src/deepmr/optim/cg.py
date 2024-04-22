@@ -20,7 +20,6 @@ def cg_solve(
     device=None,
     tol=1e-4,
     lamda=0.0,
-    ndim=None,
     save_history=False,
     verbose=False,
 ):
@@ -29,10 +28,10 @@ def cg_solve(
 
     Parameters
     ----------
-    input : np.ndarray | torch.Tensor
+    input : torch.Tensor
         Signal to be reconstructed. Assume it is the adjoint AH of measurement
         operator A applied to the measured data y (i.e., input = AHy).
-    AHA : Callable | torch.Tensor | np.ndarray
+    AHA : deepmr.linop.Linop
         Normal operator AHA = AH * A.
     niter : int, optional
         Number of iterations. The default is ``10``.
@@ -43,10 +42,6 @@ def cg_solve(
         Stopping condition. The default is ``1e-4``.
     lamda : float, optional
         Tikhonov regularization strength. The default is ``0.0``.
-    ndim : int, optional
-        Number of spatial dimensions of the problem.
-        It is used to infer the batch axes. If ``AHA`` is a ``deepmr.linop.Linop``
-        operator, this is inferred from ``AHA.ndim`` and ``ndim`` is ignored.
     save_history : bool, optional
         Record cost function. The default is ``False``.
     verbose : bool, optional
@@ -54,17 +49,10 @@ def cg_solve(
 
     Returns
     -------
-    output : np.ndarray | torch.Tensor
+    output : torch.Tensor
         Reconstructed signal.
 
-    """
-    # cast to numpy if required
-    if isinstance(input, np.ndarray):
-        isnumpy = True
-        input = torch.as_tensor(input)
-    else:
-        isnumpy = False
-        
+    """        
     # assert inputs are correct
     if verbose:
         assert save_history is True, "We need to record history to print information."
@@ -76,10 +64,7 @@ def cg_solve(
 
     # put on device
     input = input.to(device)
-    if isinstance(AHA, _linops.Linop):
-        AHA = AHA.to(device)
-    elif callable(AHA) is False:
-        AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
+    AHA = AHA.to(device)
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
@@ -87,12 +72,7 @@ def cg_solve(
 
     # add Tikhonov regularization
     if lamda != 0.0:
-        if isinstance(AHA, _linops.Linop):
-            _AHA = AHA + lamda * _linops.Identity(AHA.ndim)
-        elif callable(AHA):
-            _AHA = lambda x: AHA(x) + lamda * x
-        else:
-            _AHA = lambda x: AHA @ x + lamda * x
+        _AHA = AHA + lamda * _linops.Identity()
     else:
         _AHA = AHA
 
@@ -140,10 +120,6 @@ def cg_solve(
     # back to original device
     output = output.to(device)
 
-    # cast back to numpy if requried
-    if isnumpy:
-        output = output.numpy(force=True)
-
     return output, history
 
 
@@ -182,13 +158,13 @@ class CGStep(nn.Module):
         self.rsnew = None
         self.tol = tol
 
-    def dot(self, s1, s2):
+    def dot(self, s1, s2): # noqa
         dot = s1.conj() * s2
         dot = dot.sum()
 
         return dot
 
-    def forward(self, input):
+    def forward(self, input): # noqa
         AHAp = self.AHA(self.p)
         alpha = self.rsold / self.dot(self.p, AHAp)
         output = input + self.p * alpha
@@ -199,7 +175,7 @@ class CGStep(nn.Module):
 
         return output
 
-    def check_convergence(self):
+    def check_convergence(self): # noqa
         if self.tol is not None:
             if self.rsnew.sqrt() < self.tol:
                 return True

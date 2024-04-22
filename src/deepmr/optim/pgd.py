@@ -199,7 +199,7 @@ class PGDStep(nn.Module):
         self.s = AHy.clone()
         self.tol = tol
 
-    def forward(self, input, q=0.0):
+    def forward(self, input, q=0.0): # noqa
         # gradient step : zk = xk-1 - gamma * AH(A(xk-1) - y != FISTA (accelerated)
         z = input - self.step * self.P(self.AHA(input) - self.AHy)
 
@@ -215,7 +215,7 @@ class PGDStep(nn.Module):
 
         return output
 
-    def check_convergence(self, output, input, step):
+    def check_convergence(self, output, input, step): # noqa
         if self.tol is not None:
             resid = torch.linalg.norm(output - input).item() / step
             if resid < self.tol:
