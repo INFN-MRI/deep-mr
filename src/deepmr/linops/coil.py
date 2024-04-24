@@ -1,50 +1,51 @@
 """Sensitivity coil linear operator."""
 
-__all__ = ["SenseOp", "SenseAdjointOp"]
-
-import numpy as np
-import torch
+__all__ = ["SoftSenseOp", "SenseAdjointOp"]
 
 from . import base
 
-
-class SenseOp(base.Linop):
+class SoftSenseOp(base.Linop):
     """
     Multiply input image by coil sensitivity profile.
 
     Coil sensitivity profiles are expected to have the following dimensions:
 
-    * 2D MRI: ``(nsets, nslices, ncoils, ny, nx)``
-    * 3D Cartesian MRI: ``(nsets, nx, ncoils, nz, ny)``
+    * 2D MRI: ``(nslices, nsets, ncoils, ny, nx)``
+    * 3D Cartesian MRI: ``(nx, nsets, ncoils, nz, ny)``
     * 3D NonCartesian MRI: ``(nsets, ncoils, nz, ny, nx)``
 
     where ``nsets`` represents multiple sets of coil sensitivity estimation
     for soft-SENSE implementations (e.g., ESPIRIT), equal to ``1`` for conventional SENSE
     and ``ncoils`` represents the number of receiver channels in the coil array.
-
+    
     """
 
-    def __init__(self, ndim, sensmap, device=None, multicontrast=True):
-        super().__init__(ndim)
+    def __init__(self, ndim, sensmap, batchmode=True, device=None):
+        super().__init__()
 
-        # cast map to tensor
-        self.sensmap = torch.as_tensor(sensmap)
+        # keep number of spatial dimensions
+        self.ndim = ndim
 
         # assign device
-        if device is None:
-            self.device = self.sensmap.device
-        else:
-            self.device = device
+        self.device = device
 
         # offloat to device
-        self.sensmap = self.sensmap.to(self.device)
+        self.sensmap = sensmap.to(self.device)
+        self.sensmap = self.sensmap.squeeze()
+        
+        # get sensmap shape
+        if self.ndim == 2:
+            if len(self.sensmap.shape) == 5:
+                self.multislice = True
+            else:
+                self.multislice = False
 
         # multicontrast
-        self.multicontrast = multicontrast
+        self.batchmode = batchmode
 
-        if self.multicontrast and self.ndim == 2:
+        if self.batchmode and self.ndim == 2:
             self.sensmap = self.sensmap.unsqueeze(-3)
-        if self.multicontrast and self.ndim == 3:
+        if self.batchmode and self.ndim == 3:
             self.sensmap = self.sensmap.unsqueeze(-4)
 
     def forward(self, x):
@@ -53,31 +54,39 @@ class SenseOp(base.Linop):
 
         Parameters
         ----------
-        x : np.ndarray | torch.Tensor
+        x : torch.Tensor
             Input combined images of shape ``(nslices, ..., ny, nx)``.
             (2D MRI / 3D Cartesian MRI) or ``(..., nz, ny, nx)`` (3D NonCartesian MRI).
 
         Returns
         -------
-        y : np.ndarray | torch.Tensor
-            Output images of shape ``(nsets, nslices, ncoils, ..., ny, nx)``.
+        y : torch.Tensor
+            Output images of shape ``(nslices, nsets, ncoils, ..., ny, nx)``.
             (2D MRI / 3D Cartesian) or ``(nsets, ncoils, ..., nz, ny, nx)`` (3D NonCartesian MRI)
             modulated by coil sensitivity profiles.
 
         """
-        if isinstance(x, np.ndarray):
-            isnumpy = True
+        # get device
+        if self.device is None:
+            device = x.device
         else:
-            isnumpy = False
-
-        # convert to tensor
-        x = torch.as_tensor(x)
-
+            device = self.device
+            
         # transfer to device
-        self.sensmap = self.sensmap.to(x.device)
+        odevice = x.device
+        self.x = self.x.to(device)
+        self.sensmap = self.sensmap.to(device)
 
-        # unsqueeze
-        if self.multicontrast:
+        # collapse
+        if self.batchmode:
+            oshape = x.shape
+            if self.ndim == 2 and self.multislice:
+                batchshape = x.shape[2:-self.ndim]      
+            else:
+                batchshape = x.shape[:-self.ndim]     
+                
+        
+        if self.batchmode:
             if self.ndim == 2:
                 x = x.unsqueeze(-4)
             elif self.ndim == 3:
@@ -91,20 +100,16 @@ class SenseOp(base.Linop):
         # project
         y = self.sensmap * x
 
-        # convert back to numpy if required
-        if isnumpy:
-            y = y.numpy(force=True)
-
-        return y
+        return y.to(odevice)
 
     def _adjoint_linop(self):
-        if self.multicontrast and self.ndim == 2:
+        if self.batchmode and self.ndim == 2:
             sensmap = self.sensmap.squeeze(-3)
-        if self.multicontrast and self.ndim == 3:
+        if self.batchmode and self.ndim == 3:
             sensmap = self.sensmap.squeeze(-4)
-        if self.multicontrast is False:
+        if self.batchmode is False:
             sensmap = self.sensmap
-        return SenseAdjointOp(self.ndim, sensmap, self.device, self.multicontrast)
+        return SenseAdjointOp(self.ndim, sensmap, self.batchmode, self.device)
 
 
 class SenseAdjointOp(base.Linop):
@@ -119,14 +124,19 @@ class SenseAdjointOp(base.Linop):
     where ``nsets`` represents multiple sets of coil sensitivity estimation
     for soft-SENSE implementations (e.g., ESPIRIT), equal to ``1`` for conventional SENSE
     and ``ncoils`` represents the number of receiver channels in the coil array.
+    For standard SENSE, ``nsets`` axis can be omitted:
+        
+    * 2D MRI: ``(nslices, ncoils, ny, nx)``
+    * 3D Cartesian MRI: ``(nx, ncoils, nz, ny)``
+    * 3D NonCartesian MRI: ``(ncoils, nz, ny, nx)``
 
     """
 
-    def __init__(self, ndim, sensmap, device=None, multicontrast=True):
+    def __init__(self, ndim, sensmap, device=None, batchmode=True):
         super().__init__(ndim)
 
-        # cast map to tensor
-        self.sensmap = torch.as_tensor(sensmap)
+        # keep number of spatial dimensions
+        self.ndim = ndim
 
         # assign device
         if device is None:
@@ -135,14 +145,22 @@ class SenseAdjointOp(base.Linop):
             self.device = device
 
         # offloat to device
-        self.sensmap = self.sensmap.to(self.device)
+        self.sensmap = sensmap.to(self.device)
+        self.sensmap = self.sensmap.squeeze()
+        
+        # get sensmap shape
+        if self.ndim == 2:
+            if len(self.sensmap.shape) == 4:
+                self.multislice = True
+            else:
+                self.multislice = False
 
         # multicontrast
-        self.multicontrast = multicontrast
+        self.batchmode = batchmode
 
-        if self.multicontrast and self.ndim == 2:
+        if self.batchmode and self.ndim == 2:
             self.sensmap = self.sensmap.unsqueeze(-3)
-        if self.multicontrast and self.ndim == 3:
+        if self.batchmode and self.ndim == 3:
             self.sensmap = self.sensmap.unsqueeze(-4)
 
     def forward(self, y):
@@ -151,34 +169,34 @@ class SenseAdjointOp(base.Linop):
 
         Parameters
         ----------
-        y : np.ndarray | torch.Tensor
-            Output images of shape ``(nsets, nslices, ncoils, ..., ny, nx)``.
+        y : np.torch.Tensor
+            Input images of shape ``(nsets, nslices, ncoils, ..., ny, nx)``.
             (2D MRI / 3D Cartesian MRI) or ``(nsets, ncoils, ..., nz, ny, nx)``
             (3D NonCartesian MRI) modulated by coil sensitivity profiles.
 
         Returns
         -------
-        x : np.ndarray | torch.Tensor
+        x : torch.Tensor
             Output combined images of shape ``(nslices, ..., ny, nx)``.
             (2D MRI / 3D Cartesian MRI) or ``(..., nz, ny, nx)`` (3D NonCartesian MRI).
 
         """
-        if isinstance(y, np.ndarray):
-            isnumpy = True
+        # get device
+        if self.device is None:
+            device = y.device
         else:
-            isnumpy = False
-
-        # convert to tensor
-        y = torch.as_tensor(y)
-
+            device = self.device
+            
         # transfer to device
-        self.sensmap = self.sensmap.to(y.device)
+        odevice = y.device
+        self.y = self.y.to(device)
+        self.sensmap = self.sensmap.to(device)
 
         # apply sensitivity
         tmp = self.sensmap.conj() * y
 
         # combine  (over channels and sets)
-        if self.multicontrast:
+        if self.batchmode:
             if self.ndim == 2:
                 x = tmp.sum(axis=-4).sum(axis=0)
             elif self.ndim == 3:
@@ -189,17 +207,13 @@ class SenseAdjointOp(base.Linop):
             elif self.ndim == 3:
                 x = tmp.sum(axis=-4).sum(axis=0)
 
-        # convert back to numpy if required
-        if isnumpy:
-            x = x.numpy(force=True)
-
-        return x
+        return x.to(odevice)
 
     def _adjoint_linop(self):
-        if self.multicontrast and self.ndim == 2:
+        if self.batchmode and self.ndim == 2:
             sensmap = self.sensmap.squeeze(-3)
-        if self.multicontrast and self.ndim == 3:
+        if self.batchmode and self.ndim == 3:
             sensmap = self.sensmap.squeeze(-4)
-        if self.multicontrast is False:
+        if self.batchmode is False:
             sensmap = self.sensmap
-        return SenseOp(self.ndim, sensmap, self.device, self.multicontrast)
+        return SenseOp(self.ndim, sensmap, self.batchmode, self.device)

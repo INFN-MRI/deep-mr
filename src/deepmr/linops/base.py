@@ -42,12 +42,11 @@ class Linop(nn.Module):
 
     """
 
-    def __init__(self, ndim=None):
+    def __init__(self):
         r"""
         Initiate the linear operator.
         """
         super().__init__()
-        self.ndim = ndim
 
     def _adjoint_linop(self):
         raise NotImplementedError
