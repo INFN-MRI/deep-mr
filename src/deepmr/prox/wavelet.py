@@ -151,7 +151,7 @@ class WaveletDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-    
+
     def g(self, input):
         Win = self.denoiser.flatten_coeffs(self.denoiser.dwt(input))
         return self.ths * abs(Win).sum().item()
@@ -352,13 +352,13 @@ class WaveletDictDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-    
+
     def g(self, input):
         Win = [wv.flatten_coeffs(wv.dwt(input)) for wv in self.denoiser.list_prox]
         Win = torch.hstack(Win)
         return self.ths * abs(Win).sum().item()
-    
-    
+
+
 def wavelet_dict_denoise(
     input,
     ndim,

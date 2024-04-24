@@ -71,7 +71,7 @@ def pgd_solve(
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-        
+
     # assert inputs are correct
     if verbose:
         assert save_history is True, "We need to record history to print information."
@@ -108,7 +108,7 @@ def pgd_solve(
     # initialize
     input = 0 * input
     history = []
-    
+
     # start timer
     if verbose:
         t0 = time.time()
@@ -128,21 +128,23 @@ def pgd_solve(
 
         # update variable
         input = output.clone()
-        
+
         # if required, save history
         if save_history:
             r = output - AHy
             dc = 0.5 * torch.linalg.norm(r).item() ** 2
             reg = D.g(output)
-            history.append(dc+reg)
+            history.append(dc + reg)
             if verbose and n in nprint:
                 t = time.time()
-                print(" {}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, dc, reg, dc+reg, t-t0))
-                
+                print(
+                    " {}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, dc, reg, dc + reg, t - t0)
+                )
+
     if verbose:
         t1 = time.time()
         print(f"Exiting FISTA: total elapsed time: {round(t1-t0, 2)} [s]")
-            
+
     # back to original device
     output = output.to(device)
 
@@ -199,7 +201,7 @@ class PGDStep(nn.Module):
         self.s = AHy.clone()
         self.tol = tol
 
-    def forward(self, input, q=0.0): # noqa
+    def forward(self, input, q=0.0):  # noqa
         # gradient step : zk = xk-1 - gamma * AH(A(xk-1) - y != FISTA (accelerated)
         z = input - self.step * self.P(self.AHA(input) - self.AHy)
 
@@ -215,7 +217,7 @@ class PGDStep(nn.Module):
 
         return output
 
-    def check_convergence(self, output, input, step): # noqa
+    def check_convergence(self, output, input, step):  # noqa
         if self.tol is not None:
             resid = torch.linalg.norm(output - input).item() / step
             if resid < self.tol:

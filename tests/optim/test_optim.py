@@ -81,11 +81,13 @@ def test_proximal_gradient(dtype, device, accelerate):
         return x / (1.0 + lamda * step)
 
     # actual calculation
-    x, _ = deepmr.optim.pgd_solve(A.T @ y, step, AHA, D, niter=1000, accelerate=accelerate)
+    x, _ = deepmr.optim.pgd_solve(
+        A.T @ y, step, AHA, D, niter=1000, accelerate=accelerate
+    )
 
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-    
+
 
 # @pytest.mark.parametrize(
 #     "dtype, device",
@@ -103,7 +105,7 @@ def test_proximal_gradient(dtype, device, accelerate):
 #         A.T @ A + lamda * torch.eye(n, device=device, dtype=dtype)
 #     )
 #     lipschitz = s[0]
-#     step = (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) 
+#     step = (1.0 - l ** (0.5)) / (1.0 + l ** (0.5))
 
 #     # define function
 #     def AHA(x):
@@ -112,10 +114,10 @@ def test_proximal_gradient(dtype, device, accelerate):
 #     # prepare denoiser
 #     def D(x):
 #         return x  / (1.0 + lamda * step)
-    
+
 #     # define preconditioner
 #     P = deepmr.optim.precond.create_polynomial_preconditioner("l_2", l, AHA)
-    
+
 #     # print(A.T @ y * 1 / lipschitz + step * (AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
 #     # print(A.T @ y * 1 / lipschitz + (1.0 - l ** (0.5)) / (1.0 + l ** (0.5)) * P(AHA(A.T @ y) - A.T @ y * 1 / lipschitz))
 
@@ -135,23 +137,19 @@ def test_admm(dtype, device):
 
     # define function
     def AHA(x):
-        return A.T @ A @ x # + step * x
+        return A.T @ A @ x  # + step * x
 
     # prepare denoiser
     def D(x):
-        return x # / (1.0 + lamda / step)
+        return x  # / (1.0 + lamda / step)
 
     # actual calculation
-    x, _ = deepmr.optim.admm_solve(
-        A.T @ y, step, AHA, D, niter=1000, dc_niter=1000
-    )
+    x, _ = deepmr.optim.admm_solve(A.T @ y, step, AHA, D, niter=1000, dc_niter=1000)
 
     # check
-    npt.assert_allclose(
-        x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol
-    )
-    
-    
+    npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+
+
 @pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
 def test_lstsq(dtype, device):
     # setup problem
@@ -162,37 +160,41 @@ def test_lstsq(dtype, device):
     # define function
     def AH(x):
         return A.T @ x
-    
+
     def AHA(x):
         return A.T @ A @ x
-    
+
     # prepare denoiser
     D = Denoiser(ths=lamda)
 
     # CG
     x_cg, _ = deepmr.optim.lstsq(y, AH, AHA, niter=1000, lamda=lamda, ndim=1)
-    
+
     # check
     npt.assert_allclose(x_cg.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-            
+
     # PGD
     x_pgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1000, lamda=lamda)
-    
+
     # check
-    npt.assert_allclose(x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        x_pgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol
+    )
+
     # PP-PGD
     # x_pppgd, _ = deepmr.optim.lstsq(y, AH, AHA, prior=D, niter=1, lamda=lamda, ndim=1, use_precond=True, precond_degree=4)
 
     # # check
     # npt.assert_allclose(x_pppgd.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-    
+
     # ADMM
     x_admm, _ = deepmr.optim.lstsq(y, AH, AHA, prior=[D], niter=1000, lamda=lamda)
-    
+
     # check
-    npt.assert_allclose(x_admm.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        x_admm.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol
+    )
+
 
 # %% local subroutines
 def Ax_setup(n, dtype, device):
@@ -213,10 +215,11 @@ def Ax_y_setup(n, lamda, dtype, device):
 
     return A, x_torch, y
 
+
 class Denoiser(torch.nn.Module):
     def __init__(self, ths=1.0):
         super().__init__()
         self.ths = ths
-        
+
     def forward(self, x):
         return x / (1.0 + self.ths)

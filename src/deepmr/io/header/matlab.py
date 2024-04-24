@@ -74,7 +74,7 @@ def read_matlab_acqhead(filepath, dcfpath=None, methodpath=None, sliceprofpath=N
 
     # get basis
     head = _get_basis(head, matfile)
-    
+
     # get echo time
     if "te" in matfile:
         head.TE = np.asarray(matfile["te"], dtype=np.float32).squeeze()

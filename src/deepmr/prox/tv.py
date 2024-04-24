@@ -146,7 +146,7 @@ class TVDenoiser(nn.Module):
         output = output.reshape(ishape)
 
         return output.to(idevice)
-    
+
     def g(self, input):
         Gin = self.denoiser.nabla(input)
         return self.ths * abs(Gin).sum().item()

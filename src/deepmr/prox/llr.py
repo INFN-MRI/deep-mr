@@ -129,7 +129,7 @@ class LLRDenoiser(nn.Module):
             output = torch.roll(output, shift, axes)
 
         return output.to(idevice)
-    
+
     def g(self, input):
         # build patches
         patches = _signal.tensor2patches(input, self.W, self.S)
@@ -138,11 +138,11 @@ class LLRDenoiser(nn.Module):
 
         # perform SVD
         _, s, _ = torch.linalg.svd(patches, full_matrices=False)
-        
+
         # nuclear norm is equal to L1 norm of eigenvalues
         return self.ths * abs(s).sum().item()
 
-        
+
 def llr_denoise(input, ndim, ths, W, S=None, rand_shift=True, axis=None, device=None):
     """
     Apply Local Low Rank denoising.

@@ -125,7 +125,11 @@ def EncodingOp(
             if sensmap is None:
                 if cal_data is not None:
                     sensmap, _ = _calib.espirit_cal(
-                        cal_data.to(device), nsets=nsets, coord=traj, shape=shape, dcf=dcf
+                        cal_data.to(device),
+                        nsets=nsets,
+                        coord=traj,
+                        shape=shape,
+                        dcf=dcf,
                     )
                 else:
                     sensmap, _ = _calib.espirit_cal(

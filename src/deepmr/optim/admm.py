@@ -73,7 +73,7 @@ def admm_solve(
         input = torch.as_tensor(input)
     else:
         isnumpy = False
-        
+
     # assert inputs are correct
     if verbose:
         assert save_history is True, "We need to record history to print information."
@@ -100,37 +100,47 @@ def admm_solve(
     # initialize
     input = 0 * input
     history = []
-    
+
     # start timer
     if verbose:
         t0 = time.time()
         nprint = np.linspace(0, niter, 5)
         nprint = nprint.astype(int).tolist()
-        print("================================= ADMM =====================================")
-        print("| nsteps | n_AHA | data consistency | regularization | total cost | t-t0 [s]")
-        print("============================================================================")
+        print(
+            "================================= ADMM ====================================="
+        )
+        print(
+            "| nsteps | n_AHA | data consistency | regularization | total cost | t-t0 [s]"
+        )
+        print(
+            "============================================================================"
+        )
 
     # run algorithm
     for n in range(niter):
         output = ADMM(input)
-        
+
         # update variable
         input = output.clone()
-        
+
         # if required, compute residual and check if we reached convergence
         if ADMM.check_convergence(output, input, step):
             break
-        
+
         # if required, save history
         if save_history:
             r = output - AHy
             dc = 0.5 * torch.linalg.norm(r).item() ** 2
             reg = np.sum([d.g(output) for d in D])
-            history.append(dc+reg)
+            history.append(dc + reg)
             if verbose and n in nprint:
                 t = time.time()
-                print(" {}{}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, n * dc_niter, dc, reg, dc+reg, t-t0))
-                
+                print(
+                    " {}{}{:.4f}{:.4f}{:.4f}{:.2f}".format(
+                        n, n * dc_niter, dc, reg, dc + reg, t - t0
+                    )
+                )
+
     if verbose:
         t1 = time.time()
         print(f"Exiting ADMM: total elapsed time: {round(t1-t0, 2)} [s]")
@@ -178,7 +188,16 @@ class ADMMStep(nn.Module):
     """
 
     def __init__(
-        self, step, AHA, AHy, D, trainable=False, niter=10, tol=1e-4, atol=None, ndim=None
+        self,
+        step,
+        AHA,
+        AHy,
+        D,
+        trainable=False,
+        niter=10,
+        tol=1e-4,
+        atol=None,
+        ndim=None,
     ):
         super().__init__()
         if trainable:
@@ -228,7 +247,7 @@ class ADMMStep(nn.Module):
         self.ui += self.xi - output[None, ...]
 
         return output
-    
+
     def check_convergence(self, output, input, step):
         if self.atol is not None:
             resid = torch.linalg.norm(output - input).item() / step

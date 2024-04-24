@@ -219,7 +219,9 @@ def recon_lstsq(
             D.append(d)
 
         # solve
-        output, _ = _optim.admm_solve(img, stepsize, _EHE, D, niter=niter, **solver_params)
+        output, _ = _optim.admm_solve(
+            img, stepsize, _EHE, D, niter=niter, **solver_params
+        )
     if isnumpy:
         output = output.numpy(force=True)
 

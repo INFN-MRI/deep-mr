@@ -73,7 +73,7 @@ def lstsq(
         Degree of polynomial preconditioner. Ignored if ``use_precond`` is ``False``
         and for CG / ADMM solvers (no / multi-regularizations).
         The default is ``4``.
-        
+
     Other Parameters
     ----------------
     tol : float, optional
@@ -160,23 +160,54 @@ def lstsq(
 
     # if no prior is specified, use CG recon
     if prior is None:
-        output, history = _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose)
-        
+        output, history = _CG_recon(
+            AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose
+        )
+
         if isnumpy:
             output = output.numpy(force=True)
         if verbose > 0:
             tend = time.time()
-            print(f"Exiting - total elapsed time: {round(tstart-tend, 2)} s")          
+            print(f"Exiting - total elapsed time: {round(tstart-tend, 2)} s")
         return output, history
-        
+
     # if a single prior is specified, use PDG
     if isinstance(prior, (list, tuple)) is False:
-        output, history = _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree)
-        
+        output, history = _FISTA_recon(
+            AHy,
+            AHA,
+            AHy_offset,
+            AHA_offset,
+            lamda,
+            niter,
+            tol,
+            save_history,
+            verbose,
+            prior,
+            stepsize,
+            power_niter,
+            use_precond,
+            precond_degree,
+        )
+
     # if multiple regularizers are specified, use ADMM
     else:
-        output, history = _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter)
-    
+        output, history = _ADMM_recon(
+            AHy,
+            AHA,
+            AHy_offset,
+            AHA_offset,
+            lamda,
+            prior,
+            stepsize,
+            power_niter,
+            niter,
+            tol,
+            save_history,
+            verbose,
+            AHA_niter,
+        )
+
     # output
     if isnumpy:
         output = output.numpy(force=True)
@@ -199,6 +230,7 @@ def lstsq(
 
 #     return input / scale, scale
 
+
 def _adjoint_recon(AH, input, verbose):
     if verbose > 1:
         print("Computing initial solution AHy = A.H(y)...", end="\t")
@@ -210,21 +242,23 @@ def _adjoint_recon(AH, input, verbose):
 
     if verbose > 1:
         print(f"Data shape is {AHy.shape}")
-        
+
     return AHy
 
-def _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose):
-    
+
+def _CG_recon(
+    AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose
+):
     if verbose > 1:
         print("Prior not specified - solving using Conjugate Gradient")
-        
+
     # apply offset to AHy
     if AHy_offset is not None and lamda != 0.0:
         if verbose > 1:
             print("Applying offset to AHy for L2 regularization")
         AHy_offset = torch.as_tensor(AHy_offset, dtype=AHy.dtype, device=AHy.device)
         AHy = AHy + lamda * AHy_offset
-        
+
     # modify AHA
     if lamda != 0.0:
         if AHA_offset is not None:
@@ -233,8 +267,8 @@ def _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history,
             _AHA = AHA
     else:
         _AHA = AHA
-    
-    # solve 
+
+    # solve
     output, history = _optim.cg_solve(
         AHy,
         _AHA,
@@ -244,20 +278,36 @@ def _CG_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history,
         save_history=save_history,
         verbose=verbose,
     )
-                
+
     return output, history
 
-def _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_history, verbose, prior, stepsize, power_niter, use_precond, precond_degree):
+
+def _FISTA_recon(
+    AHy,
+    AHA,
+    AHy_offset,
+    AHA_offset,
+    lamda,
+    niter,
+    tol,
+    save_history,
+    verbose,
+    prior,
+    stepsize,
+    power_niter,
+    use_precond,
+    precond_degree,
+):
     if verbose > 1:
         print("Single prior - solving using FISTA")
-        
+
     # apply offset to AHy
     if AHy_offset is not None and lamda != 0.0:
         if verbose > 1:
             print("Applying offset to AHy for L2 regularization")
         AHy_offset = torch.as_tensor(AHy_offset, dtype=AHy.dtype, device=AHy.device)
         AHy = AHy + lamda * AHy_offset
-        
+
     # modify AHA
     if lamda != 0.0:
         if AHA_offset is None:
@@ -265,39 +315,39 @@ def _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_histo
         if isinstance(AHA, _linops.Linop):
             _AHA = AHA + lamda * AHA_offset
         else:
+
             def _AHA(x):
                 return AHA(x) + lamda * AHA_offset(x)
+
     else:
         _AHA = AHA
-        
+
     # compute norm
     if verbose > 1:
         print("Computing maximum eigenvalue of AHA...", end="\t")
         t0 = time.time()
     xhat = torch.rand(AHy.shape, dtype=AHy.dtype, device=AHy.device)
-    max_eig = _optim.power_method(
-        None, xhat, AHA=_AHA, niter=power_niter
-    )
+    max_eig = _optim.power_method(None, xhat, AHA=_AHA, niter=power_niter)
     if verbose > 1:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
         print(f"Maximum eigenvalue: {max_eig}")
-     
+
     # rescale stepsize
     if max_eig != 0.0:
         stepsize = stepsize / max_eig
     if verbose > 1:
         print(f"FISTA stepsize: {stepsize}")
-        
+
     # set prior threshold
     prior.ths = lamda * stepsize
-    
+
     # computing polynomial preconditioner
     if use_precond:
         P = _precond.create_polynomial_preconditioner("l_2", precond_degree, AHA)
     else:
         P = None
-        
+
     # solve
     output, history = _optim.pgd_solve(
         AHy,
@@ -311,20 +361,35 @@ def _FISTA_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, niter, tol, save_histo
         save_history=save_history,
         verbose=verbose,
     )
-    
+
     return output, history
 
-def _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_niter, niter, tol, save_history, verbose, AHA_niter):
+
+def _ADMM_recon(
+    AHy,
+    AHA,
+    AHy_offset,
+    AHA_offset,
+    lamda,
+    prior,
+    stepsize,
+    power_niter,
+    niter,
+    tol,
+    save_history,
+    verbose,
+    AHA_niter,
+):
     if verbose > 1:
         print("Multiple priors - solving using ADMM")
-                
+
     # apply offset to AHy
     if AHy_offset is not None and lamda != 0.0:
         if verbose > 1:
             print("Applying offset to AHy for L2 regularization")
         AHy_offset = torch.as_tensor(AHy_offset, dtype=AHy.dtype, device=AHy.device)
         AHy = AHy + lamda * AHy_offset
-        
+
     # modify AHA
     if lamda != 0.0:
         if AHA_offset is None:
@@ -332,37 +397,37 @@ def _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_
         if isinstance(AHA, _linops.Linop):
             _AHA = AHA + lamda * AHA_offset
         else:
+
             def _AHA(x):
                 return AHA(x) + lamda * AHA_offset(x)
+
     else:
         _AHA = AHA
-        
+
     # compute norm
     if verbose > 1:
         print("Computing maximum eigenvalue of AHA...", end="\t")
         t0 = time.time()
     xhat = torch.rand(AHy.shape, dtype=AHy.dtype, device=AHy.device)
-    max_eig = _optim.power_method(
-        None, xhat, AHA=AHA, niter=power_niter
-    )
+    max_eig = _optim.power_method(None, xhat, AHA=AHA, niter=power_niter)
     if verbose > 1:
         t1 = time.time()
         print(f"done! Elapsed time: {round(t1-t0, 2)} s")
         print(f"Maximum eigenvalue: {max_eig}")
-        
+
     # rescale step size
     if max_eig != 0.0:
         lamda = 0.1 * lamda * max_eig
     else:
         lamda = 0.1 * lamda
-        
+
     if verbose > 1:
         print(f"ADMM regularization strength: {lamda}")
-        
+
     # set prior threshold
     for p in prior:
         p.ths = lamda / stepsize
-                
+
     # solve
     output, history = _optim.admm_solve(
         AHy,
@@ -375,5 +440,5 @@ def _ADMM_recon(AHy, AHA, AHy_offset, AHA_offset, lamda, prior, stepsize, power_
         save_history=save_history,
         verbose=verbose,
     )
-    
+
     return output, history

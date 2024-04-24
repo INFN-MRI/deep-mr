@@ -52,11 +52,11 @@ def cg_solve(
     output : torch.Tensor
         Reconstructed signal.
 
-    """        
+    """
     # assert inputs are correct
     if verbose:
         assert save_history is True, "We need to record history to print information."
-        
+
     # keep original device
     idevice = input.device
     if device is None:
@@ -82,7 +82,7 @@ def cg_solve(
     # initialize
     input = 0 * input
     history = []
-    
+
     # start timer
     if verbose:
         t0 = time.time()
@@ -91,28 +91,30 @@ def cg_solve(
         print("====================== Conjugate Gradient ==========================")
         print("| nsteps | data consistency | regularization | total cost | t-t0 [s]")
         print("====================================================================")
-        
+
     # run algorithm
     for n in range(niter):
         output = CG(input)
-        
+
         # if required, compute residual and check if we reached convergence
         if CG.check_convergence():
             break
-        
+
         # update variable
         input = output.clone()
-        
+
         # if required, save history
         if save_history:
             r = output - AHy
             dc = 0.5 * torch.linalg.norm(r).item() ** 2
             reg = lamda * torch.linalg.norm(output).item() ** 2
-            history.append(dc+reg)
+            history.append(dc + reg)
             if verbose and n in nprint:
                 t = time.time()
-                print(" {}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, dc, reg, dc+reg, t-t0))
-                
+                print(
+                    " {}{:.4f}{:.4f}{:.4f}{:.2f}".format(n, dc, reg, dc + reg, t - t0)
+                )
+
     if verbose:
         t1 = time.time()
         print(f"Exiting Conjugate Gradient: total elapsed time: {round(t1-t0, 2)} [s]")
@@ -146,7 +148,7 @@ class CGStep(nn.Module):
 
     def __init__(self, AHA, AHy, tol=None):
         super().__init__()
-            
+
         # assign operators
         self.AHA = AHA
         self.AHy = AHy
@@ -158,13 +160,13 @@ class CGStep(nn.Module):
         self.rsnew = None
         self.tol = tol
 
-    def dot(self, s1, s2): # noqa
+    def dot(self, s1, s2):  # noqa
         dot = s1.conj() * s2
         dot = dot.sum()
 
         return dot
 
-    def forward(self, input): # noqa
+    def forward(self, input):  # noqa
         AHAp = self.AHA(self.p)
         alpha = self.rsold / self.dot(self.p, AHAp)
         output = input + self.p * alpha
@@ -175,7 +177,7 @@ class CGStep(nn.Module):
 
         return output
 
-    def check_convergence(self): # noqa
+    def check_convergence(self):  # noqa
         if self.tol is not None:
             if self.rsnew.sqrt() < self.tol:
                 return True

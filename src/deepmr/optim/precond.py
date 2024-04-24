@@ -54,7 +54,7 @@ def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=
         c = l_inf_opt(degree, l, L, verbose=verbose)
     else:
         raise Exception("Unknown norm option.")
-    
+
     if isinstance(T, _linops.Linop) is False:
         _T = _linops.Linop()
         _T.forward = T

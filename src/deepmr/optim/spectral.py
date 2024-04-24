@@ -70,7 +70,7 @@ def power_method(A, x, AH=None, AHA=None, device=None, niter=10, tol=None):
     # perform iterations
     ratio_old = float("inf")
     max_eig = float("inf")
-    
+
     for n in range(niter):
         # check for convergence
         if tol is not None:

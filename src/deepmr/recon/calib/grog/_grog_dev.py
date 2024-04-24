@@ -30,7 +30,11 @@ smap, cal_data = deepmr.recon.espirit_cal(ksp, head.traj, head.dcf, head.shape)
 
 # get cartesian ksp and indexes
 d, indexes, weights = grogop.grog_interp(
-    ksp, cal_data, head.traj, head.shape, lamda=0.0,
+    ksp,
+    cal_data,
+    head.traj,
+    head.shape,
+    lamda=0.0,
 )
 
 # recon
@@ -45,8 +49,7 @@ out = abs(img_grog)
 out0 = out0 / np.nanmax(out0)
 out = out / np.nanmax(out)
 
-plt.subplot(1,2,1)
+plt.subplot(1, 2, 1)
 plt.imshow(abs(np.concatenate((out0, out), axis=-1)), cmap="gray")
-plt.subplot(1,2,2)
+plt.subplot(1, 2, 2)
 plt.imshow(abs(out0 - out), cmap="bwr"), plt.colorbar()
-
