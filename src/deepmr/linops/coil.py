@@ -215,10 +215,8 @@ class SenseAdjointOp(base.Linop):
                 axis=-self.ndim - 2
             )  # (prod(batchshape), *y.shape[-ndim:]) or (nslices, prod(batchshape), ny, nx)
         else:
-            x = x.sum(
-                axis=-self.ndim - 1
-            )  # (*y.shape[-ndim:]) or (nslices, ny, nx)
-            
+            x = x.sum(axis=-self.ndim - 1)  # (*y.shape[-ndim:]) or (nslices, ny, nx)
+
         # reshape back
         if self.batchmode:
             if self.ndim == 2 and self.multislice:
@@ -466,7 +464,6 @@ class SoftSenseAdjointOp(base.Linop):
             x = x.sum(
                 axis=-self.ndim - 1
             )  # (nsets, *y.shape[-ndim:]) or (nslices, nsets, ny, nx)
-            
 
         # reshape back
         if self.batchmode:

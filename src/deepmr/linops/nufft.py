@@ -40,10 +40,10 @@ class NUFFTOp(base.Linop):
         oversamp=1.25,
     ):
         if coord is not None and shape is not None:
-            super().__init__(ndim=coord.shape[-1])
+            super().__init__()
             self.nufft_plan = _fft.plan_nufft(coord, shape, width, oversamp, device)
         else:
-            super().__init__(ndim=None)
+            super().__init__()
             self.nufft_plan = None
         if weight is not None:
             self.weight = torch.as_tensor(weight**0.5, device=device)
@@ -77,6 +77,7 @@ class NUFFTOp(base.Linop):
             self.basis_adjoint,
             self.weight,
             threadsperblock=self.threadsperblock,
+            norm="ortho",
         )
 
     def _adjoint_linop(self):
@@ -91,7 +92,6 @@ class NUFFTOp(base.Linop):
         adjOp = NUFFTAdjointOp(
             basis=basis, weight=weight, threadsperblock=self.threadsperblock
         )
-        adjOp.ndim = self.ndim
         adjOp.nufft_plan = self.nufft_plan
         return adjOp
 
@@ -125,13 +125,12 @@ class NUFFTAdjointOp(base.Linop):
         threadsperblock=128,
         width=4,
         oversamp=1.25,
-        **kwargs
     ):
         if coord is not None and shape is not None:
-            super().__init__(ndim=coord.shape[-1])
+            super().__init__()
             self.nufft_plan = _fft.plan_nufft(coord, shape, width, oversamp, device)
         else:
-            super().__init__(ndim=None)
+            super().__init__()
             self.nufft_plan = None
         if weight is not None:
             self.weight = torch.as_tensor(weight**0.5, device=device)
@@ -165,6 +164,7 @@ class NUFFTAdjointOp(base.Linop):
             self.basis,
             self.weight,
             threadsperblock=self.threadsperblock,
+            norm="ortho",
         )
 
     def _adjoint_linop(self):
@@ -181,7 +181,6 @@ class NUFFTAdjointOp(base.Linop):
             weight=weight,
             threadsperblock=self.threadsperblock,
         )
-        adjOp.ndim = self.ndim
         adjOp.nufft_plan = self.nufft_plan
         return adjOp
 
@@ -208,9 +207,8 @@ class NUFFTGramOp(base.Linop):
         device="cpu",
         threadsperblock=128,
         width=6,
-        **kwargs
     ):
-        super().__init__(ndim=coord.shape[-1], **kwargs)
+        super().__init__()
         self.toeplitz_kern = _fft.plan_toeplitz_nufft(
             coord, shape, basis, weight, width, device
         )

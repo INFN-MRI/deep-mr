@@ -170,20 +170,23 @@ def plan_toeplitz_nufft(coord, shape, basis=None, dcf=None, width=4, device="cpu
 
 class ApplyNUFFT(autograd.Function):
     @staticmethod
-    def forward(image, nufft_plan, basis_adjoint, weight, device, threadsperblock):
+    def forward(
+        image, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm
+    ):
         return _apply_nufft(
-            image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+            image, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm
         )
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        _, nufft_plan, basis_adjoint, weight, device, threadsperblock = inputs
+        _, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm = inputs
         ctx.set_materialize_grads(False)
         ctx.nufft_plan = nufft_plan
         ctx.basis_adjoint = basis_adjoint
         ctx.weight = weight
         ctx.device = device
         ctx.threadsperblock = threadsperblock
+        ctx.norm = norm
 
     @staticmethod
     def backward(ctx, kspace):
@@ -196,11 +199,13 @@ class ApplyNUFFT(autograd.Function):
         weight = ctx.weight
         device = ctx.device
         threadsperblock = ctx.threadsperblock
+        norm = ctx.norm
 
         return (
             _apply_nufft_adj(
-                kspace, nufft_plan, basis, weight, device, threadsperblock
+                kspace, nufft_plan, basis, weight, device, threadsperblock, norm
             ),
+            None,
             None,
             None,
             None,
@@ -210,7 +215,13 @@ class ApplyNUFFT(autograd.Function):
 
 
 def apply_nufft(
-    image, nufft_plan, basis_adjoint=None, weight=None, device=None, threadsperblock=128
+    image,
+    nufft_plan,
+    basis_adjoint=None,
+    weight=None,
+    device=None,
+    threadsperblock=128,
+    norm=None,
 ):
     """
     Apply Non-Uniform Fast Fourier Transform.
@@ -241,26 +252,27 @@ def apply_nufft(
 
     """
     return ApplyNUFFT.apply(
-        image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+        image, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm
     )
 
 
 class ApplyNUFFTAdjoint(autograd.Function):
     @staticmethod
-    def forward(kspace, nufft_plan, basis, weight, device, threadsperblock):
+    def forward(kspace, nufft_plan, basis, weight, device, threadsperblock, norm):
         return _apply_nufft_adj(
-            kspace, nufft_plan, basis, weight, device, threadsperblock
+            kspace, nufft_plan, basis, weight, device, threadsperblock, norm
         )
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        _, nufft_plan, basis, weight, device, threadsperblock = inputs
+        _, nufft_plan, basis, weight, device, threadsperblock, norm = inputs
         ctx.set_materialize_grads(False)
         ctx.nufft_plan = nufft_plan
         ctx.basis = basis
         ctx.weight = weight
         ctx.device = device
         ctx.threadsperblock = threadsperblock
+        ctx.norm = norm
 
     @staticmethod
     def backward(ctx, image):
@@ -273,11 +285,13 @@ class ApplyNUFFTAdjoint(autograd.Function):
         weight = ctx.weight
         device = ctx.device
         threadsperblock = ctx.threadsperblock
+        norm = ctx.norm
 
         return (
             _apply_nufft(
-                image, nufft_plan, basis_adjoint, weight, device, threadsperblock
+                image, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm
             ),
+            None,
             None,
             None,
             None,
@@ -287,7 +301,13 @@ class ApplyNUFFTAdjoint(autograd.Function):
 
 
 def apply_nufft_adj(
-    kspace, nufft_plan, basis=None, weight=None, device=None, threadsperblock=128
+    kspace,
+    nufft_plan,
+    basis=None,
+    weight=None,
+    device=None,
+    threadsperblock=128,
+    norm=None,
 ):
     """
     Apply adjoint Non-Uniform Fast Fourier Transform.
@@ -318,7 +338,7 @@ def apply_nufft_adj(
 
     """
     return ApplyNUFFTAdjoint.apply(
-        kspace, nufft_plan, basis, weight, device, threadsperblock
+        kspace, nufft_plan, basis, weight, device, threadsperblock, norm
     )
 
 
@@ -447,7 +467,9 @@ def _apodize(data_in, ndim, oversamp, width, beta):
     return data_out
 
 
-def _apply_nufft(image, nufft_plan, basis_adjoint, weight, device, threadsperblock):
+def _apply_nufft(
+    image, nufft_plan, basis_adjoint, weight, device, threadsperblock, norm
+):
     # check if it is numpy
     if isinstance(image, np.ndarray):
         isnumpy = True
@@ -502,7 +524,7 @@ def _apply_nufft(image, nufft_plan, basis_adjoint, weight, device, threadsperblo
     image = _resize(image, list(image.shape[:-ndim]) + list(os_shape))
 
     # FFT
-    kspace = _fft.fft(image, axes=range(-ndim, 0), norm=None)
+    kspace = _fft.fft(image, axes=range(-ndim, 0), norm=norm)
 
     # interpolate
     kspace = _interp.apply_interpolation(
@@ -528,7 +550,7 @@ def _apply_nufft(image, nufft_plan, basis_adjoint, weight, device, threadsperblo
     return kspace
 
 
-def _apply_nufft_adj(kspace, nufft_plan, basis, weight, device, threadsperblock):
+def _apply_nufft_adj(kspace, nufft_plan, basis, weight, device, threadsperblock, norm):
     # check if it is numpy
     if isinstance(kspace, np.ndarray):
         isnumpy = True
@@ -584,7 +606,7 @@ def _apply_nufft_adj(kspace, nufft_plan, basis, weight, device, threadsperblock)
     )
 
     # IFFT
-    image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=None)
+    image = _fft.ifft(kspace, axes=range(-ndim, 0), norm=norm)
 
     # crop
     image = _resize(image, list(image.shape[:-ndim]) + list(shape))

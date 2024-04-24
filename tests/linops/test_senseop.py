@@ -33,16 +33,20 @@ def test_2D_sense_single_contrast(helpers, nslices, dtype, device):
     # actual calculation
     img = S(combined_truth)
     combined = S.H(img_truth)
-    
+
     # check correctness
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     helpers.check_linop_unitary(S, combined_truth)
     helpers.check_linop_linear(S, combined_truth)
     helpers.check_linop_adjoint(S, combined_truth, img_truth)
-    
+
 
 @pytest.mark.parametrize(
     "dtype, device",
@@ -58,11 +62,15 @@ def test_3D_sense_single_contrast(helpers, dtype, device):
     # actual calculation
     img = S(combined_truth)
     combined = S.H(img_truth)
-    
+
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     helpers.check_linop_unitary(S, combined_truth)
     helpers.check_linop_linear(S, combined_truth)
@@ -85,15 +93,19 @@ def test_2D_sense__multiple_contrast(helpers, nslices, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     helpers.check_linop_unitary(S, combined_truth)
     helpers.check_linop_linear(S, combined_truth)
     helpers.check_linop_adjoint(S, combined_truth, img_truth)
-   
-    
+
+
 @pytest.mark.parametrize(
     "dtype, device",
     list(itertools.product(*[dtype, device])),
@@ -110,9 +122,13 @@ def test_3D_sense__multiple_contrast(helpers, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     helpers.check_linop_unitary(S, combined_truth)
     helpers.check_linop_linear(S, combined_truth)
@@ -125,7 +141,9 @@ def test_3D_sense__multiple_contrast(helpers, dtype, device):
 )
 def test_2D_soft_sense_single_contrast(helpers, nslices, dtype, device):
     # generate data
-    combined_truth, img_truth, smap = _generate_soft_sense_data(device, 2, nslices, False)
+    combined_truth, img_truth, smap = _generate_soft_sense_data(
+        device, 2, nslices, False
+    )
 
     # build operator
     S = deepmr.linops.SoftSenseOp(2, smap)
@@ -135,15 +153,19 @@ def test_2D_soft_sense_single_contrast(helpers, nslices, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     # helpers.check_linop_unitary(S, combined_truth)
     # helpers.check_linop_linear(S, combined_truth)
     helpers.check_linop_adjoint(S, combined_truth, img_truth)
-    
-    
+
+
 @pytest.mark.parametrize(
     "dtype, device",
     list(itertools.product(*[dtype, device])),
@@ -160,9 +182,13 @@ def test_3D_soft_sense_single_contrast(helpers, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     # helpers.check_linop_unitary(S, combined_truth)
     # helpers.check_linop_linear(S, combined_truth)
@@ -175,7 +201,9 @@ def test_3D_soft_sense_single_contrast(helpers, dtype, device):
 )
 def test_2D_soft_sense__multiple_contrast(helpers, nslices, dtype, device):
     # generate data
-    combined_truth, img_truth, smap = _generate_soft_sense_data(device, 2, nslices, True)
+    combined_truth, img_truth, smap = _generate_soft_sense_data(
+        device, 2, nslices, True
+    )
 
     # build operator
     S = deepmr.linops.SoftSenseOp(2, smap, batchmode=True)
@@ -185,9 +213,13 @@ def test_2D_soft_sense__multiple_contrast(helpers, nslices, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     # helpers.check_linop_unitary(S, combined_truth)
     # helpers.check_linop_linear(S, combined_truth)
@@ -210,15 +242,19 @@ def test_3D_soft_sense__multiple_contrast(helpers, dtype, device):
     combined = S.H(img_truth)
 
     # check
-    npt.assert_allclose(img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol)
-    npt.assert_allclose(combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol)
-    
+    npt.assert_allclose(
+        img.numpy(force=True), img_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+    npt.assert_allclose(
+        combined.numpy(force=True), combined_truth.numpy(force=True), rtol=tol, atol=tol
+    )
+
     # check properties
     # helpers.check_linop_unitary(S, combined_truth)
     # helpers.check_linop_linear(S, combined_truth)
     helpers.check_linop_adjoint(S, combined_truth, img_truth)
-    
-    
+
+
 # %% utils
 def _generate_sense_data(device, ndim, nslices, multicontrast):
     # generate data
