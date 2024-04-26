@@ -56,8 +56,8 @@ class SSFP(bloch.EPGSimulator):
             states = E(states)
             states = S(states)
 
-            # return output
-            return signal
+		# return output
+		return signal
 ```
 
 The resulting class can be used to perform simulation by instantiating an object (spin properties as input)and using the ``__call__`` method (sequence properties as input):
