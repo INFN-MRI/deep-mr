@@ -83,14 +83,14 @@ def pgd_solve(
 
     # put on device
     input = input.to(device)
-    if isinstance(AHA, _linops.Linop):
-        AHA = AHA.to(device)
-    elif callable(AHA) is False:
-        AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
+    AHA = AHA.to(device)
 
     # default precondition
     if P is None:
         P = _linops.Identity()
+    else:
+        P = P.to(device)
+        accelerate = False
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data

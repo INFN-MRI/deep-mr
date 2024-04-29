@@ -11,15 +11,16 @@ from .._external.chebyshev import polynomial as chebpoly
 from .. import linops as _linops
 
 
-def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=False):
+def create_polynomial_preconditioner(precond_norm, degree, T, l=0, L=1, verbose=False):
     """
     Create polynomial preconditioner as in Srinivasan et al [1].
+
     Code adapted from https://github.com/sidward/ppcs/tree/main?tab=readme-ov-file
 
     Parameters
     ----------
-    precond_type : str
-        Type of preconditioner.
+    precond_norm : str
+        Norm of preconditioner.
 
         * ``l_2``: ``l_2`` optimized polynomial.
         * ``l_inf``: ``l_inf`` optimized polynomial.
@@ -48,9 +49,9 @@ def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=
     """
     assert degree >= 0
 
-    if precond_type == "l_2":
+    if precond_norm == "l_2":
         c = l_2_opt(degree, l, L, verbose=verbose)
-    elif precond_type == "l_inf":
+    elif precond_norm == "l_inf":
         c = l_inf_opt(degree, l, L, verbose=verbose)
     else:
         raise Exception("Unknown norm option.")
@@ -76,8 +77,7 @@ def create_polynomial_preconditioner(precond_type, degree, T, l=0, L=1, verbose=
 # %% local utils
 def l_inf_opt(degree, l=0.0, L=1.0, verbose=False):
     """
-    Calculate polynomial p(x) that minimizes the supremum of |1 - x p(x)|
-    over (l, L).
+    Calculate polynomial p(x) that minimizes the supremum of |1 - x p(x)| over (l, L).
 
     Based on Equation 50 of:
        Shewchuk, J. R.
@@ -134,9 +134,8 @@ def l_inf_opt(degree, l=0.0, L=1.0, verbose=False):
     return torch.as_tensor(np.array(c, dtype=np.float32))
 
 
-def l_2_opt(degree, l=0.0, L=1.0, weight=1, verbose=False):
+def l_2_opt(degree, l=0.0, L=1.0, weight=1, verbose=False):  # noqa
     """
-
     Calculate polynomial p(x) that minimizes the following:
 
     ..math:
