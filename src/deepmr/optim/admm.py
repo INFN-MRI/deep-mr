@@ -9,9 +9,10 @@ import torch
 
 import torch.nn as nn
 
-from .cg import cg_solve
-
 from .. import linops as _linops
+
+from . import precond
+from .cg import cg_solve
 
 
 @torch.no_grad()
@@ -20,7 +21,9 @@ def admm_solve(
     step,
     AHA,
     D,
+    use_precond=False,
     niter=10,
+    lamda=0.0,
     device=None,
     dc_niter=10,
     dc_tol=1e-4,
@@ -33,15 +36,19 @@ def admm_solve(
 
     Parameters
     ----------
-    input : np.ndarray | torch.Tensor
+    input : torch.Tensor
         Signal to be reconstructed. Assume it is the adjoint AH of measurement
         operator A applied to the measured data y (i.e., input = AHy).
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable | torch.Tensor | np.ndarray
+    AHA : deepmr.linops.Linop
         Normal operator AHA = AH * A.
-    D : Callable
+    D : Iterable[torch.nn.Module]
         Signal denoiser for plug-n-play restoration.
+    use_precond : bool, optional
+        Flag for polynomial inversion in data consistency step.
+        If ``True``, use polynomial inversion. If ``False``, use Conjugate Gradient
+        update instead. The default is ``False``.
     niter : int, optional
         Number of iterations. The default is ``10``.
     device : str, optional
@@ -85,17 +92,30 @@ def admm_solve(
 
     # put on device
     input = input.to(device)
-    if isinstance(AHA, _linops.Linop):
-        AHA = AHA.to(device)
-    elif callable(AHA) is False:
-        AHA = torch.as_tensor(AHA, dtype=input.dtype, device=device)
+    AHA = AHA.to(device)
 
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
     AHy = input.clone()
 
+    # denoisers
+    if hasattr(D, "__iter__"):
+        D = list(D)
+    else:
+        D = [D]
+
     # initialize algorithm
-    ADMM = ADMMStep(step, AHA, AHy, D, niter=dc_niter, tol=dc_tol, atol=tol)
+    ADMM = ADMMStep(
+        step,
+        AHA,
+        AHy,
+        D,
+        use_precond,
+        lamda=lamda,
+        niter=dc_niter,
+        tol=dc_tol,
+        atol=tol,
+    )
 
     # initialize
     input = 0 * input
@@ -141,6 +161,9 @@ def admm_solve(
                     )
                 )
 
+    # rescale output
+    output *= len(D) + 1
+
     if verbose:
         t1 = time.time()
         print(f"Exiting ADMM: total elapsed time: {round(t1-t0, 2)} [s]")
@@ -167,13 +190,17 @@ class ADMMStep(nn.Module):
     ----------
     step : float
         ADMM step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable | torch.Tensor
+    AHA : deepmr.linops.Linop
         Normal operator AHA = AH * A.
     Ahy : torch.Tensor
         Adjoint AH of measurement
         operator A applied to the measured data y.
-    D : Iterable(Callable)
+    D : Iterable[torch.nn.Module]
         Signal denoiser(s) for plug-n-play restoration.
+    use_precond : bool, optional
+        Flag for polynomial inversion in data consistency step.
+        If ``True``, use polynomial inversion. If ``False``, use Conjugate Gradient
+        update instead. The default is ``False``.
     trainable : bool, optional
         If ``True``, gradient update step is trainable, otherwise it is not.
         The default is ``False``.
@@ -193,8 +220,10 @@ class ADMMStep(nn.Module):
         AHA,
         AHy,
         D,
+        use_precond,
         trainable=False,
         niter=10,
+        lamda=0.0,
         tol=1e-4,
         atol=None,
         ndim=None,
@@ -205,50 +234,65 @@ class ADMMStep(nn.Module):
         else:
             self.step = step
 
+        # add Tikhonov regularization
+        _AHA = _linops.Identity() + (self.step + lamda) * AHA
+        AHy = (self.step + lamda) * AHy
+
+        # create preconditioner
+        if use_precond:
+            self.P = precond.create_polynomial_preconditioner(
+                "l_inf", niter - 1, _AHA, l=1, L=1 + (self.step + lamda)
+            )
+        else:
+            self.P = None
+            self.niter = niter
+
         # assign operators
-        self.AHA = AHA
+        self.AHA = _AHA
         self.AHy = AHy
 
         # assign denoisers
-        if hasattr(D, "__iter__"):
-            self.D = list(D)
-        else:
-            self.D = [D]
+        self.D = D
 
         # prepare auxiliary
-        self.xi = torch.zeros(
+        self.zi = torch.zeros(
             [1 + len(self.D)] + list(AHy.shape),
             dtype=AHy.dtype,
             device=AHy.device,
         )
-        self.ui = torch.zeros_like(self.xi)
+        self.ui = torch.zeros_like(self.zi)
 
         # dc solver settings
         self.niter = niter
         self.tol = tol
         self.atol = atol
 
-    def forward(self, input):
-        # data consistency step: zk = (AHA + gamma * I).solve(AHy)
-        self.xi[0], _ = cg_solve(
-            self.AHy + self.step * (input - self.ui[0]),
-            self.AHA,
-            niter=self.niter,
-            tol=self.tol,
-            lamda=self.step,
-        )
+    def forward(self, input):  # noqa
+        # data consistency step
+        if (
+            self.P is None
+        ):  # z = (rho+lambda * AHA + I).solve(rho+lambda * AHy + x - u) # CG inversion
+            self.zi[0], _ = cg_solve(
+                self.AHy + (input - self.ui[0]), self.AHA, niter=self.niter
+            )  # , tol=self.tol)
+        else:  # z = x - u - P((rho+lamda * AHA + I)(x - u) - (rho+lambda * AHy + x - u)) # Polynomial inversion
+            self.zi[0] = (
+                input
+                - self.ui[0]
+                - self.P(self.AHA(input - self.ui[0]) - (self.AHy + input - self.ui[0]))
+            )
 
         # denoise using each regularizator
         for n in range(len(self.D)):
-            self.xi[n + 1] = self.D[n](input - self.ui[n + 1])
+            self.zi[n + 1] = self.D[n](input - self.ui[n + 1])
 
         # average consensus
-        output = self.xi.mean(axis=0)
-        self.ui += self.xi - output[None, ...]
+        output = self.zi.mean(axis=0)
+        self.ui += self.zi - output[None, ...]
 
         return output
 
-    def check_convergence(self, output, input, step):
+    def check_convergence(self, output, input, step):  # noqa
         if self.atol is not None:
             resid = torch.linalg.norm(output - input).item() / step
             if resid < self.atol:

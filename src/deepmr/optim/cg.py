@@ -17,9 +17,9 @@ def cg_solve(
     input,
     AHA,
     niter=10,
+    lamda=0.0,
     device=None,
     tol=1e-4,
-    lamda=0.0,
     save_history=False,
     verbose=False,
 ):
@@ -35,13 +35,13 @@ def cg_solve(
         Normal operator AHA = AH * A.
     niter : int, optional
         Number of iterations. The default is ``10``.
+    lamda : float, optional
+        Tikhonov regularization strength. The default is ``0.0``.
     device : str, optional
         Computational device.
         The default is ``None`` (infer from input).
     tol : float, optional
         Stopping condition. The default is ``1e-4``.
-    lamda : float, optional
-        Tikhonov regularization strength. The default is ``0.0``.
     save_history : bool, optional
         Record cost function. The default is ``False``.
     verbose : bool, optional

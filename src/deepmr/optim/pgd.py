@@ -11,6 +11,8 @@ import torch.nn as nn
 
 from .. import linops as _linops
 
+from . import precond
+
 
 @torch.no_grad()
 def pgd_solve(
@@ -18,8 +20,9 @@ def pgd_solve(
     step,
     AHA,
     D,
-    P=None,
+    precond_deg=0,
     niter=10,
+    lamda=0.0,
     accelerate=True,
     device=None,
     tol=None,
@@ -31,20 +34,22 @@ def pgd_solve(
 
     Parameters
     ----------
-    input : np.ndarray | torch.Tensor
+    input : torch.Tensor
         Signal to be reconstructed. Assume it is the adjoint AH of measurement
         operator A applied to the measured data y (i.e., input = AHy).
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable | torch.Tensor | np.ndarray
+    AHA : deepmr.linop.Linop
         Normal operator AHA = AH * A.
-    D : Callable
+    D : torch.nn.Module
         Signal denoiser for plug-n-play restoration.
-    P : Callable, optional
-        Polynomial preconditioner.
-        The default is ``None``.
+    precond_deg : int, optional
+        Polynomial preconditioner degree.
+        The default is ``0`` (do not apply polynomial preconditioning).
     niter : int, optional
         Number of iterations. The default is ``10``.
+    lamda : float, optional
+        Tikhonov regularization strength. The default is ``0.0``.
     accelerate : bool, optional
         Toggle Nesterov acceleration (``True``, i.e., FISTA) or
         not (``False``, ISTA). The default is ``True``.
@@ -85,16 +90,23 @@ def pgd_solve(
     input = input.to(device)
     AHA = AHA.to(device)
 
-    # default precondition
-    if P is None:
-        P = _linops.Identity()
-    else:
-        P = P.to(device)
-        accelerate = False
-
     # assume input is AH(y), i.e., adjoint of measurement operator
     # applied on measured data
     AHy = input.clone()
+
+    # add Tikhonov regularization
+    if lamda != 0.0:
+        _AHA = AHA + lamda * _linops.Identity()
+    else:
+        _AHA = AHA
+
+    # preconditioning
+    if precond_deg == 0:
+        P = _linops.Identity()
+    else:
+        P = precond.create_polynomial_preconditioner("l_2", precond_deg, _AHA)
+        P = P.to(device)
+        accelerate = False
 
     # initialize Nesterov acceleration
     if accelerate:
@@ -167,14 +179,14 @@ class PGDStep(nn.Module):
     ----------
     step : float
         Gradient step size; should be <= 1 / max(eig(AHA)).
-    AHA : Callable | torch.Tensor
+    AHA : deepmr.linops.Linop
         Normal operator AHA = AH * A.
     Ahy : torch.Tensor
         Adjoint AH of measurement
         operator A applied to the measured data y.
-    D : Callable
+    D : torch.nn.Module
         Signal denoiser for plug-n-play restoration.
-    P : Callable, optional
+    P : deepmr.linops.Linop, optional
         Polynomial preconditioner for data consistency.
         The default is ``None`` (standard CG for data consistency).
     trainable : bool, optional

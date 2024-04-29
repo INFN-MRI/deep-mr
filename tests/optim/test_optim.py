@@ -41,7 +41,7 @@ def test_power_method(dtype, device):
 def test_conjugate_gradient(dtype, device):
     # setup problem
     n = 5
-    lamda = 0.1
+    lamda = 1e-4
     A, x = Ax_setup(n, dtype, device)
     y = A @ x
 
@@ -64,6 +64,10 @@ def test_conjugate_gradient(dtype, device):
     # actual calculation
     x, _ = deepmr.optim.cg_solve(A.T @ y, AHA, niter=1000, lamda=lamda)
 
+    print("Conjugate Gradient")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
+
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
@@ -72,7 +76,7 @@ def test_conjugate_gradient(dtype, device):
 def test_polynomial_inversion(dtype, device):
     # setup problem
     n = 5
-    lamda = 0.1
+    lamda = 1e-4
     A, x = Ax_setup(n, dtype, device)
     y = A @ x
 
@@ -95,6 +99,10 @@ def test_polynomial_inversion(dtype, device):
     # actual calculation
     x = deepmr.optim.polynomial_inversion(A.T @ y, AHA, niter=10, lamda=lamda)
 
+    print("Polynomial Inversion")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
+
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
@@ -106,7 +114,7 @@ def test_polynomial_inversion(dtype, device):
 def test_proximal_gradient(dtype, device, accelerate):
     # setup problem
     n = 5
-    lamda = 0.1
+    lamda = 1e-4
     A, x = Ax_setup(n, dtype, device)
     y = A @ x
 
@@ -124,19 +132,21 @@ def test_proximal_gradient(dtype, device, accelerate):
     )
 
     # define function
-    _AHA = _as_linop(A)
-    if lamda != 0.0:
-        AHA = _AHA + lamda * deepmr.linops.Identity()
-    else:
-        AHA = _AHA
+    AHA = _as_linop(A)
 
     # prepare denoiser
-    D = Denoiser(ths=lamda)
+    D = Denoiser(
+        ths=lamda,
+    )
 
     # actual calculation
     x, _ = deepmr.optim.pgd_solve(
-        A.T @ y, 1.0, AHA, D, niter=1000, accelerate=accelerate
+        A.T @ y, 1.0, AHA, D, niter=1000, lamda=lamda, accelerate=accelerate
     )
+
+    print("Proximal Gradient Method")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
 
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
@@ -150,7 +160,7 @@ def test_polynomial_preconditioned_proximal_gradient(dtype, device, accelerate):
     # setup problem
     l = 4
     n = 5
-    lamda = 0.1
+    lamda = 1e-4
     A, x = Ax_setup(n, dtype, device)
     y = A @ x
 
@@ -168,47 +178,115 @@ def test_polynomial_preconditioned_proximal_gradient(dtype, device, accelerate):
     )
 
     # define function
-    _AHA = _as_linop(A)
-    if lamda != 0.0:
-        AHA = _AHA + lamda * deepmr.linops.Identity()
-    else:
-        AHA = _AHA
+    AHA = _as_linop(A)
 
     # prepare denoiser
     D = Denoiser(ths=lamda)
 
-    # define preconditioner
-    P = deepmr.optim.precond.create_polynomial_preconditioner("l_2", l, AHA)
-
     # actual calculation
     x, _ = deepmr.optim.pgd_solve(
-        A.T @ y, 1.0, AHA, D, P=P, niter=250, accelerate=accelerate
+        A.T @ y,
+        1.0,
+        AHA,
+        D,
+        precond_deg=l,
+        niter=250,
+        lamda=lamda,
+        accelerate=accelerate,
     )
+
+    print("Polynomial Preconditioned PGM")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
 
     # check
     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
 
-# @pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
-# def test_admm(dtype, device):
-#     # setup problem
-#     n = 5
-#     step = 1.0
-#     A, x_torch, y = Ax_y_setup(n, 0.0, dtype, device)
+@pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
+def test_admm(dtype, device):
+    # setup problem
+    n = 5
+    lamda = 1e-4
+    A, x = Ax_setup(n, dtype, device)
+    y = A @ x
 
-#     # define function
-#     def AHA(x):
-#         return A.T @ A @ x  # + step * x
+    # rescale
+    LL = np.linalg.svd(
+        ((1.0 + lamda) * A.T @ A + torch.eye(n, dtype=dtype, device=device)).numpy(
+            force=True
+        ),
+        compute_uv=False,
+    )[0]
+    A = (1 / LL) ** 0.5 * A
+    y = y / torch.linalg.norm(y)
 
-#     # prepare denoiser
-#     def D(x):
-#         return x  # / (1.0 + lamda / step)
+    # calculate solution
+    x_torch = torch.linalg.solve(
+        (1.0 + lamda) * A.T @ A + torch.eye(n, dtype=dtype, device=device),
+        (1.0 + lamda) * A.T @ y,
+    )
 
-#     # actual calculation
-#     x, _ = deepmr.optim.admm_solve(A.T @ y, step, AHA, D, niter=1000, dc_niter=1000)
+    # define function
+    AHA = _as_linop(A)
 
-#     # check
-#     npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+    # prepare denoiser
+    D = Denoiser(ths=lamda)
+
+    # actual calculation
+    x, _ = deepmr.optim.admm_solve(
+        A.T @ y, 1.0, AHA, [D, D], lamda=lamda, niter=1, dc_niter=100
+    )
+
+    print("ADMM")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
+
+    # check
+    npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
+
+
+@pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))
+def test_polynomial_preconditioned_admm(dtype, device):
+    # setup problem
+    n = 5
+    lamda = 1e-4
+    A, x = Ax_setup(n, dtype, device)
+    y = A @ x
+
+    # rescale
+    LL = np.linalg.svd(
+        ((1.0 + lamda) * A.T @ A + torch.eye(n, dtype=dtype, device=device)).numpy(
+            force=True
+        ),
+        compute_uv=False,
+    )[0]
+    A = (1 / LL) ** 0.5 * A
+    y = y / torch.linalg.norm(y)
+
+    # calculate solution
+    x_torch = torch.linalg.solve(
+        (1.0 + lamda) * A.T @ A + torch.eye(n, dtype=dtype, device=device),
+        (1.0 + lamda) * A.T @ y,
+    )
+
+    # define function
+    _AHA = _as_linop(A)
+
+    # prepare denoiser
+    D = Denoiser(ths=lamda)
+
+    # actual calculation
+    x, _ = deepmr.optim.admm_solve(
+        A.T @ y, 1.0, _AHA, [D, D], use_precond=True, lamda=lamda, niter=1, dc_niter=9
+    )
+
+    print("Polynomial Preconditioned ADMM")
+    print(f"ground truth: {x_torch}")
+    print(f"deepmr: {x}")
+
+    # check
+    npt.assert_allclose(x.detach().cpu(), x_torch.detach().cpu(), rtol=tol, atol=tol)
 
 
 # @pytest.mark.parametrize("dtype, device", list(itertools.product(*[dtype, device])))

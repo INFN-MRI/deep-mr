@@ -11,7 +11,7 @@ from . import precond
 
 
 @torch.no_grad()
-def polynomial_inversion(input, AHA, niter=10, device=None, lamda=0.0, verbose=False):
+def polynomial_inversion(input, AHA, niter=10, lamda=0.0, device=None, verbose=False):
     """
     Solve inverse problem using Polynomial Inversion method.
 
@@ -24,11 +24,11 @@ def polynomial_inversion(input, AHA, niter=10, device=None, lamda=0.0, verbose=F
         Normal operator AHA = AH * A.
     niter : int, optional
         Number of iterations. The default is ``10``.
+    lamda : float, optional
+        Tikhonov regularization strength. The default is ``0.0``.
     device : str, optional
         Computational device.
         The default is ``None`` (infer from input).
-    lamda : float, optional
-        Tikhonov regularization strength. The default is ``0.0``.
     verbose : bool, optional
         Display information. The default is ``False``.
 
