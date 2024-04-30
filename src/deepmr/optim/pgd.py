@@ -11,7 +11,7 @@ import torch.nn as nn
 
 from .. import linops as _linops
 
-from . import precond
+from .. import _precond
 
 
 @torch.no_grad()
@@ -104,7 +104,7 @@ def pgd_solve(
     if precond_deg == 0:
         P = _linops.Identity()
     else:
-        P = precond.create_polynomial_preconditioner("l_2", precond_deg, _AHA)
+        P = _precond.create_polynomial_preconditioner("l_2", precond_deg, _AHA)
         P = P.to(device)
         accelerate = False
 

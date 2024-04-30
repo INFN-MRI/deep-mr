@@ -11,9 +11,6 @@ import torch.nn as nn
 
 from .. import linops as _linops
 
-from . import precond
-from .cg import cg_solve
-
 
 @torch.no_grad()
 def admm_solve(
@@ -239,13 +236,7 @@ class ADMMStep(nn.Module):
         AHy = (self.step + lamda) * AHy
 
         # create preconditioner
-        if use_precond:
-            self.P = precond.create_polynomial_preconditioner(
-                "l_inf", niter - 1, _AHA, l=1, L=1 + (self.step + lamda)
-            )
-        else:
-            self.P = None
-            self.niter = niter
+        self.use_precond = use_precond
 
         # assign operators
         self.AHA = _AHA
@@ -270,16 +261,19 @@ class ADMMStep(nn.Module):
     def forward(self, input):  # noqa
         # data consistency step
         if (
-            self.P is None
-        ):  # z = (rho+lambda * AHA + I).solve(rho+lambda * AHy + x - u) # CG inversion
-            self.zi[0], _ = cg_solve(
-                self.AHy + (input - self.ui[0]), self.AHA, niter=self.niter
-            )  # , tol=self.tol)
-        else:  # z = x - u - P((rho+lamda * AHA + I)(x - u) - (rho+lambda * AHy + x - u)) # Polynomial inversion
-            self.zi[0] = (
-                input
-                - self.ui[0]
-                - self.P(self.AHA(input - self.ui[0]) - (self.AHy + input - self.ui[0]))
+            self.use_precond
+        ):  # z = (rho * AHA + I).solve(rho * AHy + x - u) # CG inversion
+            self.zi = self.AHA.solve(
+                self.AHy, rho=self.step, lamda=1.0, niter=self.niter, method="pi"
+            )
+        else:  # z = x - u - P((rho * AHA + I)(x - u) - (rho * AHy + x - u)) # Polynomial inversion
+            self.zi = self.AHA.solve(
+                self.AHy,
+                rho=self.step,
+                lamda=1.0,
+                niter=self.niter,
+                tol=self.tol,
+                method="cg",
             )
 
         # denoise using each regularizator

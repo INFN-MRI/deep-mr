@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from . import _linalg
+
 
 class Linop(nn.Module):
     r"""
@@ -51,6 +53,9 @@ class Linop(nn.Module):
     def _adjoint_linop(self):
         raise NotImplementedError
 
+    def _normal_linop(self):
+        return self.H * self
+
     @property
     def H(self):
         r"""
@@ -69,6 +74,24 @@ class Linop(nn.Module):
 
         """
         return self._adjoint_linop()
+
+    @property
+    def N(self):
+        r"""
+        Return normal linear operator.
+
+        A normal linear operator :math:`A^HA` for
+        a linear operator :math:`A`.
+
+        Returns
+        -------
+        Linop
+            Normal linear operator.
+
+        """
+        if self.normal is None:
+            self.normal = self._normal_linop()
+        return self.normal
 
     def __add__(self, other):
         r"""
@@ -126,6 +149,101 @@ class Linop(nn.Module):
             except Exception:
                 pass
         return self
+
+    def max_eig(self, x, lamda=0.0, rho=1.0, niter=10, device=None):
+        """
+        Compute maximum eigenvalue using Power Iteration method.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Tensor with the same shape of the expected A input.
+        lamda : float, optional
+            Tikhonov regularization. The default is ``0.0``.
+        rho : float, optional
+            Relaxation parameter. The default is ``1.0``.
+        niter : int, optional
+            Number of Power Method iterations .
+            The default is ``10``.
+        device : str, optional
+            Computational device. The default is ``None`` (use same device as ``y``).
+
+        Returns
+        -------
+        LL : float
+            Maximum eigenvalue of A (i.e., Lipschitz constant).
+
+        """
+        # build random array
+        x = torch.rand_like(x)
+
+        # add regularization
+        _AHA = rho * self.N + lamda * Identity()
+
+        return _linalg.power_method(_AHA, x, niter=niter, device=device)
+
+    def solve(
+        self,
+        AHy,
+        bias=None,
+        lamda=0.0,
+        rho=1.0,
+        niter=None,
+        tol=None,
+        method="cg",
+        device=None,
+    ):
+        """
+        Invert operator using iterative least squares or polynomial inversion.
+
+        Parameters
+        ----------
+        AHy : torch.Tensor
+            Adjoint AH of measurementoperator A applied to the measured data y.
+        bias : torch.Tensor, optional
+            Bias for L2 regularization. The default is ``None``.
+        lamda : float, optional
+            Tikhonov regularization. The default is ``0.0``.
+        rho : float, optional
+            Relaxation parameter. The default is ``1.0``.
+        niter : int, optional
+            Number of CG iterations / polynomial degree.
+            The default is ``10`` (``method == "cg"``)
+            or ``2`` (``method == "pi"``).
+        tol : float, optional
+            Tolerance for convergence. Ignored if ``method == "pi"``.
+            The default is ``None`` (run until ``niter``).
+        method : str, optional
+            Select between Conjugate Gradient (``"cg"``)
+            or Polynomial Inversion (``"pi"``). The default is "cg".
+        device : str, optional
+            Computational device. The default is ``None`` (use same device as ``y``).
+
+        Returns
+        -------
+        output : torch.Tensor
+            Least squares solution.
+
+        """
+        # get adjoint
+        _AHy = rho * AHy
+        if bias is not None and lamda != 0.0:
+            _AHy = _AHy + lamda * bias
+
+        # add regularization
+        _AHA = rho * self.N + lamda * Identity()
+
+        # solve
+        if method == "cg":
+            if niter is None:
+                niter = 10
+            return _linalg.cg_solve(_AHA, _AHy, niter=niter, tol=tol, device=device)
+        elif method == "pi":
+            if niter is None:
+                niter = 2
+            return _linalg.polynomial_inversion(
+                _AHA, _AHy, lamda, degree=niter, tol=tol, device=device
+            )
 
 
 class Add(Linop):
