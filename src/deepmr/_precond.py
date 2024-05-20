@@ -7,8 +7,8 @@ import torch
 
 import sympy
 
-from .._external.chebyshev import polynomial as chebpoly
-from .. import linops as _linops
+from ._external.chebyshev import polynomial as chebpoly
+from . import linops as _linops
 
 
 def create_polynomial_preconditioner(precond_norm, degree, T, l=0, L=1, verbose=False):

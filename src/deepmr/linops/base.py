@@ -1,6 +1,6 @@
 """Base linear operator."""
 
-__all__ = ["Linop", "Identity"]
+__all__ = ["Linop", "Identity", "LambdaOp", "MatrixOp", "GramMatrixOp"]
 
 import numpy as np
 import torch
@@ -45,9 +45,7 @@ class Linop(nn.Module):
     """
 
     def __init__(self):
-        r"""
-        Initiate the linear operator.
-        """
+        """Initiate the linear operator."""
         super().__init__()
 
     def _adjoint_linop(self):
@@ -74,6 +72,10 @@ class Linop(nn.Module):
 
         """
         return self._adjoint_linop()
+    
+    @property
+    def T(self): # noqa
+        return self.H
 
     @property
     def N(self):
@@ -94,61 +96,71 @@ class Linop(nn.Module):
         return self.normal
 
     def __add__(self, other):
-        r"""
-        Reload the + symbol.
-        """
+        """Reload the + symbol."""
         return Add([self, other])
-
-    def __mul__(self, other):
-        r"""
-        Reload the * symbol.
-        """
-        if np.isscalar(other):
-            return Multiply(self, other)
-        elif isinstance(other, Linop):
+    
+    def __matmul__(self, other):
+        """Reload the @ symbol."""
+        if isinstance(other, Linop):
             return Compose([self, other])
         elif isinstance(other, torch.Tensor):
-            if not other.shape:
-                return Multiply(self, other)
-            return self.apply(other)
+            return self.forward(other)
         else:
             raise NotImplementedError(
-                f"Only scalers, Linearmaps or Tensors, rather than '{type(other)}' are allowed as arguments for this function."
+                f"Only Linops or Tensors, rather than '{type(other)}' are allowed as arguments for this function."
+            )
+
+    def __mul__(self, other):
+        """Reload the * symbol."""
+        if np.isscalar(other):
+            return Multiply(self, other)
+        else:
+            raise NotImplementedError(
+                f"Only scalars, rather than '{type(other)}' are allowed as arguments for this function."
             )
 
     def __rmul__(self, other):
-        r"""
-        Reload the * symbol.
-        """
+        """Reload the * symbol."""
         if np.isscalar(other):
-            return Multiply(self, other)
-        elif isinstance(other, torch.Tensor) and not other.shape:
             return Multiply(self, other)
         else:
             return NotImplemented
 
     def __sub__(self, other):
-        r"""
-        Reload the - symbol.
-        """
+        """Reload the - symbol."""
         return self.__add__(-other)
 
     def __neg__(self):
-        r"""
-        Reload the - symbol.
-        """
+        """Reload the - symbol."""
         return -1 * self
 
     def to(self, *args, **kwargs):
-        r"""
-        Copy to different devices
-        """
+        """Copy to different devices."""
         for prop in self.__dict__.keys():
             try:
                 self.__dict__[prop] = self.__dict__[prop].to(*args, **kwargs)
             except Exception:
                 pass
         return self
+    
+    def cpu(self):
+        """Alternative syntax for '.to("cpu")'."""
+        return self.to("cpu")
+    
+    def cuda(self, device=None):
+        """
+        Alternative syntax for '.to("cuda")' or '.to("cuda:device")'.
+        
+        Parameters
+        ----------
+        device : int, optional
+            CUDA device number. By default, move to the current CUDA device.
+        
+        """
+        if device is None:
+            return self.to("cuda")
+        else:
+            return self.to("cuda:" + str(device))
 
     def max_eig(self, x, lamda=0.0, rho=1.0, niter=10, device=None):
         """
@@ -245,7 +257,7 @@ class Linop(nn.Module):
                 _AHA, _AHy, lamda, degree=niter, tol=tol, device=device
             )
 
-
+# %% base operators
 class Add(Linop):
     r"""
     Addition of linear operators.
@@ -336,8 +348,8 @@ class Multiply(Linop):
 
 
 class Identity(Linop):
-    """I
-    dentity linear operator.
+    """
+    Identity linear operator.
 
     Returns input directly.
 
@@ -346,7 +358,7 @@ class Identity(Linop):
     def __init__(self):
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input): # noqa
         return input
 
     def _adjoint_linop(self):
@@ -354,3 +366,93 @@ class Identity(Linop):
 
     def _normal_linop(self):
         return self
+
+
+class LambdaOp(Linop):
+    """Lambda function linear operator."""
+    
+    def __init__(self, forw, adj, norm=None):
+        """
+        Lambda operator constructor.
+
+        Parameters
+        ----------
+        forw : Callable
+            Callable tensor representing
+            the forward operator.
+        adj : Callable
+            Callable tensor representing
+            the adjoint operator.
+        norm : Callable, optional
+            Callable tensor representing
+            the normal operator.
+
+        """
+        super().__init__()
+        self._forw = forw
+        self._adj = adj
+        
+        # define normal operator if not specified
+        if norm is None:
+            norm = lambda x : adj(forw(x))
+        self._norm = norm
+        
+    def forward(self, input): # noqa
+        return self._forw(input)
+    
+    def _adjoint_linop(self):
+        return LambdaOp(self._adj, self._forw, self._norm)
+    
+    def _normal_linop(self):
+        return LambdaOp(self._norm, self._norm, self._norm)
+    
+    
+class MatrixOp(Linop):
+    """
+    Matrix as a linear operators.
+    
+    Also supports batch of matrices.
+    """
+    
+    def __init__(self, mat):
+        """
+        Matrix operator constructor.
+
+        Parameters
+        ----------
+        mat : torch.Tensor
+            Dense or sparse tensor representing
+            the operator.
+
+        """
+        super().__init__()
+        self._mat = mat.clone()
+        
+    @property
+    def T(self):
+        transp_mat = self._mat.transpose(-2, -1)
+        return MatrixOp(transp_mat)
+        
+    def forward(self, input):
+        return self._mat @ input
+    
+    def _adjoint_linop(self):
+        adj_mat = self._mat.conj().transpose(-2, -1)
+        return MatrixOp(adj_mat)
+    
+    def _normal_linop(self):
+        adj_mat = self._mat.conj().transpose(-2, -1)
+        norm_mat = adj_mat @ self._mat
+        return GramMatrixOp(norm_mat)
+        
+    
+class GramMatrixOp(MatrixOp):
+    """Gram Matrix operator."""
+    
+    def _adjoint_linop(self):
+        return self
+
+    def _normal_linop(self):
+        return self
+    
+    

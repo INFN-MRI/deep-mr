@@ -16,4 +16,4 @@ from .lstsq import *  # noqa
 __all__ = []
 __all__.extend(_pgd.__all__)
 __all__.extend(_admm.__all__)
-__all__.extend(_lstsq.__all__)
+# __all__.extend(_lstsq.__all__)
