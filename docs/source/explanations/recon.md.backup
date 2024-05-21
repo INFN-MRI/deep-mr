@@ -1,0 +1,27 @@
+# MRI Reconstruction as an Inverse Problem
+
+Magnetic Resonance Imaging (MRI) is a non-invasive imaging technique that reconstructs images from k-space data, presenting it as an inverse problem. The goal is to recover an image of the object from measured frequency domain data.
+
+The forward model of MRI can be expressed as:
+
+\[
+\mathbf{y} = \mathbf{E} \mathbf{x}
+\]
+
+where:
+- \(\mathbf{y}\) is the acquired k-space data,
+- \(\mathbf{E}\) is the MR encoding operator,
+- \(\mathbf{x}\) is the image to be reconstructed.
+
+Given undersampled k-space data, the inverse problem seeks \(\mathbf{x}\) from \(\mathbf{y}\). This is typically ill-posed, requiring regularization. A generalized formulation with multiple regularization terms is:
+
+\[
+\hat{\mathbf{x}} = \arg \min_{\mathbf{x}} \left\| \mathbf{y} - \mathbf{F} \mathbf{x} \right\|_2^2 + \sum_{i=1}^N \lambda_i R_i(\mathbf{x})
+\]
+
+where:
+- \(\left\| \cdot \right\|_2\) denotes the \(L_2\) norm,
+- \(R_i(\mathbf{x})\) are regularization terms,
+- \(\lambda_i\) are regularization parameters.
+
+Advanced techniques like compressed sensing and iterative reconstruction further refine this process, leveraging sparsity and prior knowledge to produce high-quality images from limited data.
