@@ -162,7 +162,7 @@ class Linop(nn.Module):
         else:
             return self.to("cuda:" + str(device))
 
-    def max_eig(self, x, lamda=0.0, rho=1.0, niter=10, device=None):
+    def maxeig(self, x, lamda=0.0, rho=1.0, niter=10, device=None):
         """
         Compute maximum eigenvalue using Power Iteration method.
 
@@ -194,17 +194,7 @@ class Linop(nn.Module):
 
         return _linalg.power_method(_AHA, x, niter=niter, device=device)
 
-    def solve(
-        self,
-        AHy,
-        bias=None,
-        lamda=0.0,
-        rho=1.0,
-        niter=None,
-        tol=None,
-        method="cg",
-        device=None,
-    ):
+    def pinv(self, lamda=0.0, rho=1.0, method="cg", niter=None, tol=None, device=None):
         """
         Invert operator using iterative least squares or polynomial inversion.
 
@@ -237,25 +227,24 @@ class Linop(nn.Module):
             Least squares solution.
 
         """
-        # get adjoint
-        _AHy = rho * AHy
-        if bias is not None and lamda != 0.0:
-            _AHy = _AHy + lamda * bias
-
-        # add regularization
-        _AHA = rho * self.N + lamda * Identity()
+        if method == "cg":
+            _AHA = rho * self.N + lamda * Identity()
+            return ConjugateGrad(_AHA, niter, tol, device)
+        elif method == "lsmr":
+            _A = Vstack([rho**0.5 * self, lamda**0.5 * Identity()])
+            return LSMR(_A, niter, tol, device)
 
         # solve
-        if method == "cg":
-            if niter is None:
-                niter = 10
-            return _linalg.cg_solve(_AHA, _AHy, niter=niter, tol=tol, device=device)
-        elif method == "pi":
-            if niter is None:
-                niter = 2
-            return _linalg.polynomial_inversion(
-                _AHA, _AHy, lamda, degree=niter, tol=tol, device=device
-            )
+        # if method == "cg":
+        #     if niter is None:
+        #         niter = 10
+        #     return _linalg.cg_solve(_AHA, _AHy, niter=niter, tol=tol, device=device)
+        # elif method == "pi":
+        #     if niter is None:
+        #         niter = 2
+        #     return _linalg.polynomial_inversion(
+        #         _AHA, _AHy, lamda, degree=niter, tol=tol, device=device
+        #     )
 
 # %% base operators
 class Add(Linop):
@@ -345,6 +334,72 @@ class Multiply(Linop):
 
     def _adjoint_linop(self):
         return Multiply(self.linop, self.a)
+    
+
+class Vstack(Linop):
+    """
+    Vertically stack linear operators.
+
+    Creates a Linop that applies linops independently,
+    and concatenates outputs.
+    In matrix form, this is equivalant to given matrices {A1, ..., An},
+    returns [A1.T, ..., An.T].T.
+
+    Attributes
+    ----------
+    linops : List[Linopts] 
+        List of linops to be vertically stacked.
+
+    """
+    
+    def __init__(self, linops):
+        super().__init__()
+        self.linops = linops
+
+    def forward(self, input):
+        output = []
+        for n in range(len(self.linops)):
+            output.append(self.linops[n](input))
+        return output
+
+    def to(self, device):
+        return Vstack([linop.to(device) for linop in self.linops])
+
+    def _adjoint_linop(self):
+        return Hstack([linop.H for linop in self.linops])
+
+
+class Hstack(Linop):
+    """
+    Horizontally stack linear operators.
+
+    Creates a Linop that splits the input, applies Linops independently,
+    and sums outputs.
+    In matrix form, this is equivalant to given matrices {A1, ..., An},
+    returns [A1, ..., An].
+
+    Attributes
+    ----------
+    linops : List[Linopts] 
+        List of linops to be horizontally stacked.
+
+    """
+    
+    def __init__(self, linops):
+        super().__init__()
+        self.linops = linops
+
+    def forward(self, input):
+        output = self.linops[0](input[0])
+        for n in range(1, len(self.linops)):
+            output = output + self.linops[n](input[n])
+        return output
+
+    def to(self, device):
+        return Hstack([linop.to(device) for linop in self.linops])
+
+    def _adjoint_linop(self):
+        return Vstack([linop.H for linop in self.linops])
 
 
 class Identity(Linop):
@@ -368,6 +423,63 @@ class Identity(Linop):
         return self
 
 
+class ConjugateGrad(torch.nn.Module):
+    """Pseudo Inverse of linear operator via conjugate gradient."""
+    
+    def __init__(self, AHA, x0, bias, rho, lamda, niter, tol, device):
+        super().__init__()
+        self.AHA = AHA
+        self.x0 = x0
+        if bias is not None:
+            self.bias0 = bias.clone()
+        else:
+            self.bias0 = None
+        self.bias = None
+        self.rho = rho
+        self.lamda = lamda
+        self.niter = niter
+        self.tol = tol
+        self.device = device
+        
+    def __getitem__(self, bias):
+        if self.bias0 is None:
+            self.bias = bias.clone()
+        else:
+            self.bias = self.bias0 + bias
+        return self
+        
+    def forward(self, input):
+        x = self.rho * input
+        if self.bias is not None and self.lamda != 0.0:
+            x = x + self.lamda * self.bias
+        return _linalg.conjgrad(self.AHA, x, self.x0, self.niter, self.tol, self.device)
+    
+    
+class LSMR(torch.nn.Module):
+    """Pseudo Inverse of linear operator."""
+    
+    def __init__(self, A, x0, bias, rho, lamda, niter, tol, device):
+        super().__init__()
+        self.A = A
+        self.x0 = x0
+        if bias is not None:
+            self.bias0 = bias.clone()
+        else:
+            self.bias0 = None
+        self.bias = None
+        self.rho = rho
+        self.lamda = lamda
+        self.niter = niter
+        self.tol = tol
+        self.device = device
+        
+    def forward(self, input):
+        y = self.rho**0.5 * input
+        if self.bias is not None and self.lamda != 0.0:
+            y = [y, self.lamda**0.5 * self.bias]
+        return _linalg.lsmr(self.A, y, self.x0, self.niter, 0.0, self.tol[0], self.tol[1], self.tol[2], self.device)
+    
+    
 class LambdaOp(Linop):
     """Lambda function linear operator."""
     
