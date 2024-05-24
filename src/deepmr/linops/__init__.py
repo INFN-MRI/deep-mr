@@ -11,22 +11,24 @@ Currently implemented linear operator include:
 
 """
 
-from . import base as _base
-from . import coil as _coil
-from . import fft as _fft
-from . import nufft as _nufft
+from . import _base
+from . import _coil
+from . import _fft
+from . import _nufft
+from . import _linalg
 
-from .base import *  # noqa
-from .coil import *  # noqa
-from .fft import *  # noqa
-from .nufft import *  # noqa
+from ._base import *  # noqa
+from ._coil import *  # noqa
+from ._fft import *  # noqa
+from ._nufft import *  # noqa
+from ._linalg import * # noqa
 
-__all__ = []
+__all__ = ["aslinearoperator", "vstack", "hstack"]
 __all__.extend(_base.__all__)
 __all__.extend(_coil.__all__)
 __all__.extend(_fft.__all__)
 __all__.extend(_nufft.__all__)
-
+__all__.extend(_linalg.__all__)
 
 #%% functions
 import torch as _torch
@@ -38,7 +40,7 @@ def aslinearoperator(A, AH=None, AHA=None):
 
     Parameters
     ----------
-    A : deepmr.Linop | torch.Tensor | np.ndarray | Callable
+    A : deepmr.linops.Linop | torch.Tensor | np.ndarray | Callable
         Linear operator, or Tensor / NDArray describing the operator,
         or function handle describing the forward operator.
         If ``type(A) == Linop``, ``A`` is directly returned.
@@ -46,17 +48,42 @@ def aslinearoperator(A, AH=None, AHA=None):
         When forward operator is specified as a ``Callable``, the 
         adjoint must be specified as a ``Callable`` as well. 
         The default is ``None`` (ignored for ``type(A) == Linop | torch.Tensor | np.ndarray").
-    AHA : TYPE, optional
+    AHA : Callable, optional
         When forward operator is specified as a ``Callable``,
         normal operator can be specified as a ``Callable`` as well,
         if an efficient implementation is available. The default is ``None`` (i.e., ``A(x) = A.H(A(x))``).
 
     Returns
     -------
-    Op : deepmr.Linop
+    Op : deepmr.linops.Linop
         Linear operator corresponding to the inputs.
         
-
+    
+    Examples
+    --------
+    
+    >>> import deepmr
+    >>> import torch
+    
+    Create a tensor:
+        
+    >>> A = torch.rand(3, 3)
+    >>> x = torch.rand(3)
+    
+    Transform ``A`` into a linear operator:
+        
+    >>> Aop = deepmr.linops.aslinearoperator(A)
+    
+    Apply operator
+    
+    >>> y = A @ x
+    >>> yop = Aop(x)
+    
+    The results are the same:
+        
+    >>> torch.equal(y, yop)
+    True
+            
     """
     if isinstance(A, _base.Linop):
         return A
@@ -66,5 +93,48 @@ def aslinearoperator(A, AH=None, AHA=None):
     else:
         assert AH is not None, "If A is a function handle, please provide adjoint operation handle"
         return  _base.LambdaOp(A, AH, AHA)
-        
+    
+    
+def vstack(*ops_or_tensors):
+    """
+    Vertical stack of Linear operators
+
+    Parameters
+    ----------
+    *ops_or_tensors : torch.Tensor | deepmr.linops.Linop
+        operators or tensors to be stacked.
+
+    Returns
+    -------
+    list | deepmr.linops.Linop
+        If input is a list of tensor, return a list of tensors.
+        Otherwise, vertically stack operators.
+
+    """
+    if isinstance(ops_or_tensors[0], _torch.Tensor):
+        return list(ops_or_tensors)
+    else:
+        return _base.Vstack(ops_or_tensors)
+
+
+def hstack(ops_or_tensors):
+    """
+    Horizontal stack of Linear operators
+
+    Parameters
+    ----------
+    *ops_or_tensors : torch.Tensor | deepmr.linops.Linop
+        operators or tensors to be stacked.
+
+    Returns
+    -------
+    list | deepmr.linops.Linop
+        If input is a list of tensor, return a list of tensors.
+        Otherwise, horizontally stack operators.
+
+    """
+    if isinstance(ops_or_tensors[0], _torch.Tensor):
+        raise NotImplementedError
+    else:
+        return _base.Hstack(ops_or_tensors)    
     

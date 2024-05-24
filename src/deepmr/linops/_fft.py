@@ -7,7 +7,7 @@ import torch
 
 from .. import fft as _fft
 
-from . import base
+from . import _base as base
 
 
 class FFTOp(base.Linop):

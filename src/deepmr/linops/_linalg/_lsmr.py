@@ -2,13 +2,11 @@
 
 __all__ = ["lsmr"]
 
-import math
 
-
+import numpy as np
 import torch
 
-
-def lsmr(A, y, x0=None, niter=5, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, device=None):
+def lsmr(A, y, x0=None, niter=4, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, device=None):
     """
     Solve inverse problem using LSMR method.
 
@@ -67,7 +65,7 @@ def lsmr(A, y, x0=None, niter=5, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, dev
         Reconstructed signal.
 
     """
-    return LSMR.apply(y, A, x0, damp, niter, atol, btol, conlim, device)
+    return LSMR.apply(y, A, x0, niter, damp, atol, btol, conlim, device)
 
 # %% local utils
 eps = torch.finfo(torch.float32).eps
@@ -75,7 +73,7 @@ eps = torch.finfo(torch.float32).eps
 class LSMR(torch.autograd.Function):
     @staticmethod
     def forward(y, A, x0=None, niter=10, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, device=None):
-        return _lsmr_solve(A, y, x0, niter, damp, atol, btol, conlim)
+        return _lsmr_solve(A, y, x0, niter, damp, atol, btol, conlim, device)
     
     @staticmethod
     def setup_context(ctx, inputs, output):
@@ -101,7 +99,7 @@ class LSMR(torch.autograd.Function):
         conlim = ctx.conlim 
         device = ctx.device
         return (
-            _lsmr_solve(dx, A.H, y, niter, damp, atol, btol, conlim, device),
+            _lsmr_solve(A.H, dx, y, niter, damp, atol, btol, conlim, device),
             None,
             None,
             None,
@@ -133,7 +131,7 @@ def _lsmr_solve(A, y, x0, maxiter, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, d
     beta = _norm(u)
 
     if beta > 0:
-        u = (1 / beta) * u
+        u = _prod(u, 1 / beta)
         v = A.H(u)
         alpha = _norm(v)
     else:
@@ -205,8 +203,8 @@ def _lsmr_solve(A, y, x0, maxiter, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, d
         #         beta*u  =  A@v   -  alpha*u,
         #        alpha*v  =  A'@u  -  beta*v.
 
-        u *= -alpha
-        u += A(v)
+        u = _prod(u, -alpha)
+        u = _sum(u, A(v))
         beta = _norm(u)
 
         if beta > 0:
@@ -271,7 +269,7 @@ def _lsmr_solve(A, y, x0, maxiter, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, d
         # rhodold = rhod_k  here.
 
         tautildeold = (zetaold - thetatildeold * tautildeold) / rhotildeold
-        taud = (zeta - thetatilde * tautildeold) / rhodold
+        taud = (zeta - thetatilde * tautildeold) / rhodold + eps
         d = d + betacheck * betacheck
         normr = (d + (betad - taud)**2 + betadd * betadd)**0.5
 
@@ -338,17 +336,17 @@ def _lsmr_solve(A, y, x0, maxiter, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, d
 
 def _sym_ortho(a, y):
     if y == 0:
-        return math.sign(a), 0, 0
+        return np.sign(a), 0, abs(a)
     elif a == 0:
-        return 0, math.sign(y), abs(y)
+        return 0, np.sign(y), abs(y)
     elif abs(y) > abs(a):
         tau = a / y
-        s = math.sign(y) / (1 + tau * tau)**0.5
+        s = np.sign(y) / (1 + tau * tau)**0.5
         c = s * tau
         r = y / s
     else:
         tau = y / a
-        c = math.sign(a) / (1+tau*tau)**0.5
+        c = np.sign(a) / (1+tau*tau)**0.5
         s = c * tau
         r = a / c
     return c, s, r
@@ -358,7 +356,7 @@ def _clone(input):
     if isinstance(input, torch.Tensor):
         return input.clone()
     else:
-        return [el.clone for el in input]
+        return [el.clone() for el in input]
 
 
 def _zeros_like(input):
@@ -372,7 +370,7 @@ def _get_device(input):
     if isinstance(input, torch.Tensor):
         return input.device
     else:
-        return input[0].device()
+        return input[0].device
     
     
 def _to_device(input, device):
@@ -387,18 +385,26 @@ def _norm(input):
         return torch.linalg.norm(input)
     else:
         return sum([torch.linalg.norm(el)**2 for el in input])**0.5
-
-
+    
+def _sum(x, y):
+    if isinstance(x, torch.Tensor):
+        return x + y
+    else:
+        assert len(x) == len(y)
+        return [x[n] + y[n] for n in range(len(x))]
+    
+    
 def _diff(x, y):
     if isinstance(x, torch.Tensor):
-        x - y
+        return x - y
     else:
+        assert len(x) == len(y)
         return [x[n] - y[n] for n in range(len(x))]
 
 
 def _prod(x, y):
     if isinstance(x, torch.Tensor):
-        x * y
+        return x * y
     else:
         return [el * y for el in x]
 

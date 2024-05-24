@@ -1,6 +1,6 @@
 """Base linear operator."""
 
-__all__ = ["Linop", "Identity", "LambdaOp", "MatrixOp", "GramMatrixOp"]
+__all__ = ["Linop", "Identity"]
 
 import numpy as np
 import torch
@@ -76,7 +76,7 @@ class Linop(nn.Module):
     @property
     def T(self): # noqa
         return self.H
-
+    
     @property
     def N(self):
         r"""
@@ -91,9 +91,7 @@ class Linop(nn.Module):
             Normal linear operator.
 
         """
-        if self.normal is None:
-            self.normal = self._normal_linop()
-        return self.normal
+        return self._normal_linop()
 
     def __add__(self, other):
         """Reload the + symbol."""
@@ -194,32 +192,35 @@ class Linop(nn.Module):
 
         return _linalg.power_method(_AHA, x, niter=niter, device=device)
 
-    def pinv(self, lamda=0.0, rho=1.0, method="cg", niter=None, tol=None, device=None):
+    def pinv(self, method="cg", x0=None, lamda=0.0, niter=None, tol=None, bias=None, rho=0.0, device=None):
         """
-        Invert operator using iterative least squares or polynomial inversion.
+        Invert operator using iterative least squares.
 
         Parameters
         ----------
-        AHy : torch.Tensor
-            Adjoint AH of measurementoperator A applied to the measured data y.
-        bias : torch.Tensor, optional
-            Bias for L2 regularization. The default is ``None``.
-        lamda : float, optional
-            Tikhonov regularization. The default is ``0.0``.
-        rho : float, optional
-            Relaxation parameter. The default is ``1.0``.
-        niter : int, optional
-            Number of CG iterations / polynomial degree.
-            The default is ``10`` (``method == "cg"``)
-            or ``2`` (``method == "pi"``).
-        tol : float, optional
-            Tolerance for convergence. Ignored if ``method == "pi"``.
-            The default is ``None`` (run until ``niter``).
         method : str, optional
             Select between Conjugate Gradient (``"cg"``)
-            or Polynomial Inversion (``"pi"``). The default is "cg".
+            or LSMR (``"lsmr"``). The default is "cg".
+        x0 : torch.Tensor, optional
+            Initial estimate for solution. Required for ``lsmr`` only 
+            (can be zeroes, in which case is used only to estimate the expected shape).
+        bias : torch.Tensor, optional
+            Bias for Tikhonov regularization. The default is ``None``.
+        lamda : float, optional
+            Tikhonov regularization. The default is ``0.0``.
+        niter : int, optional
+            Number of iterations.
+            The default is ``10`` (``method == "cg"``) 
+            or ``4`` (``method == "lsmr"``).
+        tol : float, optional
+            Tolerance for convergence.
+            The default is is ``None`` (run until ``niter``, ``method == "cg"``) 
+            or ``(atol=1e-6, btol=1e-6, conlim=1e8)`` (``method == "lsmr"``).
+        rho : float, optional
+            Tikhonov regularization for additional bias, e.g., for ADMM dual variable. 
+            The default is ``0.0``.
         device : str, optional
-            Computational device. The default is ``None`` (use same device as ``y``).
+            Computational device. The default is ``None`` (use same device as measured data).
 
         Returns
         -------
@@ -228,23 +229,15 @@ class Linop(nn.Module):
 
         """
         if method == "cg":
-            _AHA = rho * self.N + lamda * Identity()
-            return ConjugateGrad(_AHA, niter, tol, device)
+            if niter is None:
+                niter = 10
+            return ConjugateGrad(self, x0, lamda, rho, bias, niter, tol, device)
         elif method == "lsmr":
-            _A = Vstack([rho**0.5 * self, lamda**0.5 * Identity()])
-            return LSMR(_A, niter, tol, device)
-
-        # solve
-        # if method == "cg":
-        #     if niter is None:
-        #         niter = 10
-        #     return _linalg.cg_solve(_AHA, _AHy, niter=niter, tol=tol, device=device)
-        # elif method == "pi":
-        #     if niter is None:
-        #         niter = 2
-        #     return _linalg.polynomial_inversion(
-        #         _AHA, _AHy, lamda, degree=niter, tol=tol, device=device
-        #     )
+            if niter is None:
+                niter = 4
+            if tol is None:
+                tol = [1e-6, 1e-6, 1e8]
+            return LSMR(self, x0, lamda, rho, bias, niter, tol, device)
 
 # %% base operators
 class Add(Linop):
@@ -426,58 +419,177 @@ class Identity(Linop):
 class ConjugateGrad(torch.nn.Module):
     """Pseudo Inverse of linear operator via conjugate gradient."""
     
-    def __init__(self, AHA, x0, bias, rho, lamda, niter, tol, device):
-        super().__init__()
-        self.AHA = AHA
-        self.x0 = x0
-        if bias is not None:
-            self.bias0 = bias.clone()
-        else:
-            self.bias0 = None
-        self.bias = None
-        self.rho = rho
-        self.lamda = lamda
-        self.niter = niter
-        self.tol = tol
-        self.device = device
-        
-    def __getitem__(self, bias):
-        if self.bias0 is None:
-            self.bias = bias.clone()
-        else:
-            self.bias = self.bias0 + bias
-        return self
-        
-    def forward(self, input):
-        x = self.rho * input
-        if self.bias is not None and self.lamda != 0.0:
-            x = x + self.lamda * self.bias
-        return _linalg.conjgrad(self.AHA, x, self.x0, self.niter, self.tol, self.device)
-    
-    
-class LSMR(torch.nn.Module):
-    """Pseudo Inverse of linear operator."""
-    
-    def __init__(self, A, x0, bias, rho, lamda, niter, tol, device):
+    def __init__(self, A, x0, lamda, rho, bias, niter, tol, device):
         super().__init__()
         self.A = A
         self.x0 = x0
-        if bias is not None:
+        self.rho = rho
+        self.lamda = lamda
+        self.lamda_p_rho_I = (self.lamda + self.rho) * Identity()
+        if bias is not None and self.lamda != 0.0:
             self.bias0 = bias.clone()
         else:
             self.bias0 = None
         self.bias = None
-        self.rho = rho
-        self.lamda = lamda
         self.niter = niter
         self.tol = tol
         self.device = device
+                
+    def __getitem__(self, bias):
+        assert self.rho != 0, "if variable bias is specified, rho must be != 0"
+        self.bias = bias.clone()
+        return self
         
     def forward(self, input):
-        y = self.rho**0.5 * input
-        if self.bias is not None and self.lamda != 0.0:
-            y = [y, self.lamda**0.5 * self.bias]
-        return _linalg.lsmr(self.A, y, self.x0, self.niter, 0.0, self.tol[0], self.tol[1], self.tol[2], self.device)
+        # create operator
+        AHA = self.A.N
+        if self.lamda != 0.0 or self.rho != 0.0:
+            AHA = AHA + self.lamda_p_rho_I
+        
+        # manipulate input
+        y = input.clone()
+        
+        # calculate right hand side
+        AHy = self.A.H(y)
+        
+        # initial solution
+        if self.x0 is not None:
+            x0 = self.x0
+        else:
+            x0 = 0 * AHy
+
+        if self.lamda != 0.0 and self.bias0 is not None:
+            AHy = AHy + self.lamda * self.bias0
+        if self.rho != 0.0:
+            assert self.bias is not None, "If rho != 0, variable bias must be specified (e.g., ADMM)."
+            AHy = AHy + self.rho * self.bias
+                
+        return _linalg.conjgrad(AHA, AHy, x0, self.niter, self.tol, self.device)
+    
+    
+class LSMR(torch.nn.Module):
+    """Pseudo Inverse of linear operator via LSMR."""
+    
+    def __init__(self, A, x0, lamda, rho, bias, niter, tol, device):
+        super().__init__()
+        self.A = A
+        self.x0 = x0
+        
+        # case 0)
+        # min || y - A(x) ||_2
+        if bias is None and lamda == 0.0 and rho == 0.0:
+            self.damp = 0.0
+            self.sqrt_lamda_I = None
+            self.sqrt_lamda_bias0 = None
+            self.sqrt_rho_I = None
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = 0.0
+        
+        # case 1)
+        # min || y - A(x)            ||
+        #     || 0   sqrt(lamda) * I ||_2
+        if bias is None and lamda != 0.0 and rho == 0.0:
+            self.damp = lamda**0.5
+            self.sqrt_lamda_I = None
+            self.sqrt_lamda_bias0 = None
+            self.sqrt_lamda = 0.0
+            self.sqrt_rho_I = None
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = 0.0
+
+        # case 2)
+        # min || y      -      A(x)            ||
+        #     || sqrt(lamda) * bias0 sqrt(lamda) * I ||_2
+        if bias is not None and lamda != 0.0 and rho == 0.0:
+            self.damp = 0.0
+            self.sqrt_lamda_I = lamda**0.5 * Identity()
+            self.sqrt_lamda = lamda**0.5
+            self.sqrt_lamda_bias0 = lamda**0.5 * bias.clone()
+            self.sqrt_rho_I = None
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = 0.0
+        
+        # case 3)
+        # min || y        -        A(x)          ||
+        #     || sqrt(rho) * bias  sqrt(rho) * I ||_2
+        if bias is None and lamda == 0.0 and rho != 0.0:
+            self.damp = 0.0
+            self.sqrt_lamda_I = None
+            self.sqrt_lamda_bias0 = None
+            self.sqrt_lamda = 0.0
+            self.sqrt_rho_I = rho**0.5 * Identity()
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = rho**0.5
+        
+        # case 4)
+        # min || y        -        A(x)            ||
+        #     || 0                 sqrt(lamda) * I ||
+        #     || sqrt(rho) * bias  sqrt(rho) * I   ||_2
+        if bias is None and lamda != 0.0 and rho != 0.0:
+            self.damp = 0.0
+            self.sqrt_lamda_I = lamda**0.5 * Identity()
+            self.sqrt_lamda_bias0 = None
+            self.sqrt_lamda = lamda**0.5
+            self.sqrt_rho_I = rho**0.5 * Identity()
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = rho**0.5
+        
+        # case 5)
+        # min || y      -      A(x)                  ||
+        #     || sqrt(lamda) * bias0 sqrt(lamda) * I ||
+        #     || sqrt(rho)   * bias  sqrt(rho) * I   ||_2
+        if bias is not None and lamda != 0.0 and rho != 0.0:
+            self.damp = 0.0
+            self.sqrt_lamda_I = lamda**0.5 * Identity()
+            self.sqrt_lamda_bias0 = lamda**0.5 * bias
+            self.sqrt_lamda = lamda**0.5
+            self.sqrt_rho_I = rho**0.5 * Identity()
+            self.sqrt_rho_bias = None
+            self.sqrt_rho = rho**0.5
+
+        self.niter = niter
+        self.tol = tol
+        self.device = device
+                
+    def __getitem__(self, bias):
+        assert self.rho != 0, "if variable bias is specified, rho must be != 0"
+        self.sqrt_rho_bias = self.sqrt_rho * bias
+        if self.sqrt_lamda != 0 and self.sqrt_lamda_bias0 is None:
+            self.sqrt_lamda_bias0 = 0 * bias
+        return self
+        
+    def forward(self, input):
+        # create operator
+        ops = [self.A]
+        if self.sqrt_lamda_I is not None:
+            ops = ops + [self.sqrt_lamda_I]
+        if self.sqrt_rho_I is not None:
+            ops = ops + [self.sqrt_rho_I]
+                
+        # create stacked operator
+        if len(ops) > 1:
+            A = Vstack(ops)
+        else:
+            A = ops[0]
+
+        # manipulate input
+        y = [input.clone()]
+        if self.sqrt_lamda_bias0 is not None:
+            y = y + [self.sqrt_lamda_bias0]
+        if self.sqrt_rho_bias is not None:
+            y = y + [self.sqrt_rho_bias]
+        
+        # create stacked input
+        if len(y) == 1:
+            y = y[0]
+            
+        # initial solution
+        if self.x0 is not None:
+            x0 = self.x0
+        else:
+            x0 = 0 * A.H(y)
+                                    
+        return _linalg.lsmr(A, y, x0, self.niter, self.damp, self.tol[0], self.tol[1], self.tol[2], self.device)
     
     
 class LambdaOp(Linop):

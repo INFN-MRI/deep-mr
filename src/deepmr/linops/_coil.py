@@ -2,7 +2,7 @@
 
 __all__ = ["SenseOp", "SenseAdjointOp", "SoftSenseOp", "SoftSenseAdjointOp"]
 
-from . import base
+from . import _base as base
 
 
 class SenseOp(base.Linop):
