@@ -6,7 +6,7 @@ import numpy as np
 
 import sympy
 
-from .._external.chebyshev import polynomial as chebpoly
+from .._external.chebyshev import _polynomial as chebpoly
 from mrops._sigpy import linop
 
 

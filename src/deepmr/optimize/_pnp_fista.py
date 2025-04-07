@@ -4,6 +4,7 @@ __all__ = ["pnp_fista"]
 
 import time
 
+from typing import Callable
 from tqdm import tqdm
 
 from numpy.typing import NDArray
@@ -26,13 +27,13 @@ def pnp_fista(
     accelerate: bool = True,
     l: float = 0,
     a: float = 2.1,
-    stepfn: callable | None = None,
+    stepfn: Callable | None = None,
     ref: NDArray[complex] | None = None,
     save: str | None = None,
     verbose: bool = True,
     idx: tuple | None = None,
 ) -> NDArray[complex]:
-    """
+    r"""
     Proximal Gradient Descent (FISTA).
 
     Solves the following optimization problem using proximal gradient descent:
