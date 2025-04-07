@@ -1,12 +1,110 @@
 [build-system]
-# AVOID CHANGING REQUIRES: IT WILL BE UPDATED BY PYSCAFFOLD!
-requires = ["setuptools>=46.1.0", "setuptools_scm[toml]>=5"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools", "setuptools_scm[toml]", "wheel"]
+
+
+[project]
+name = "deepmr"
+description = "MRI deep image inversion library based on SigPy and DeepInverse."
+readme = "README.rst"
+
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+license = {file = "LICENSE.txt"}
+keywords = ["mri", "deep-image-prior", "compressed-sensing", "parallel-imaging"]
+
+authors = [
+  {name = "Matteo Cencini", email = "matteo.cencini@gmail.com" } # Optional
+]
+
+# Classifiers help users find your project by categorizing it.
+# For a list of valid classifiers, see https://pypi.org/classifiers/
+classifiers = [  # Optional
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 3 - Alpha",
+
+  # Indicate who your project is intended for
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+
+  # Specify the Python versions you support here. In particular, ensure
+  # that you indicate you support Python 3. These classifiers are *not*
+  # checked by "pip install". See instead "python_requires" below.
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+"torch",
+"sympy",
+"lightning",
+"deepinv",
+"mrops",
+]
+
+[project.optional-dependencies] # Optional
+cuda = ["cupy", "cufinufft"]
+dev = ["black", "isort", "matplotlib"]
+test = ["pytest", "pytest-black", "pytest-cov", "pytest-sugar", "pytest-xdist"]
+doc = [
+"sphinx", 
+"sphinx_book_theme", 
+"sphinx-gallery",
+"sphinx-exec-directive",
+"sphinx_copybutton",
+"mrbabel-data",
+]
+
+# List URLs that are relevant to your project
+# This field corresponds to the "Project-URL" and "Home-Page" metadata fields:
+[project.urls]  # Optional
+"Homepage" = "https://github.com/INFN-MRI/deep-mr"
+"Bug Reports" = "https://github.com/INFN-MRI/deep-mr/issues"
+"Source" = "https://github.com/INFN-MRI/deep-mr"
+
+[tool.setuptools.packages.find]
+where=["src"]
 
 [tool.setuptools_scm]
-# For smarter version schemes and other configuration options,
-# check out https://github.com/pypa/setuptools_scm
-version_scheme = "no-guess-dev"
+write_to = "src/deepmr/_version.py"
+version_scheme = "python-simplified-semver"
+local_scheme="no-local-version"
+fallback_version="v99-dev"
 
-[tool.coverage.run]
-omit = ["tutorials/*", "docs/*", "src/deepmr/_*/*"]
+# Formatting using black.
+[tool.black]
+
+[tool.isort]
+profile="black"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--cov=deepmr",
+    "--cov-report=term-missing",
+    "--cov-report=xml"
+]
+
+# linting using ruff.
+[tool.ruff]
+src = ["src"]
+select = ["E", "F", "B", "Q", "D", "UP", "ANN"]
+
+ignore = [
+    "ANN101", # missing type annotation for self
+    "ANN102", # missing type annotation for cls in classmethod.
+    "ANN204", # missing return type for __init__
+    "D105", # missing docstring in magic method
+    "D404", # Imperative mode is not necessary everywhere, trust me.
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+[mypy]
+ignore_missing_imports = true
