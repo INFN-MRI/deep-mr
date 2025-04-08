@@ -85,7 +85,7 @@ class ResUNetDenoiser:
     ):
         assert ndim in [2, 3], "ndim must be '3' or '3'"
         self.ndim = ndim
-        self.model = LitResUNet3D() if ndim == 3 else LitResUNet2D()
+        self.model = LitResUNet3D if ndim == 3 else LitResUNet2D
 
         # Load checkpoint if provided
         if checkpoint:
