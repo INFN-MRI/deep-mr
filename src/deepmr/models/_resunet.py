@@ -18,6 +18,7 @@ nn_block_size = 64
 nn_inf_block_size = 64
 overlap_fract = 1 / 4
 
+torch.backends.cudnn.enabled = True
 
 class ProxResUnet(sp.prox.Prox):
     """
