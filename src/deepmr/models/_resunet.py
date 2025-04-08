@@ -255,184 +255,174 @@ class _ResUNet2D(nn.Module):
         super().__init__()
         self.tk = ncoeffs
 
-        self.initial_conv = nn.Sequential(
-            nn.Conv2d(self.tk * 2, 64, kernel_size=nn_kernel, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=nn_kernel, padding=1),
-        )
-        self.shortcut_conv = nn.Conv2d(self.tk * 2, 64, kernel_size=1, padding=0)
+        self.conv1 = nn.Conv2d(
+            self.tk * 2, 64, kernel_size=nn_kernel, padding=1
+        )  # bn_relu(c_in)
+        self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=nn_kernel, padding=1)
+        self.conv3 = nn.Conv2d(self.tk * 2, 64, kernel_size=1, padding=0)  # 1x1 conv
 
-        # Encoder path
-        self.enc1 = _ResidualBlock2D(64, 128, stride=2)
-        self.enc2 = _ResidualBlock2D(128, 256, stride=2)
-        self.enc3 = _ResidualBlock2D(256, 512, stride=2)
+        self.enc1 = res_block2(64, 128, stride=2)
+        self.enc2 = res_block2(128, 256, stride=2)
 
-        # Decoder path
-        self.dec1 = _DecoderBlock2D(512, 256)
-        self.dec2 = _DecoderBlock2D(256, 128)
-        self.dec3 = _DecoderBlock2D(128, 64)
+        self.enc3 = res_block2(256, 512, stride=2)
 
-        # Output
-        self.final_conv = nn.Conv2d(64, self.tk * 2, kernel_size=1, padding=0)
+        self.dec1 = dec_block2(512, 256)
+        self.dec2 = dec_block2(256, 128)
+        self.dec3 = dec_block2(128, 64)
 
-    def forward(self, x):
-        # Initial conv + shortcut
-        out = self.initial_conv(x)
-        skip = self.shortcut_conv(x)
-        enc1 = out + skip
+        self.conv4 = nn.Conv2d(64, self.tk * 2, kernel_size=1, padding=0)
 
-        # Encoder
+    def forward(self, inp):
+        # encoder
+        x = self.conv1(inp)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x2 = self.conv3(inp)
+        enc1 = x + x2
         enc2 = self.enc1(enc1)
         enc3 = self.enc2(enc2)
+
+        # bridge
         bridge = self.enc3(enc3)
 
-        # Decoder
+        # decoder
         dec1 = self.dec1(bridge, enc3)
         dec2 = self.dec2(dec1, enc2)
         dec3 = self.dec3(dec2, enc1)
 
-        return self.final_conv(dec3)
+        out = self.conv4(dec3)
+        return out
 
 
-class _ResidualBlock2D(nn.Module):
+class res_block2(nn.Module):
     """2D Residual block with two convolutions and a shortcut connection."""
 
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, c_in, c_out, stride=1):
         super().__init__()
 
-        self.relu = nn.ReLU(inplace=True)
+        self.relu1 = nn.ReLU()  # bn_relu(c_in)
         self.conv1 = nn.Conv2d(
-            in_channels, out_channels, kernel_size=nn_kernel, padding=1, stride=stride
+            c_in, c_out, kernel_size=nn_kernel, padding=1, stride=stride
         )
-        self.conv2 = nn.Conv2d(
-            out_channels, out_channels, kernel_size=nn_kernel, padding=1, stride=1
-        )
+        self.relu2 = nn.ReLU()
+        self.conv2 = nn.Conv2d(c_out, c_out, kernel_size=nn_kernel, padding=1, stride=1)
+        self.conv3 = nn.Conv2d(c_in, c_out, kernel_size=1, padding=0, stride=stride)
 
-        # Shortcut path with 1x1 convolution
-        self.shortcut = nn.Conv2d(
-            in_channels, out_channels, kernel_size=1, padding=0, stride=stride
-        )
+    def forward(self, inp):
+        x = self.relu1(inp)
+        x = self.conv1(x)
+        x = self.relu2(x)
+        x = self.conv2(x)
+        x2 = self.conv3(inp)
 
-    def forward(self, x):
-        residual = self.shortcut(x)
-
-        out = self.relu(x)
-        out = self.conv1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-
-        return out + residual
+        return x + x2
 
 
-class _DecoderBlock2D(nn.Module):
+class dec_block2(nn.Module):
     """2D Decoder block: Upsample + concatenate + residual block."""
 
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, c_in, c_out):
         super().__init__()
 
         self.upsample = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
-        self.res_block = _ResidualBlock2D(in_channels + out_channels, out_channels)
+        self.relu1 = nn.ReLU()
+        self.res_block = res_block2(c_in + c_out, c_out)
 
-    def forward(self, decoder_input, encoder_output):
-        upsampled = self.upsample(decoder_input)
-        concatenated = torch.cat([upsampled, encoder_output], dim=1)
-        return self.res_block(concatenated)
+    def forward(self, dec_inp, enc_out):
+        x = self.upsample(dec_inp)
+        x = torch.cat([x, enc_out], axis=1)
+        x = self.res_block(x)
+        return x
 
 
 class _ResUNet3D(nn.Module):
-    """Residual U-Net architecture for 3D inputs using custom residual and decoder blocks."""
+    """Residual U-Net for 3D data."""
 
     def __init__(self, ncoeffs=5):
         super().__init__()
         self.tk = ncoeffs
 
-        self.initial_conv = nn.Sequential(
-            nn.Conv3d(self.tk * 2, 64, kernel_size=nn_kernel, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(64, 64, kernel_size=nn_kernel, padding=1),
-        )
-        self.shortcut_conv = nn.Conv3d(ncoeffs * 2, 64, kernel_size=1, padding=0)
+        self.conv1 = nn.Conv3d(
+            self.tk * 2, 64, kernel_size=nn_kernel, padding=1
+        )  # bn_relu(c_in)
+        self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv3d(64, 64, kernel_size=nn_kernel, padding=1)
+        self.conv3 = nn.Conv3d(self.tk * 2, 64, kernel_size=1, padding=0)  # 1x1 conv
 
-        # Encoder blocks
-        self.enc1 = _ResidualBlock3D(64, 128, stride=2)
-        self.enc2 = _ResidualBlock3D(128, 256, stride=2)
-        self.enc3 = _ResidualBlock3D(256, 512, stride=2)
+        self.enc1 = res_block(64, 128, stride=2)
+        self.enc2 = res_block(128, 256, stride=2)
 
-        # Decoder blocks
-        self.dec1 = _DecoderBlock3D(512, 256)
-        self.dec2 = _DecoderBlock3D(256, 128)
-        self.dec3 = _DecoderBlock3D(128, 64)
+        self.enc3 = res_block(256, 512, stride=2)
 
-        # Final 1x1 convolution to get desired output channels
-        self.final_conv = nn.Conv3d(64, self.tk * 2, kernel_size=1, padding=0)
+        self.dec1 = dec_block(512, 256)
+        self.dec2 = dec_block(256, 128)
+        self.dec3 = dec_block(128, 64)
 
-    def forward(self, x):
-        # Initial convolution and skip connection
-        out = self.initial_conv(x)
-        skip = self.shortcut_conv(x)
-        enc1 = out + skip
+        self.conv4 = nn.Conv3d(64, self.tk * 2, kernel_size=1, padding=0)
 
-        # Encoder path
+    def forward(self, inp):
+        # encoder
+        x = self.conv1(inp)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x2 = self.conv3(inp)
+        enc1 = x + x2
         enc2 = self.enc1(enc1)
         enc3 = self.enc2(enc2)
 
-        # Bridge
+        # bridge
         bridge = self.enc3(enc3)
 
-        # Decoder path
+        # decoder
         dec1 = self.dec1(bridge, enc3)
         dec2 = self.dec2(dec1, enc2)
         dec3 = self.dec3(dec2, enc1)
 
-        # Final output
-        return self.final_conv(dec3)
+        out = self.conv4(dec3)
+        return out
 
 
-class _ResidualBlock3D(nn.Module):
-    """Residual block with two 3D convolutions and a shortcut connection."""
+class res_block(nn.Module):
+    """3D Residual block with two convolutions and a shortcut connection."""
 
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, c_in, c_out, stride=1):
         super().__init__()
-
-        self.relu = nn.ReLU(inplace=True)
+        self.relu1 = nn.ReLU()
         self.conv1 = nn.Conv3d(
-            in_channels, out_channels, kernel_size=nn_kernel, padding=1, stride=stride
+            c_in, c_out, kernel_size=nn_kernel, padding=1, stride=stride
         )
-        self.conv2 = nn.Conv3d(
-            out_channels, out_channels, kernel_size=nn_kernel, padding=1, stride=1
-        )
+        self.relu2 = nn.ReLU()
+        self.conv2 = nn.Conv3d(c_out, c_out, kernel_size=nn_kernel, padding=1, stride=1)
+        self.conv3 = nn.Conv3d(c_in, c_out, kernel_size=1, padding=0, stride=stride)
 
-        # Shortcut path with 1x1x1 convolution
-        self.shortcut = nn.Conv3d(
-            in_channels, out_channels, kernel_size=1, padding=0, stride=stride
-        )
+    def forward(self, inp):
+        x = self.relu1(inp)
+        x = self.conv1(x)
+        x = self.relu2(x)
+        x = self.conv2(x)
+        x2 = self.conv3(inp)
 
-    def forward(self, x):
-        residual = self.shortcut(x)
-
-        out = self.relu(x)
-        out = self.conv1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-
-        return out + residual
+        return x + x2
 
 
-class _DecoderBlock3D(nn.Module):
-    """Decoder block that upsamples input and applies a residual block after concatenation with encoder features."""
+class dec_block(nn.Module):
+    """3D Decoder block: Upsample + concatenate + residual block."""
 
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, c_in, c_out):
         super().__init__()
-
         self.upsample = nn.Upsample(
             scale_factor=2, mode="trilinear", align_corners=True
         )
-        self.res_block = _ResidualBlock3D(in_channels + out_channels, out_channels)
+        self.relu1 = nn.ReLU()
+        self.res_block = res_block(c_in + c_out, c_out)
 
-    def forward(self, decoder_input, encoder_output):
-        upsampled = self.upsample(decoder_input)
-        concatenated = torch.cat([upsampled, encoder_output], dim=1)
-        return self.res_block(concatenated)
+    def forward(self, dec_inp, enc_out):
+        x = self.upsample(dec_inp)
+        x = torch.cat([x, enc_out], axis=1)
+        x = self.res_block(x)
+
+        return x
 
 
 @with_torch

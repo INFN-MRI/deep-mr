@@ -30,8 +30,5 @@ class LightningDenoiser(dinv.models.Denoiser, pl.LightningModule):
         dinv.models.Denoiser.__init__(
             self, device=device
         )  # Initialize deepinv.models.Denoiser
-        pl.LightningModule.__init__(
-            self
-        )  # Initialize pytorch_lightning.LightningModule
+        pl.LightningModule.__init__(self)
         self.model = model.to(device)
-        self.device = device
