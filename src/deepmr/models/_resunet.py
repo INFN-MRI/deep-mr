@@ -7,10 +7,13 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import mrops._sigpy as sp
+
+from tqdm import tqdm
+import lightning as pl
 
 from mrinufft._array_compat import with_torch
-from ._base import LightningDenoiser
+
+import mrops._sigpy as sp
 
 # Model parameters (TODO: make it selectable)
 nn_kernel = 3
@@ -19,6 +22,7 @@ nn_inf_block_size = 64
 overlap_fract = 1 / 4
 
 torch.backends.cudnn.enabled = True
+
 
 class ProxResUnet(sp.prox.Prox):
     """
@@ -90,17 +94,15 @@ class ResUNetDenoiser:
 
         # Load checkpoint if provided
         if checkpoint:
-            self.model.load_from_checkpoint(checkpoint)
+            self.model = self.model.load_from_checkpoint(checkpoint)
 
         # Device setup
-        self.device_type = (
-            device
-            if device
-            else (
-                f"cuda:{device}" if torch.cuda.is_available() and device >= 0 else "cpu"
-            )
-        )
-        self.model.to(self.device_type)
+        if device and device >= 0:
+            device_type = f"cuda:{device}"
+        else:
+            device_type = "cpu"
+        self.device = torch.device(device_type)
+        self.model.to(self.device)
         self.model.freeze()
 
         self._batch_size = batch_size
@@ -108,84 +110,98 @@ class ResUNetDenoiser:
 
     def __call__(self, x):
         """Override __call__ to direct the call to forward or inference."""
-        return self._infer(x) if self.is_infer else self.model(x)
+        return self.block_pass(x)
 
-    def create_blend_mask(self, device, shape, overlap):
-        """Create blend mask for overlapping inference blocks."""
-        xp = device.xp
-        assert len(shape) in [2, 3]
-        with device:
-            M = xp.ones(shape, dtype=xp.float32)
-            rise = lambda n: xp.linspace(0, 1, int(n))
-            fall = lambda n: xp.linspace(1, 0, int(n))
+    def block_pass(self, x):
+        model = self.model
+        device = self.device
+        batch = self._batch_size
+        verbose = self._verbose
+        ncoeff = x.shape[0]
 
-            for axis, size, ov in zip(range(len(shape)), shape, overlap):
-                if ov == 0:
-                    continue
-                blend = rise(ov)
-                inv_blend = fall(ov)
-                slices = [slice(None)] * len(shape)
-
-                # Front
-                slices[axis] = slice(0, ov)
-                M[tuple(slices)] *= blend.reshape(
-                    [-1 if i == axis else 1 for i in range(len(shape))]
-                )
-
-                # Back
-                slices[axis] = slice(size - ov, size)
-                M[tuple(slices)] *= inv_blend.reshape(
-                    [-1 if i == axis else 1 for i in range(len(shape))]
-                )
-
-            return M
-
-    def infer(self, input):
-        """Run inference on input volume with blocking and blending."""
-        device = sp.get_device(input)
-        xp = device.xp
-
-        # Get number of coefficients
-        ncoeff = input.shape[0]
-
-        # Inspect input
-        is_3d = self.ndim == 3
-        block_shape = (nn_inf_block_size,) * (3 if is_3d else 2)
-        overlap = tuple(int(s * overlap_fract) for s in block_shape)
-
-        # Setup blocking
-        B = sp.linop.ArrayToBlocks(input.shape, block_shape, overlap)
-        n_blocks = int(np.prod(B.oshape[1:-1]))
-        B = sp.linop.Reshape(
-            (ncoeff, n_blocks) + B.oshape[-len(block_shape) :], B.oshape
+        # Blocking operator.
+        B = sp.linop.ArrayToBlocks(
+            x.shape,
+            (nn_inf_block_size,) * 3,
+            (int(nn_inf_block_size * (1 - overlap_fract)),) * 3,
         )
-        B = sp.linop.Transpose(B.oshape, (1, 0) + tuple(range(2, len(B.oshape)))) * B
+        n = int(np.prod(B.oshape[1:4]))
+        B = sp.linop.Reshape((ncoeff, n) + tuple(B.oshape[-3:]), B.oshape) * B
+        B = sp.linop.Transpose(B.oshape, (1, 0, 2, 3, 4)) * B
+        if verbose:
+            print(f">> Cross-blending {n} blocks.", flush=True)
 
-        if self._verbose:
-            print(f">> Inference using {n_blocks} blocks.")
+        # reorder blocks per dimension
+        bx, by, bz = (nn_inf_block_size,) * 3  # block size
+        nx = int(np.cbrt(n))  # block grid (only works for equal in all dimensions)
+        ny = nx
+        nz = nx
+        Mz = np.ones([nz, ny, nx, bz, by, bx])
+        My = np.ones([nz, ny, nx, bz, by, bx])
+        Mx = np.ones([nz, ny, nx, bz, by, bx])
+        ox, oy, oz = (nn_inf_block_size * overlap_fract,) * 3  # overlap size
 
-        blend = self.create_blend_mask(block_shape, overlap)
-        blend = xp.reshape(
-            blend[None, ...].repeat(n_blocks, axis=0), (n_blocks,) + block_shape
-        )
+        rise = np.linspace(0, 1, int(oz))
+        fall = np.linspace(1, 0, int(oz))
 
-        # Normalize input
-        scale = xp.linalg.norm(input.ravel(), ord=xp.inf) + xp.finfo(xp.float32).eps
-        input = input / scale
-        blocks = B(input)
+        for ii in range(nz):
+            for jj in range(ny):
+                for kk in range(ny):
+                    for nn in range(bz):
+                        for mm in range(by):
+                            for oo in range(bx):
+                                if ii != 0:  # not top edge
+                                    if nn < oz:  # in overlap region (top)
+                                        Mz[ii, jj, kk, nn, mm, oo] = rise[nn]
+                                if ii != (nz - 1):  # not bottom edge
+                                    if nn > bz - oz:  # in overlap region (bottom)
+                                        Mz[ii, jj, kk, nn, mm, oo] = fall[
+                                            int(nn - (bz - oz))
+                                        ]
 
-        output_shape = list(blocks.shape)
-        output_shape[1] = 2 * ncoeff
-        with device:
-            output = xp.zeros(output_shape, dtype=xp.complex64)
+                                if jj != 0:  # not front edge
+                                    if mm < oy:  # in overlap region (front)
+                                        My[ii, jj, kk, nn, mm, oo] = rise[mm]
+                                if jj != (ny - 1):  # not back edge
+                                    if mm > by - oy:  # in overlap region (back)
+                                        My[ii, jj, kk, nn, mm, oo] = fall[
+                                            int(mm - (by - oy))
+                                        ]
 
-        for n in range(0, blocks.shape[0], self._batch_size):
-            _make_inference(
-                output, self.model, is_3d, n, self._batch_size, blocks, blend
-            )
+                                if kk != 0:  # not left edge
+                                    if oo < ox:  # in overlap region (left)
+                                        Mx[ii, jj, kk, nn, mm, oo] = rise[oo]
+                                if kk != (nx - 1):  # not right edge
+                                    if oo > bx - ox:  # in overlap region (right)
+                                        Mx[ii, jj, kk, nn, mm, oo] = fall[
+                                            int(oo - (bx - ox))
+                                        ]
 
-        output = output[:, :ncoeff, ...] + 1j * output[:, ncoeff:, ...]
-        return B.H(output).squeeze() * scale
+        M = np.reshape(Mx * My * Mz, [-1, bz, by, bx])
+
+        # Extract blocks and prepare arrays.
+        scale = np.linalg.norm(x.ravel(), ord=np.inf) + (np.finfo(np.float32).eps)
+        x = x / scale
+        x = B(x)
+        y_shape = list(x.shape)
+        y_shape[1] = 2 * ncoeff
+        y = np.zeros(y_shape, dtype=np.complex64)
+
+        # Forward pass.
+        for k in tqdm(range(0, x.shape[0], batch)):
+            blk = x[k : k + batch, ...]
+            tM = torch.from_numpy(M[k : k + batch, ...]).to(device)
+            if len(blk.shape) == 4:
+                blk = blk[None, ...]
+                tM = tM[None, ...]
+            blk[np.isnan(blk)] = 0
+            blk[np.isinf(np.abs(blk))] = 0
+            blk = np.concatenate((blk.real, blk.imag), axis=1)
+            src = torch.as_tensor(blk).to(device)
+            res = model(src).squeeze() * tM[:, None, ...]
+            y[k : k + batch, ...] = res.cpu().detach().numpy().squeeze()
+        y = y[:, : int(y.shape[1] / 2), ...] + 1j * y[:, int(y.shape[1] / 2) :, ...]
+        return B.H(y)
 
     @property
     def batch_size(self):
@@ -216,32 +232,32 @@ class ResUNetDenoiser:
         print("Model unfrozen. Ready for training.")
 
 
-class LitResUNet2D(LightningDenoiser):
+class LitResUNet2D(pl.LightningModule):
     """
     ResUNet 3D implementation that inherits from LightningDenoiser.
 
     Implements the denoising logic using the ResUNet2D architecture.
     """
 
-    def __init__(self, device="cpu"):
-        model = _ResUNet2D()  # Load ResUNet2D model
-        super().__init__(model=model, device=device)
+    def __init__(self):
+        super().__init__()
+        self.model = _ResUNet2D()  # Load ResUNet2D model
 
     def forward(self, x, sigma=None):
         """Denoising logic for ResUNet2D."""
         return self.model(x)
 
 
-class LitResUNet3D(LightningDenoiser):
+class LitResUNet3D(pl.LightningModule):
     """
     ResUNet 3D implementation that inherits from LightningDenoiser.
 
     Implements the denoising logic using the ResUNet23D architecture.
     """
 
-    def __init__(self, device="cpu"):
-        model = _ResUNet3D()  # Load ResUNet2D model
-        super().__init__(model=model, device=device)
+    def __init__(self):
+        super().__init__()
+        self.model = _ResUNet3D()  # Load ResUNet2D model
 
     def forward(self, x, sigma=None):
         """Denoising logic for ResUNet3D."""

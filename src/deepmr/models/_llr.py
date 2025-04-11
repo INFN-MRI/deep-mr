@@ -2,7 +2,11 @@
 
 __all__ = ["ProxLLR"]
 
+import torch
+
 from mrops import _sigpy as sp
+
+from mrinufft._array_compat import with_torch
 
 
 class ProxLLR(sp.prox.Prox):
@@ -92,10 +96,10 @@ def _llr(x, lamda, N, L, w, block, randshift):
     with device:
         # LLR denoising
         mats = L(x)
-        (u, s, vh) = xp.linalg.svd(mats, full_matrices=False)
+        u, s, vt = _svd(mats)
         thresh_s = s - lamda
         thresh_s[thresh_s < 0] = 0
-        mats[...] = xp.matmul(u * thresh_s[..., None, :], vh)
+        mats[...] = xp.matmul(u * thresh_s[..., None, :], vt.conj())
         x = L.H(mats)
         if w is not None:
             x = x / w[None, ...]
@@ -106,3 +110,9 @@ def _llr(x, lamda, N, L, w, block, randshift):
                 x = xp.roll(x, -shift[k], axis=-(k + 1))
 
         return xp.nan_to_num(x, posinf=0.0, neginf=0.0)
+
+
+@with_torch
+def _svd(input):
+    u, s, vh = torch.linalg.svd(input, full_matrices=False)
+    return u, s, vh.conj()
