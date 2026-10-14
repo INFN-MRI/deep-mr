@@ -40,6 +40,8 @@ def pytorch2numba(tensor):
     """
     Zero-copy conversion from PyTorch tensor to Numpy/Numba CUDA array.
 
+    MPS tensors are unsupported; select CPU execution and CPU tensors.
+
     Parameters
     ----------
     tensor : torch.Tensor
@@ -52,6 +54,10 @@ def pytorch2numba(tensor):
 
     """
     device = tensor.device
+    if device.type not in ("cpu", "cuda"):
+        raise ValueError(
+            "Numba supports CPU and CUDA only; select CPU execution and CPU tensors."
+        )
     if device.type == "cpu":
         array = tensor.detach().contiguous().numpy()
     else:
